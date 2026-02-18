@@ -1,10 +1,17 @@
 import SentimentBadge from "./SentimentBadge";
 
 function renderStars(rating) {
-    const full = Math.floor(rating);
-    const half = rating % 1 >= 0.5 ? 1 : 0;
-    const empty = 5 - full - half;
-    return "★".repeat(full) + (half ? "½" : "") + "☆".repeat(empty);
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+        if (i <= Math.floor(rating)) {
+            stars.push(<span key={i} className="star full">★</span>);
+        } else if (i === Math.ceil(rating) && rating % 1 >= 0.5) {
+            stars.push(<span key={i} className="star half">★</span>);
+        } else {
+            stars.push(<span key={i} className="star empty">★</span>);
+        }
+    }
+    return stars;
 }
 
 export default function ReviewFeed({ reviews }) {

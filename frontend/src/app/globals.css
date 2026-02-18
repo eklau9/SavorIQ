@@ -684,8 +684,38 @@ body::before {
 
 .star-rating {
   color: var(--accent-amber);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.star {
+  line-height: 1;
+}
+
+.star.full {
+  color: var(--accent-amber);
+}
+
+.star.empty {
+  color: rgba(255, 255, 255, 0.1);
+}
+
+.star.half {
+  position: relative;
+  color: rgba(255, 255, 255, 0.1);
+}
+
+.star.half::after {
+  content: '★';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50%;
+  overflow: hidden;
+  color: var(--accent-amber);
 }
 
 .review-date {
