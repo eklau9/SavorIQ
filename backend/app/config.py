@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # Gemini AI for Deep Sentiment
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-flash-latest"
 
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
