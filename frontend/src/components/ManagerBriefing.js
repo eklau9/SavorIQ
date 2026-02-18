@@ -5,6 +5,17 @@ export default function ManagerBriefing({ briefing }) {
 
     const { summary, insights } = briefing;
 
+    const renderMarkdown = (text) => {
+        if (!text) return "";
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith("**") && part.endsWith("**")) {
+                return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            return part;
+        });
+    };
+
     return (
         <div className="briefing-container">
             <div className="briefing-header">
@@ -12,7 +23,7 @@ export default function ManagerBriefing({ briefing }) {
                 <h2>Manager's Executive Briefing</h2>
             </div>
 
-            <p className="briefing-summary">{summary}</p>
+            <p className="briefing-summary">{renderMarkdown(summary)}</p>
 
             <div className="insights-grid">
                 {insights.map((insight, idx) => (
@@ -24,7 +35,7 @@ export default function ManagerBriefing({ briefing }) {
                         </div>
                         <div className="insight-content">
                             <h4>{insight.title}</h4>
-                            <p>{insight.description}</p>
+                            <p>{renderMarkdown(insight.description)}</p>
                         </div>
                     </div>
                 ))}

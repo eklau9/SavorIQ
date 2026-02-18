@@ -22,9 +22,10 @@ Input Data:
 Output Requirements:
 - A concise summary (2-3 sentences) of the overall restaurant health.
 - Exactly 3-4 actionable insights categorized as:
-  - "win": Celebrate the success of a popular item or practice.
-  - "risk": Identify a critical issue that needs immediate attention.
-  - "action": Sustained improvements or new opportunities.
+  - "win": Celebrate the success of a popular item or practice. **Bold** specific menu item names.
+  - "risk": Identify a critical issue that needs immediate attention. **Bold** specific menu item names.
+  - "action": Sustained improvements or new opportunities. **Bold** specific menu item names.
+- Also **bold** item names in the main summary.
 
 Return ONLY valid JSON in this exact format:
 {

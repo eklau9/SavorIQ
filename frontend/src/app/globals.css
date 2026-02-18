@@ -871,6 +871,7 @@ body::before {
 .pulse-card:nth-child(6) {
   animation-delay: 0.25s;
 }
+
 /* ─── Manager Briefing ─────────────────────────────────────── */
 
 .briefing-container {
@@ -951,9 +952,17 @@ body::before {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.insight-card.win { border-left: 4px solid var(--accent-emerald); }
-.insight-card.risk { border-left: 4px solid var(--accent-rose); }
-.insight-card.action { border-left: 4px solid var(--accent-indigo); }
+.insight-card.win {
+  border-left: 4px solid var(--accent-emerald);
+}
+
+.insight-card.risk {
+  border-left: 4px solid var(--accent-rose);
+}
+
+.insight-card.action {
+  border-left: 4px solid var(--accent-indigo);
+}
 
 .insight-icon {
   font-size: 1.5rem;
@@ -970,6 +979,23 @@ body::before {
   font-size: 0.85rem;
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+.insight-card.win strong {
+  color: var(--accent-emerald);
+}
+
+.insight-card.risk strong {
+  color: var(--accent-rose);
+}
+
+.insight-card.action strong {
+  color: var(--accent-indigo);
+}
+
+.briefing-summary strong {
+  color: var(--accent-emerald);
+  font-weight: 700;
 }
 
 /* ─── Product Pulse ────────────────────────────────────────── */
@@ -1024,6 +1050,10 @@ body::before {
   font-size: 0.95rem;
 }
 
+.product-pulse-section.danger .name {
+  color: var(--accent-rose);
+}
+
 .product-info .cat {
   font-size: 0.7rem;
   text-transform: uppercase;
@@ -1057,10 +1087,21 @@ body::before {
   min-width: 80px;
 }
 
-.sentiment-indicator.positive .val { color: var(--accent-emerald); }
-.sentiment-indicator.neutral .val { color: var(--text-secondary); }
-.sentiment-indicator.negative .val { color: var(--accent-rose); }
-.sentiment-indicator.none .val { color: var(--text-muted); }
+.sentiment-indicator.positive .val {
+  color: var(--accent-emerald);
+}
+
+.sentiment-indicator.neutral .val {
+  color: var(--text-secondary);
+}
+
+.sentiment-indicator.negative .val {
+  color: var(--accent-rose);
+}
+
+.sentiment-indicator.none .val {
+  color: var(--text-muted);
+}
 
 .empty-mini {
   text-align: center;
