@@ -1,10 +1,10 @@
 export default function SentimentBadge({ bucket, score }) {
-    const cls = score > 0.2 ? "positive" : score < -0.2 ? "negative" : "neutral";
-    const icon = score > 0.2 ? "↑" : score < -0.2 ? "↓" : "→";
+    const cls = score >= 0.3 ? "positive" : score <= -0.3 ? "negative" : "neutral";
+    const label = score >= 0.3 ? "Great" : score <= -0.3 ? "Poor" : "Neutral";
 
     return (
         <span className={`sentiment-badge ${cls}`}>
-            {icon} {bucket}: {score > 0 ? "+" : ""}{score.toFixed(1)}
+            {bucket}: {label}
         </span>
     );
 }

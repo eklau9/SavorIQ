@@ -11,9 +11,16 @@ function getInitials(name) {
         .slice(0, 2);
 }
 
+function getSentimentLabel(score, count) {
+    if (count === 0) return "Ordered";
+    if (score >= 0.3) return "Great";
+    if (score <= -0.3) return "Poor";
+    return "Neutral";
+}
+
 function getSentimentClass(score) {
-    if (score > 0.2) return "positive";
-    if (score < -0.2) return "negative";
+    if (score >= 0.3) return "positive";
+    if (score <= -0.3) return "negative";
     return "neutral";
 }
 
@@ -63,8 +70,8 @@ export default function GuestPulseCard({ pulse }) {
                                     />
                                 </div>
                                 <span className={`sentiment-score`}>
-                                    {s.avg_score > 0 ? "+" : ""}
-                                    {s.avg_score.toFixed(1)}
+                                    {getSentimentLabel(s.avg_score, s.review_count)}
+                                    {s.review_count > 0 && ` (${s.review_count})`}
                                 </span>
                             </div>
                         );
