@@ -33,7 +33,7 @@ DRINK_KEYWORDS = [
     "drink", "coffee", "latte", "espresso", "cappuccino", "tea", "beer",
     "wine", "cocktail", "juice", "smoothie", "soda", "water", "bar",
     "barista", "brew", "roast", "pour", "mocktail", "matcha", "lassi",
-    "lemonade", "shake",
+    "lemonade", "shake", "sake", "spirit", "liquor",
 ]
 
 AMBIANCE_KEYWORDS = [
