@@ -1,0 +1,45 @@
+{
+    "platform": "yelp",
+    "reviews": [
+        {
+            "review_id": "yelp-r-001",
+            "guest_name": "Maya Chen",
+            "guest_email": "maya.chen@email.com",
+            "rating": 5.0,
+            "text": "Absolutely love this place! The oat milk latte is hands down the best I've ever had. The barista nailed the foam art too. Such a cozy atmosphere with the warm lighting and lofi music playing softly. I come here every morning before work.",
+            "date": "2026-01-15"
+        },
+        {
+            "review_id": "yelp-r-002",
+            "guest_name": "Marcus Williams",
+            "guest_email": "marcus.w@email.com",
+            "rating": 4.0,
+            "text": "Great brunch spot! The avocado toast was fresh and perfectly seasoned. Portions are generous. The cold brew could be a bit stronger for my taste though. Love the outdoor patio seating area.",
+            "date": "2026-01-20"
+        },
+        {
+            "review_id": "yelp-r-003",
+            "guest_name": "Sofia Rossi",
+            "guest_email": "sofia.rossi@email.com",
+            "rating": 3.5,
+            "text": "The food was mediocre — my pasta was slightly overcooked and the sauce lacked depth. However, the wine selection is excellent and the sommelier gave great recommendations. The restaurant decor is stunning with beautiful lighting.",
+            "date": "2026-01-22"
+        },
+        {
+            "review_id": "yelp-r-004",
+            "guest_name": "Maya Chen",
+            "guest_email": "maya.chen@email.com",
+            "rating": 4.5,
+            "text": "Back again for my daily coffee fix. The new matcha latte is incredible! Also tried the croissant today — flaky and buttery perfection. They've added some new plants to the interior and it feels even more relaxing now.",
+            "date": "2026-02-01"
+        },
+        {
+            "review_id": "yelp-r-005",
+            "guest_name": "James Park",
+            "guest_email": "james.park@email.com",
+            "rating": 2.0,
+            "text": "Disappointing experience. The burger was overpriced and the bun was stale. Service was slow — waited 30 minutes for our order. The music was way too loud and it was impossible to have a conversation.",
+            "date": "2026-02-05"
+        }
+    ]
+}

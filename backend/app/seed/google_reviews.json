@@ -1,0 +1,45 @@
+{
+    "platform": "google",
+    "reviews": [
+        {
+            "review_id": "goog-r-001",
+            "author_name": "Maya Chen",
+            "author_email": "maya.chen@email.com",
+            "rating": 5.0,
+            "text": "My favorite coffee shop in the city! I'm here practically every day for my espresso. The baristas know my order by heart now. The new seasonal lavender latte is divine. The cozy corner seating with the bookshelf wall is my perfect work-from-cafe spot.",
+            "time": "2026-02-10T09:30:00"
+        },
+        {
+            "review_id": "goog-r-002",
+            "author_name": "Alex Rivera",
+            "author_email": "alex.r@email.com",
+            "rating": 4.0,
+            "text": "Had an amazing dinner here last weekend. The sushi platter was fresh and beautifully presented. The sake selection is good but could use more variety. Nice minimalist interior design.",
+            "time": "2026-02-08T19:15:00"
+        },
+        {
+            "review_id": "goog-r-003",
+            "author_name": "Marcus Williams",
+            "author_email": "marcus.w@email.com",
+            "rating": 4.5,
+            "text": "Came back for the weekend brunch and it was even better than last time. The eggs benedict was perfectly poached. The fresh-squeezed orange juice is worth every penny. Love the warm rustic ambiance.",
+            "time": "2026-02-12T11:00:00"
+        },
+        {
+            "review_id": "goog-r-004",
+            "author_name": "Priya Sharma",
+            "author_email": "priya.s@email.com",
+            "rating": 3.0,
+            "text": "The food was okay but nothing special. The chicken curry was bland and needed more spice. On the bright side, the mango lassi was refreshing and well-made. The place was quite crowded and noisy during dinner rush.",
+            "time": "2026-02-14T20:00:00"
+        },
+        {
+            "review_id": "goog-r-005",
+            "author_name": "Maya Chen",
+            "author_email": "maya.chen@email.com",
+            "rating": 4.5,
+            "text": "Valentine's Day special menu was wonderful! The rose-infused cappuccino was creative and delicious. The chocolate lava cake dessert was rich and perfectly gooey. The candle-lit atmosphere was absolutely romantic and beautiful.",
+            "time": "2026-02-14T18:30:00"
+        }
+    ]
+}

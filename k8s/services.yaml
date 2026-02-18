@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: savoriq
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: savoriq-backend
+  namespace: savoriq
+spec:
+  type: ClusterIP
+  selector:
+    app: savoriq-backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: savoriq-frontend
+  namespace: savoriq
+spec:
+  type: LoadBalancer
+  selector:
+    app: savoriq-frontend
+  ports:
+    - port: 80
+      targetPort: 3000

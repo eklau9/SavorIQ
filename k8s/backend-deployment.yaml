@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: savoriq-backend
+  namespace: savoriq
+  labels:
+    app: savoriq-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: savoriq-backend
+  template:
+    metadata:
+      labels:
+        app: savoriq-backend
+    spec:
+      containers:
+        - name: backend
+          image: savoriq/backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: savoriq-config
+            - secretRef:
+                name: savoriq-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
