@@ -440,7 +440,7 @@ body::before {
   font-size: 0.75rem;
   font-weight: 600;
   width: 75px;
-  text-align: right;
+  text-align: left;
   white-space: nowrap;
   flex-shrink: 0;
 }
