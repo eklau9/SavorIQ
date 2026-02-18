@@ -439,8 +439,10 @@ body::before {
 .sentiment-score {
   font-size: 0.75rem;
   font-weight: 600;
-  width: 40px;
+  width: 75px;
   text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pulse-card-footer {
