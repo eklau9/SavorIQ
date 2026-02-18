@@ -429,7 +429,7 @@ body::before {
 }
 
 .sentiment-bar-fill.neutral {
-  background: var(--gradient-warm);
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
 }
 
 .sentiment-bar-fill.negative {
@@ -484,8 +484,8 @@ body::before {
 }
 
 .sentiment-badge.neutral {
-  background: rgba(251, 191, 36, 0.15);
-  color: var(--accent-amber);
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
 }
 
 .sentiment-badge.negative {
