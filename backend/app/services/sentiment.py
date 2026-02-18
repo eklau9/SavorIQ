@@ -32,7 +32,8 @@ FOOD_KEYWORDS = [
 DRINK_KEYWORDS = [
     "drink", "coffee", "latte", "espresso", "cappuccino", "tea", "beer",
     "wine", "cocktail", "juice", "smoothie", "soda", "water", "bar",
-    "barista", "brew", "roast", "pour", "mocktail", "matcha",
+    "barista", "brew", "roast", "pour", "mocktail", "matcha", "lassi",
+    "lemonade", "shake",
 ]
 
 AMBIANCE_KEYWORDS = [
@@ -46,7 +47,7 @@ POSITIVE_WORDS = {
     "great", "amazing", "excellent", "wonderful", "fantastic", "love",
     "perfect", "best", "good", "nice", "lovely", "delicious", "fresh",
     "beautiful", "cozy", "friendly", "relaxing", "comfortable", "superb",
-    "outstanding", "incredible", "awesome",
+    "outstanding", "incredible", "awesome", "refreshing", "tasty",
 }
 
 NEGATIVE_WORDS = {
@@ -64,20 +65,27 @@ def _keyword_sentiment(text: str, keywords: list[str]) -> tuple[float, bool]:
     if any bucket keyword was found.
     """
     text_lower = text.lower()
-    words = set(re.findall(r'\b\w+\b', text_lower))
-
-    # Check if bucket is relevant to this review
-    bucket_matches = sum(1 for kw in keywords if kw in text_lower)
-    if bucket_matches == 0:
+    clean_text = re.sub(r'[^a-zA-Z\s]', '', text_lower)
+    words = clean_text.split()
+    
+    # Identify indices of keywords
+    keyword_indices = [i for i, w in enumerate(words) if w in keywords]
+    if not keyword_indices:
         return 0.0, False
 
-    # Score based on sentiment words near bucket keywords
-    pos_count = len(words & POSITIVE_WORDS)
-    neg_count = len(words & NEGATIVE_WORDS)
+    # Score based on sentiment words near ANY of the keywords (5-word window)
+    window_words = set()
+    for idx in keyword_indices:
+        start = max(0, idx - 5)
+        end = min(len(words), idx + 6)
+        window_words.update(words[start:end])
+
+    pos_count = len(window_words & POSITIVE_WORDS)
+    neg_count = len(window_words & NEGATIVE_WORDS)
     total = pos_count + neg_count
 
     if total == 0:
-        return 0.1, True  # Slight positive bias for mentions without sentiment
+        return 0.1, True  # Default slight positive for mention
 
     score = (pos_count - neg_count) / total
     return round(max(-1.0, min(1.0, score)), 2), True
