@@ -38,6 +38,12 @@ export async function fetchOverview() {
     return res.json();
 }
 
+export async function fetchDeepAnalytics() {
+    const res = await fetch(`${API_BASE}/api/analytics/deep`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch deep analytics");
+    return res.json();
+}
+
 export async function ingestReviews(data) {
     const res = await fetch(`${API_BASE}/api/reviews/ingest`, {
         method: "POST",

@@ -206,3 +206,29 @@ class OverviewStats(BaseModel):
     total_reviews: int
     avg_rating: float
     sentiment_by_bucket: list[BucketSentiment]
+
+
+class ItemPerformance(BaseModel):
+    item_name: str
+    category: OrderCategory
+    order_count: int
+    avg_sentiment: float | None = None
+    review_count: int
+
+
+class ManagerInsight(BaseModel):
+    title: str
+    description: str
+    type: str  # "win", "risk", "action"
+
+
+class ManagerBriefing(BaseModel):
+    summary: str
+    insights: list[ManagerInsight]
+
+
+class DeepAnalytics(BaseModel):
+    overview: OverviewStats
+    top_performers: list[ItemPerformance]
+    risks: list[ItemPerformance]
+    briefing: ManagerBriefing

@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import GuestPulseCard from "../components/GuestPulseCard";
+import ManagerBriefing from "../components/ManagerBriefing";
+import ProductPulse from "../components/ProductPulse";
+import { fetchDeepAnalytics } from "../lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -9,6 +12,7 @@ export default function DashboardPage() {
   const [guests, setGuests] = useState([]);
   const [pulses, setPulses] = useState({});
   const [overview, setOverview] = useState(null);
+  const [deepAnalytics, setDeepAnalytics] = useState(null);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
@@ -18,9 +22,10 @@ export default function DashboardPage() {
 
   async function loadData() {
     try {
-      // Fetch overview stats
-      const overviewRes = await fetch(`${API_BASE}/api/analytics/overview`);
-      if (overviewRes.ok) setOverview(await overviewRes.json());
+      // Fetch deep analytics (includes overview stats and AI briefing)
+      const deepData = await fetchDeepAnalytics();
+      setDeepAnalytics(deepData);
+      setOverview(deepData.overview);
 
       // Fetch guests
       const guestsRes = await fetch(`${API_BASE}/api/guests?limit=50`);
@@ -60,11 +65,30 @@ export default function DashboardPage() {
   return (
     <>
       <div className="page-header">
-        <h2>Guest Pulse Dashboard</h2>
+        <h2>Hospitality Intelligence Hub</h2>
         <p className="subtitle">
-          Real-time guest intelligence — F&B orders × review sentiment
+          Strategic guest and product insights — AI-powered performance analysis
         </p>
       </div>
+
+      {deepAnalytics && (
+        <>
+          <ManagerBriefing briefing={deepAnalytics.briefing} />
+
+          <div className="intelligence-grid">
+            <ProductPulse
+              items={deepAnalytics.top_performers}
+              title="Top Performing Items"
+              type="success"
+            />
+            <ProductPulse
+              items={deepAnalytics.risks}
+              title="At-Risk Items"
+              type="danger"
+            />
+          </div>
+        </>
+      )}
 
       {overview && (
         <div className="stats-grid">
@@ -88,15 +112,18 @@ export default function DashboardPage() {
       )}
 
       <div className="filter-bar">
-        {["all", "vip", "regular", "new"].map((t) => (
-          <button
-            key={t}
-            className={`filter-btn ${filter === t ? "active" : ""}`}
-            onClick={() => setFilter(t)}
-          >
-            {t === "all" ? "All Guests" : t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
+        <h3 className="section-title">Guest Registry</h3>
+        <div className="filter-options">
+          {["all", "vip", "regular", "new"].map((t) => (
+            <button
+              key={t}
+              className={`filter-btn ${filter === t ? "active" : ""}`}
+              onClick={() => setFilter(t)}
+            >
+              {t === "all" ? "All Guests" : t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filteredGuests.length === 0 ? (

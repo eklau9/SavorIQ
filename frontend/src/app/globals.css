@@ -871,3 +871,201 @@ body::before {
 .pulse-card:nth-child(6) {
   animation-delay: 0.25s;
 }
+/* ─── Manager Briefing ─────────────────────────────────────── */
+
+.briefing-container {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-glow), var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.briefing-container::after {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: var(--gradient-primary);
+  filter: blur(60px);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.briefing-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.ai-badge {
+  background: var(--gradient-primary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: white;
+}
+
+.briefing-header h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.briefing-summary {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin-bottom: 32px;
+  max-width: 900px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.insight-card {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.3s ease;
+}
+
+.insight-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.insight-card.win { border-left: 4px solid var(--accent-emerald); }
+.insight-card.risk { border-left: 4px solid var(--accent-rose); }
+.insight-card.action { border-left: 4px solid var(--accent-indigo); }
+
+.insight-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.insight-content h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.insight-content p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ─── Product Pulse ────────────────────────────────────────── */
+
+.intelligence-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.product-pulse-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+}
+
+.product-pulse-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.product-row:hover {
+  border-color: var(--border-glow);
+}
+
+.product-info .name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.product-info .cat {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.product-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.product-stats .stat {
+  text-align: right;
+}
+
+.product-stats .val {
+  display: block;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.product-stats .lbl {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.sentiment-indicator {
+  text-align: right;
+  min-width: 80px;
+}
+
+.sentiment-indicator.positive .val { color: var(--accent-emerald); }
+.sentiment-indicator.neutral .val { color: var(--text-secondary); }
+.sentiment-indicator.negative .val { color: var(--accent-rose); }
+.sentiment-indicator.none .val { color: var(--text-muted); }
+
+.empty-mini {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
