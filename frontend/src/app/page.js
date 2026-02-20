@@ -15,12 +15,16 @@ export default function DashboardPage() {
   const [deepAnalytics, setDeepAnalytics] = useState(null);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  async function loadData() {
+  async function loadData(isManualRefresh = false) {
+    if (isManualRefresh) setIsRefreshing(true);
+    else setLoading(true);
+
     try {
       // Fetch deep analytics (includes overview stats and AI briefing)
       const deepData = await fetchDeepAnalytics();
@@ -48,7 +52,12 @@ export default function DashboardPage() {
       console.error("Failed to load data:", err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  }
+
+  async function handleRefresh() {
+    await loadData(true);
   }
 
   const filteredGuests =
@@ -73,7 +82,11 @@ export default function DashboardPage() {
 
       {deepAnalytics && (
         <>
-          <ManagerBriefing briefing={deepAnalytics.briefing} />
+          <ManagerBriefing
+            briefing={deepAnalytics.briefing}
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshing}
+          />
 
           <div className="intelligence-grid">
             <ProductPulse

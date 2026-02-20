@@ -26,6 +26,27 @@ export async function fetchGuestOrders(id) {
     return res.json();
 }
 
+export async function fetchAllReviews(platform = null, search = null, sentiment = null, days = null) {
+    const params = new URLSearchParams();
+    if (platform) params.set("platform", platform);
+    if (search) params.set("search", search);
+    if (sentiment) params.set("sentiment", sentiment);
+    if (days !== null) params.set("days", days);
+    const res = await fetch(`${API_BASE}/api/reviews?${params}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch reviews");
+    return res.json();
+}
+
+export async function fetchReviewStats(platform = null, search = null, days = null) {
+    const params = new URLSearchParams();
+    if (platform) params.set("platform", platform);
+    if (search) params.set("search", search);
+    if (days !== null) params.set("days", days);
+    const res = await fetch(`${API_BASE}/api/reviews/stats?${params}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch review stats");
+    return res.json();
+}
+
 export async function fetchGuestReviews(id) {
     const res = await fetch(`${API_BASE}/api/guests/${id}/reviews`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch reviews");

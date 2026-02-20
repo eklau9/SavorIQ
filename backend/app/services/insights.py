@@ -22,22 +22,44 @@ Input Data:
 Output Requirements:
 - A concise summary (2-3 sentences) of the overall restaurant health.
 - Exactly 3-4 actionable insights categorized as:
-  - "win": Celebrate the success of a popular item or practice. **Bold** specific menu item names.
-  - "risk": Identify a critical issue that needs immediate attention. **Bold** specific menu item names.
-  - "action": Sustained improvements or new opportunities. **Bold** specific menu item names.
-- Also **bold** item names in the main summary.
+  - "win": Celebrate the success of a popular item or practice.
+  - "risk": Identify a critical issue that needs immediate attention.
+  - "action": Sustained improvements or new opportunities.
+- **Highlight ALL item names** in the summary AND in the insight descriptions using these markers:
+  - `++Item Name++` for positive items (e.g., top performers like **Espresso** or **Oat Milk Latte**).
+  - `--Item Name--` for negative/risk items (e.g., risks like **Cold Brew** or **Chicken Curry**).
+- **IMPORTANT**: Use simple, direct vocabulary. Avoid complex jargon.
+- Each insight MUST include a `steps` field containing 3-5 short, actionable bullets for the manager.
 
 Return ONLY valid JSON in this exact format:
 {
   "summary": "Overall, the restaurant is performing well with high marks in ambiance, though beverage sentiment has dipped slightly.",
   "insights": [
-    {"title": "The Espresso Bloom", "description": "Your espresso is a top-tier performer; consider featuring it in a brunch promotion.", "type": "win"},
-    {"title": "Service Speed", "description": "Guests are mentioning slow service on Friday nights; look into staffing levels.", "type": "risk"}
+    {
+      "title": "The Espresso Bloom",
+      "description": "Your espresso is a top-tier performer; consider featuring it in a brunch promotion.",
+      "type": "win",
+      "steps": ["Feature in weekly newsletter", "Add as 'Staff Pick' on menu", "Post a demo video on Instagram"]
+    },
+    {
+      "title": "Service Speed",
+      "description": "Guests are mentioning slow service on Friday nights; look into staffing levels.",
+      "type": "risk",
+      "steps": ["Review Friday shift schedules", "Optimize kitchen-to-table workflow", "Cross-train staff for busy peaks"]
+    }
   ]
 }
 
 RESTAURANT DATA:
 """
+
+import hashlib
+
+# Simple in-memory cache for the manager briefing
+_briefing_cache: dict[str, any] = {
+    "hash": None,
+    "briefing": None
+}
 
 async def generate_manager_briefing(
     bucket_sentiment: list[BucketSentiment],
@@ -53,6 +75,23 @@ async def generate_manager_briefing(
         "risks": [i.model_dump() for i in risks],
         "recent_feedback_snippets": recent_reviews[:10]  # Limit context
     }
+
+    # 1. Check data version (Data-aware caching)
+    # Add date string (PST) to context to force reload at midnight PST
+    from datetime import datetime, timedelta, timezone
+    
+    # PST is UTC-8
+    pst_now = datetime.now(timezone.utc) - timedelta(hours=8)
+    date_str = pst_now.strftime("%Y-%m-%d")
+    
+    data_context["cache_date_pst"] = date_str
+    
+    data_str = json.dumps(data_context, sort_keys=True)
+    data_hash = hashlib.md5(data_str.encode()).hexdigest()
+
+    if _briefing_cache["hash"] == data_hash and _briefing_cache["briefing"]:
+        logger.info("Serving manager briefing from data-aware cache")
+        return _briefing_cache["briefing"]
 
     try:
         import google.generativeai as genai
@@ -75,7 +114,7 @@ async def generate_manager_briefing(
 
         payload = json.loads(text)
         
-        return ManagerBriefing(
+        result = ManagerBriefing(
             summary=payload.get("summary", "No summary available."),
             insights=[ManagerInsight(**i) for i in payload.get("insights", [])]
         )
@@ -83,7 +122,7 @@ async def generate_manager_briefing(
     except Exception as e:
         logger.warning(f"Manager briefing generation failed: {e}")
         # Return a fallback briefing
-        return ManagerBriefing(
+        result = ManagerBriefing(
             summary="Unable to generate AI briefing at this time. Please check your manual analytics below.",
             insights=[
                 ManagerInsight(
@@ -93,3 +132,9 @@ async def generate_manager_briefing(
                 )
             ]
         )
+
+    # Update cache (Cache the result, even if it's the fallback, for this data state)
+    _briefing_cache["hash"] = data_hash
+    _briefing_cache["briefing"] = result
+    
+    return result

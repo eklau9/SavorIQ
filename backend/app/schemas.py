@@ -118,6 +118,13 @@ class SentimentScoreRead(BaseModel):
 ReviewRead.model_rebuild()
 
 
+class ReviewWithGuest(ReviewRead):
+    """Review with guest name for global listing."""
+    guest_name: str = ""
+
+    model_config = {"from_attributes": True}
+
+
 # ── Ingestion ──────────────────────────────────────────────────────────────
 
 class YelpReviewIngest(BaseModel):
@@ -220,6 +227,7 @@ class ManagerInsight(BaseModel):
     title: str
     description: str
     type: str  # "win", "risk", "action"
+    steps: list[str] = []
 
 
 class ManagerBriefing(BaseModel):

@@ -32,7 +32,7 @@ export default function RootLayout({ children }) {
               <a href="/" className="nav-link">
                 <span className="icon">👤</span> Guest Profiles
               </a>
-              <a href="/" className="nav-link">
+              <a href="/reviews" className="nav-link">
                 <span className="icon">💬</span> Reviews
               </a>
               <a href="/" className="nav-link">
