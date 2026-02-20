@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchAllReviews, fetchReviewStats } from "@/lib/api";
 import SentimentBadge from "@/components/SentimentBadge";
 
@@ -31,17 +31,20 @@ export default function ReviewsPage() {
     const [reviews, setReviews] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [platform, setPlatform] = useState(null);
+    const [platform, setPlatform] = useState("");
     const [sentiment, setSentiment] = useState(null);
-    const [days, setDays] = useState(null);
+    const [days, setDays] = useState("");
     const [searchInput, setSearchInput] = useState("");
     const [activeSearch, setActiveSearch] = useState(null);
+    const [sortByRating, setSortByRating] = useState(false);
 
     const loadData = useCallback(() => {
         setLoading(true);
+        const p = platform || null;
+        const d = days ? Number(days) : null;
         Promise.all([
-            fetchAllReviews(platform, activeSearch, sentiment, days),
-            fetchReviewStats(platform, activeSearch, days),
+            fetchAllReviews(p, activeSearch, sentiment, d),
+            fetchReviewStats(p, activeSearch, d),
         ])
             .then(([reviewsData, statsData]) => {
                 setReviews(reviewsData);
@@ -52,6 +55,12 @@ export default function ReviewsPage() {
     }, [platform, activeSearch, sentiment, days]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    // Client-side sort: by rating (high→low) or date (default from API)
+    const sortedReviews = useMemo(() => {
+        if (!sortByRating) return reviews;
+        return [...reviews].sort((a, b) => b.rating - a.rating);
+    }, [reviews, sortByRating]);
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
@@ -67,18 +76,13 @@ export default function ReviewsPage() {
         setSentiment(sentiment === value ? null : value);
     };
 
-    const platformFilters = [
-        { label: "All", value: null },
-        { label: "Google", value: "google" },
-        { label: "Yelp", value: "yelp" },
-    ];
+    const clearAllFilters = () => {
+        setSentiment(null);
+    };
 
-    const timeFilters = [
-        { label: "All Time", value: null },
-        { label: "7 Days", value: 7 },
-        { label: "30 Days", value: 30 },
-        { label: "90 Days", value: 90 },
-    ];
+    const toggleSort = () => {
+        setSortByRating(!sortByRating);
+    };
 
     return (
         <div className="reviews-page">
@@ -87,12 +91,12 @@ export default function ReviewsPage() {
                 <p className="page-subtitle">Search and filter feedback from Google &amp; Yelp</p>
             </div>
 
-            {/* Search Bar */}
+            {/* Search Bar with embedded dropdowns */}
             <form className="review-search-bar" onSubmit={handleSearchSubmit}>
                 <span className="search-icon">🔍</span>
                 <input
                     type="text"
-                    placeholder="Search reviews… e.g. &quot;chicken curry&quot;, &quot;cold brew&quot;, &quot;service&quot;"
+                    placeholder="Search reviews…"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     className="search-input"
@@ -100,19 +104,50 @@ export default function ReviewsPage() {
                 {activeSearch && (
                     <button type="button" className="search-clear" onClick={clearSearch}>✕</button>
                 )}
+                <div className="search-divider" />
+                <select
+                    className="search-select"
+                    value={platform}
+                    onChange={(e) => setPlatform(e.target.value)}
+                >
+                    <option value="">All Platforms</option>
+                    <option value="google">Google</option>
+                    <option value="yelp">Yelp</option>
+                </select>
+                <div className="search-divider" />
+                <select
+                    className="search-select"
+                    value={days}
+                    onChange={(e) => setDays(e.target.value)}
+                >
+                    <option value="">All Time</option>
+                    <option value="7">Last 7 Days</option>
+                    <option value="30">Last 30 Days</option>
+                    <option value="90">Last 90 Days</option>
+                </select>
                 <button type="submit" className="search-submit">Search</button>
             </form>
 
-            {/* Stats Summary — sentiment boxes are clickable filters */}
+            {/* Stats Summary — all boxes are interactive */}
             {stats && (
                 <div className="review-stats-bar">
-                    <div className="review-stat">
+                    <div
+                        className={`review-stat clickable ${sentiment === null ? "selected" : ""}`}
+                        onClick={clearAllFilters}
+                        title="Show all reviews"
+                    >
                         <span className="stat-value">{stats.total}</span>
                         <span className="stat-label">Total Reviews</span>
                     </div>
-                    <div className="review-stat">
+                    <div
+                        className={`review-stat clickable ${sortByRating ? "selected" : ""}`}
+                        onClick={toggleSort}
+                        title={sortByRating ? "Sorting by rating — click for date order" : "Click to sort by rating"}
+                    >
                         <span className="stat-value">{stats.avg_rating} ★</span>
-                        <span className="stat-label">Avg Rating</span>
+                        <span className="stat-label">
+                            {sortByRating ? "↓ By Rating" : "Avg Rating"}
+                        </span>
                     </div>
                     <div
                         className={`review-stat positive clickable ${sentiment === "positive" ? "selected" : ""}`}
@@ -138,38 +173,6 @@ export default function ReviewsPage() {
                 </div>
             )}
 
-            {/* Filters — Platform + Time on one row */}
-            <div className="reviews-filters">
-                <div className="filter-group">
-                    <span className="filter-label">Platform</span>
-                    <div className="filter-bar">
-                        {platformFilters.map((f) => (
-                            <button
-                                key={f.label}
-                                className={`filter-btn ${platform === f.value ? "active" : ""}`}
-                                onClick={() => setPlatform(f.value)}
-                            >
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div className="filter-group">
-                    <span className="filter-label">Time</span>
-                    <div className="filter-bar">
-                        {timeFilters.map((f) => (
-                            <button
-                                key={f.label}
-                                className={`filter-btn ${days === f.value ? "active" : ""}`}
-                                onClick={() => setDays(f.value)}
-                            >
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
             {/* Active search indicator */}
             {activeSearch && (
                 <div className="active-search-tag">
@@ -184,14 +187,14 @@ export default function ReviewsPage() {
                     <div className="spinner"></div>
                     <p>Loading reviews…</p>
                 </div>
-            ) : reviews.length === 0 ? (
+            ) : sortedReviews.length === 0 ? (
                 <div className="empty-state">
                     <div className="icon">💬</div>
                     <p>No reviews found matching your filters</p>
                 </div>
             ) : (
                 <div className="reviews-list">
-                    {reviews.map((review) => (
+                    {sortedReviews.map((review) => (
                         <div className="review-card" key={review.id}>
                             <div className="review-card-header">
                                 <div className="review-card-left">
