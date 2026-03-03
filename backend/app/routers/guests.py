@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -14,6 +16,8 @@ from app.schemas import (
     GuestCreate,
     GuestPulse,
     GuestRead,
+    GuestSegment,
+    GuestPrioritized,
     ReviewRead,
 )
 
@@ -34,6 +38,94 @@ async def list_guests(
     query = query.offset(skip).limit(limit).order_by(Guest.last_visit.desc())
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.get("/priorities", response_model=list[GuestPrioritized])
+async def list_guest_priorities(db: AsyncSession = Depends(get_db)):
+    """
+    Returns a prioritized list of guests needing manager action.
+    Applies segmentation logic based on spend, visit frequency, and sentiment.
+    """
+    # Load all guests with their orders and reviews/sentiment
+    query = (
+        select(Guest)
+        .options(
+            selectinload(Guest.orders),
+            selectinload(Guest.reviews).selectinload(Review.sentiment_scores)
+        )
+    )
+    result = await db.execute(query)
+    guests = result.scalars().all()
+    
+    now = datetime.utcnow()
+    prioritized = []
+
+    for g in guests:
+        # Calculate base metrics
+        total_spend = sum(o.price * o.quantity for o in g.orders)
+        last_visit = g.last_visit or g.created_at
+        days_since_visit = (now - last_visit).days
+        
+        avg_sentiment = 0.0
+        review_count = 0
+        all_scores = []
+        for r in g.reviews:
+            all_scores.extend([s.score for s in r.sentiment_scores])
+        
+        if all_scores:
+            avg_sentiment = sum(all_scores) / len(all_scores)
+            review_count = len(all_scores)
+
+        # ── Segmentation Logic ──
+        segment = None
+        reason = ""
+        action = ""
+        priority = 0.0
+
+        # 1. VIP at Risk (CRITICAL)
+        if g.reviews and g.tier == "vip" and avg_sentiment < -0.2:
+            segment = GuestSegment.vip_at_risk
+            reason = f"VIP guest with negative sentiment ({avg_sentiment:.2f}) across {review_count} reviews."
+            action = "Personal reach-out by GM. Offer a complimentary meal or private tasting."
+            priority = 1.0
+
+        # 2. Lost Regular (HIGH)
+        elif g.reviews and g.tier == "regular" and days_since_visit > 14:
+            segment = GuestSegment.lost_regular
+            reason = f"Regular guest who hasn't visited in {days_since_visit} days."
+            action = "Send a 'We Miss You' email with a loyalty bonus or free beverage coupon."
+            priority = 0.8
+
+        # 3. New Big Spender (MEDIUM)
+        elif g.reviews and g.tier == "new" and total_spend > 50:
+            segment = GuestSegment.new_big_spender
+            reason = f"New guest with high initial spend (${total_spend:.2f})."
+            action = "Personal welcome note. Ensure they are invited to the loyalty program on next visit."
+            priority = 0.6
+
+        # 4. Promoter (LOW/MONITOR)
+        elif g.reviews and avg_sentiment > 0.6 and total_spend > 100:
+            segment = GuestSegment.promoter
+            reason = f"High-value advocate with positive sentiment ({avg_sentiment:.2f})."
+            action = "Thank them for their support. Consider for exclusive 'Insider' events."
+            priority = 0.4
+
+        if segment:
+            prioritized.append(
+                GuestPrioritized(
+                    guest=GuestRead.model_validate(g),
+                    segment=segment,
+                    priority_score=priority,
+                    reason=reason,
+                    recommended_action=action,
+                    total_spend=round(total_spend, 2),
+                    last_visit_days_ago=days_since_visit
+                )
+            )
+
+    # Sort by priority score (desc)
+    prioritized.sort(key=lambda x: x.priority_score, reverse=True)
+    return prioritized
 
 
 @router.get("/{guest_id}", response_model=GuestRead)
@@ -132,3 +224,5 @@ async def get_guest_pulse(guest_id: str, db: AsyncSession = Depends(get_db)):
         sentiment_summary=sentiment_summary,
         recent_reviews=[ReviewRead.model_validate(r) for r in reviews],
     )
+
+

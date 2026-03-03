@@ -1,0 +1,452 @@
+2026-02-24 19:30:55,443 [PID 3040] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-02-24 19:30:55,443 [PID 3040] INFO Pyre binary is located at `/Users/Ed/Apps/SavorIQ/backend/venv/bin/pyre.bin`
+2026-02-24 19:30:55,443 [PID 3040] ERROR Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-02-24 19:36:46,009 [PID 5996] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-02-24 19:36:46,010 [PID 5996] INFO Pyre binary is located at `/Users/Ed/Apps/SavorIQ/backend/venv/bin/pyre.bin`
+2026-02-24 19:36:46,010 [PID 5996] INFO Could not determine the number of Pyre workers from configuration. Auto-set the value to 7.
+2026-02-24 19:36:46,010 [PID 5996] INFO No typeshed specified, looking for it...
+2026-02-24 19:36:46,010 [PID 5996] INFO Found: `/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed`
+2026-02-24 19:36:46,012 [PID 5996] INFO Writing arguments into /var/folders/0d/pg6fwvjj5qb48y3r_1mbv1980000gn/T/pyre_arguments_zoo9h9y8.json...
+2026-02-24 19:36:46,012 [PID 5996] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/Ed/Apps/SavorIQ/backend/app"
+    ]
+  },
+  "search_paths": [
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [
+    ".*/venv/.*"
+  ],
+  "checked_directory_allowlist": [
+    "/Users/Ed/Apps/SavorIQ/backend/app"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/Ed/Apps/SavorIQ/backend/.pyre",
+  "global_root": "/Users/Ed/Apps/SavorIQ/backend",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 9,
+    "micro": 6
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 7,
+  "additional_logging_sections": [],
+  "show_error_traces": false,
+  "strict": false
+}
+2026-02-24 19:36:47,412 [PID 5996] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.001s
+2026-02-24 19:36:47,413 [PID 5996] PERFORMANCE  Initialized multiprocessing workers (workers: 7): 0.004s
+2026-02-24 19:36:47,413 [PID 5996] INFO  Building module tracker...
+2026-02-24 19:36:47,413 [PID 5996] PERFORMANCE  Module tracker built: 0.001s
+2026-02-24 19:36:47,413 [PID 5996] PERFORMANCE  Full environment built: 0.001s
+2026-02-24 19:36:47,413 [PID 5996] INFO  Collecting all definitions...
+2026-02-24 19:36:47,516 [PID 5996] PERFORMANCE  Collected definitions (defines: 86): 0.096s
+2026-02-24 19:36:47,516 [PID 5996] INFO  Checking 86 functions...
+2026-02-24 19:36:47,563 [PID 5996] INFO  Processed 7 of 86 functions
+2026-02-24 19:36:47,563 [PID 5996] INFO  Processed 14 of 86 functions
+2026-02-24 19:36:47,563 [PID 5996] INFO  Processed 21 of 86 functions
+2026-02-24 19:36:47,564 [PID 5996] INFO  Processed 28 of 86 functions
+2026-02-24 19:36:47,564 [PID 5996] INFO  Processed 35 of 86 functions
+2026-02-24 19:36:47,575 [PID 5996] INFO  Processed 42 of 86 functions
+2026-02-24 19:36:47,586 [PID 5996] INFO  Processed 49 of 86 functions
+2026-02-24 19:36:47,609 [PID 5996] INFO  Processed 56 of 86 functions
+2026-02-24 19:36:47,610 [PID 5996] INFO  Processed 63 of 86 functions
+2026-02-24 19:36:47,621 [PID 5996] INFO  Processed 65 of 86 functions
+2026-02-24 19:36:47,633 [PID 5996] INFO  Processed 72 of 86 functions
+2026-02-24 19:36:47,633 [PID 5996] INFO  Processed 79 of 86 functions
+2026-02-24 19:36:47,634 [PID 5996] INFO  Processed 86 of 86 functions
+2026-02-24 19:36:47,634 [PID 5996] PERFORMANCE  Check_TypeCheck: 0.126s
+2026-02-24 19:36:47,634 [PID 5996] MEMORY  Shared memory size post-typecheck (size: 0)
+2026-02-24 19:36:47,635 [PID 5996] INFO  Postprocessing 15 sources...
+2026-02-24 19:36:47,681 [PID 5996] INFO  Postprocessed 3 of 15 sources
+2026-02-24 19:36:47,681 [PID 5996] INFO  Postprocessed 6 of 15 sources
+2026-02-24 19:36:47,681 [PID 5996] INFO  Postprocessed 9 of 15 sources
+2026-02-24 19:36:47,681 [PID 5996] INFO  Postprocessed 12 of 15 sources
+2026-02-24 19:36:47,682 [PID 5996] INFO  Postprocessed 15 of 15 sources
+2026-02-24 19:36:47,682 [PID 5996] PERFORMANCE  Check_Postprocessing: 0.049s
+2026-02-24 19:36:47,682 [PID 5996] PERFORMANCE  Check (request kind: FullCheck): 0.273s
+2026-02-24 19:36:47,713 [PID 5996] ERROR Found 213 type errors!
+2026-02-24 19:37:12,592 [PID 6118] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-02-24 19:37:12,592 [PID 6118] INFO Pyre binary is located at `/Users/Ed/Apps/SavorIQ/backend/venv/bin/pyre.bin`
+2026-02-24 19:37:12,592 [PID 6118] INFO Could not determine the number of Pyre workers from configuration. Auto-set the value to 7.
+2026-02-24 19:37:12,593 [PID 6118] INFO No typeshed specified, looking for it...
+2026-02-24 19:37:12,593 [PID 6118] INFO Found: `/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed`
+2026-02-24 19:37:12,594 [PID 6118] INFO Writing arguments into /var/folders/0d/pg6fwvjj5qb48y3r_1mbv1980000gn/T/pyre_arguments_ot42yzhm.json...
+2026-02-24 19:37:12,595 [PID 6118] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/Ed/Apps/SavorIQ/backend/app"
+    ]
+  },
+  "search_paths": [
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [
+    ".*/venv/.*"
+  ],
+  "checked_directory_allowlist": [
+    "/Users/Ed/Apps/SavorIQ/backend/app"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/Ed/Apps/SavorIQ/backend/.pyre",
+  "global_root": "/Users/Ed/Apps/SavorIQ/backend",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 9,
+    "micro": 6
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 7,
+  "additional_logging_sections": [],
+  "show_error_traces": false,
+  "strict": false
+}
+2026-02-24 19:37:12,645 [PID 6118] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.002s
+2026-02-24 19:37:12,657 [PID 6118] PERFORMANCE  Initialized multiprocessing workers (workers: 7): 0.003s
+2026-02-24 19:37:12,657 [PID 6118] INFO  Building module tracker...
+2026-02-24 19:37:12,658 [PID 6118] PERFORMANCE  Module tracker built: 0.001s
+2026-02-24 19:37:12,658 [PID 6118] PERFORMANCE  Full environment built: 0.001s
+2026-02-24 19:37:12,658 [PID 6118] INFO  Collecting all definitions...
+2026-02-24 19:37:12,750 [PID 6118] PERFORMANCE  Collected definitions (defines: 86): 0.092s
+2026-02-24 19:37:12,750 [PID 6118] INFO  Checking 86 functions...
+2026-02-24 19:37:12,796 [PID 6118] INFO  Processed 7 of 86 functions
+2026-02-24 19:37:12,797 [PID 6118] INFO  Processed 14 of 86 functions
+2026-02-24 19:37:12,797 [PID 6118] INFO  Processed 21 of 86 functions
+2026-02-24 19:37:12,797 [PID 6118] INFO  Processed 28 of 86 functions
+2026-02-24 19:37:12,797 [PID 6118] INFO  Processed 35 of 86 functions
+2026-02-24 19:37:12,808 [PID 6118] INFO  Processed 42 of 86 functions
+2026-02-24 19:37:12,820 [PID 6118] INFO  Processed 49 of 86 functions
+2026-02-24 19:37:12,852 [PID 6118] INFO  Processed 56 of 86 functions
+2026-02-24 19:37:12,853 [PID 6118] INFO  Processed 63 of 86 functions
+2026-02-24 19:37:12,853 [PID 6118] INFO  Processed 65 of 86 functions
+2026-02-24 19:37:12,866 [PID 6118] INFO  Processed 72 of 86 functions
+2026-02-24 19:37:12,866 [PID 6118] INFO  Processed 79 of 86 functions
+2026-02-24 19:37:12,866 [PID 6118] INFO  Processed 86 of 86 functions
+2026-02-24 19:37:12,866 [PID 6118] PERFORMANCE  Check_TypeCheck: 0.122s
+2026-02-24 19:37:12,866 [PID 6118] MEMORY  Shared memory size post-typecheck (size: 0)
+2026-02-24 19:37:12,866 [PID 6118] INFO  Postprocessing 15 sources...
+2026-02-24 19:37:12,911 [PID 6118] INFO  Postprocessed 3 of 15 sources
+2026-02-24 19:37:12,912 [PID 6118] INFO  Postprocessed 6 of 15 sources
+2026-02-24 19:37:12,912 [PID 6118] INFO  Postprocessed 9 of 15 sources
+2026-02-24 19:37:12,912 [PID 6118] INFO  Postprocessed 12 of 15 sources
+2026-02-24 19:37:12,945 [PID 6118] ERROR Found 213 type errors!
+2026-02-24 19:37:32,689 [PID 6316] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-02-24 19:37:32,689 [PID 6316] INFO Pyre binary is located at `/Users/Ed/Apps/SavorIQ/backend/venv/bin/pyre.bin`
+2026-02-24 19:37:32,689 [PID 6316] INFO Could not determine the number of Pyre workers from configuration. Auto-set the value to 7.
+2026-02-24 19:37:32,690 [PID 6316] INFO No typeshed specified, looking for it...
+2026-02-24 19:37:32,690 [PID 6316] INFO Found: `/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed`
+2026-02-24 19:37:32,691 [PID 6316] INFO Writing arguments into /var/folders/0d/pg6fwvjj5qb48y3r_1mbv1980000gn/T/pyre_arguments_6hhpl56c.json...
+2026-02-24 19:37:32,692 [PID 6316] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/Ed/Apps/SavorIQ/backend/app"
+    ]
+  },
+  "search_paths": [
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [
+    ".*/venv/.*"
+  ],
+  "checked_directory_allowlist": [
+    "/Users/Ed/Apps/SavorIQ/backend/app"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/Ed/Apps/SavorIQ/backend/.pyre",
+  "global_root": "/Users/Ed/Apps/SavorIQ/backend",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 9,
+    "micro": 6
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 7,
+  "additional_logging_sections": [],
+  "show_error_traces": false,
+  "strict": false
+}
+2026-02-24 19:37:32,751 [PID 6316] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.002s
+2026-02-24 19:37:32,752 [PID 6316] PERFORMANCE  Initialized multiprocessing workers (workers: 7): 0.004s
+2026-02-24 19:37:32,752 [PID 6316] INFO  Building module tracker...
+2026-02-24 19:37:32,752 [PID 6316] PERFORMANCE  Module tracker built: 0.001s
+2026-02-24 19:37:32,752 [PID 6316] PERFORMANCE  Full environment built: 0.001s
+2026-02-24 19:37:32,752 [PID 6316] INFO  Collecting all definitions...
+2026-02-24 19:37:32,846 [PID 6316] PERFORMANCE  Collected definitions (defines: 86): 0.090s
+2026-02-24 19:37:32,846 [PID 6316] INFO  Checking 86 functions...
+2026-02-24 19:37:32,894 [PID 6316] INFO  Processed 7 of 86 functions
+2026-02-24 19:37:32,894 [PID 6316] INFO  Processed 14 of 86 functions
+2026-02-24 19:37:32,895 [PID 6316] INFO  Processed 21 of 86 functions
+2026-02-24 19:37:32,895 [PID 6316] INFO  Processed 28 of 86 functions
+2026-02-24 19:37:32,895 [PID 6316] INFO  Processed 35 of 86 functions
+2026-02-24 19:37:32,895 [PID 6316] INFO  Processed 42 of 86 functions
+2026-02-24 19:37:32,907 [PID 6316] INFO  Processed 49 of 86 functions
+2026-02-24 19:37:32,938 [PID 6316] INFO  Processed 56 of 86 functions
+2026-02-24 19:37:32,938 [PID 6316] INFO  Processed 63 of 86 functions
+2026-02-24 19:37:32,939 [PID 6316] INFO  Processed 65 of 86 functions
+2026-02-24 19:37:32,950 [PID 6316] INFO  Processed 72 of 86 functions
+2026-02-24 19:37:32,950 [PID 6316] INFO  Processed 79 of 86 functions
+2026-02-24 19:37:32,962 [PID 6316] INFO  Processed 86 of 86 functions
+2026-02-24 19:37:32,962 [PID 6316] PERFORMANCE  Check_TypeCheck: 0.116s
+2026-02-24 19:37:32,962 [PID 6316] MEMORY  Shared memory size post-typecheck (size: 0)
+2026-02-24 19:37:32,962 [PID 6316] INFO  Postprocessing 15 sources...
+2026-02-24 19:37:33,005 [PID 6316] INFO  Postprocessed 3 of 15 sources
+2026-02-24 19:37:33,005 [PID 6316] INFO  Postprocessed 6 of 15 sources
+2026-02-24 19:37:33,005 [PID 6316] INFO  Postprocessed 9 of 15 sources
+2026-02-24 19:37:33,005 [PID 6316] INFO  Postprocessed 12 of 15 sources
+2026-02-24 19:37:33,006 [PID 6316] INFO  Postprocessed 15 of 15 sources
+2026-02-24 19:37:33,006 [PID 6316] PERFORMANCE  Check_Postprocessing: 0.050s
+2026-02-24 19:37:33,006 [PID 6316] PERFORMANCE  Check (request kind: FullCheck): 0.259s
+2026-02-24 19:37:33,036 [PID 6316] ERROR Found 214 type errors!
+2026-02-24 19:37:50,773 [PID 6489] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-02-24 19:37:50,773 [PID 6489] INFO Pyre binary is located at `/Users/Ed/Apps/SavorIQ/backend/venv/bin/pyre.bin`
+2026-02-24 19:37:50,774 [PID 6489] INFO Could not determine the number of Pyre workers from configuration. Auto-set the value to 7.
+2026-02-24 19:37:50,774 [PID 6489] INFO No typeshed specified, looking for it...
+2026-02-24 19:37:50,774 [PID 6489] INFO Found: `/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed`
+2026-02-24 19:37:50,776 [PID 6489] INFO Writing arguments into /var/folders/0d/pg6fwvjj5qb48y3r_1mbv1980000gn/T/pyre_arguments_2cyor_7k.json...
+2026-02-24 19:37:50,776 [PID 6489] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/Ed/Apps/SavorIQ/backend/app"
+    ]
+  },
+  "search_paths": [
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [
+    ".*/venv/.*"
+  ],
+  "checked_directory_allowlist": [
+    "/Users/Ed/Apps/SavorIQ/backend/app"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/Ed/Apps/SavorIQ/backend/.pyre",
+  "global_root": "/Users/Ed/Apps/SavorIQ/backend",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 9,
+    "micro": 6
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 7,
+  "additional_logging_sections": [],
+  "show_error_traces": false,
+  "strict": false
+}
+2026-02-24 19:37:50,832 [PID 6489] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.001s
+2026-02-24 19:37:50,832 [PID 6489] PERFORMANCE  Initialized multiprocessing workers (workers: 7): 0.004s
+2026-02-24 19:37:50,832 [PID 6489] INFO  Building module tracker...
+2026-02-24 19:37:50,832 [PID 6489] PERFORMANCE  Module tracker built: 0.001s
+2026-02-24 19:37:50,832 [PID 6489] PERFORMANCE  Full environment built: 0.001s
+2026-02-24 19:37:50,833 [PID 6489] INFO  Collecting all definitions...
+2026-02-24 19:37:50,925 [PID 6489] PERFORMANCE  Collected definitions (defines: 86): 0.090s
+2026-02-24 19:37:50,925 [PID 6489] INFO  Checking 86 functions...
+2026-02-24 19:37:50,972 [PID 6489] INFO  Processed 7 of 86 functions
+2026-02-24 19:37:50,973 [PID 6489] INFO  Processed 14 of 86 functions
+2026-02-24 19:37:50,973 [PID 6489] INFO  Processed 21 of 86 functions
+2026-02-24 19:37:50,973 [PID 6489] INFO  Processed 28 of 86 functions
+2026-02-24 19:37:50,973 [PID 6489] INFO  Processed 35 of 86 functions
+2026-02-24 19:37:50,984 [PID 6489] INFO  Processed 42 of 86 functions
+2026-02-24 19:37:50,995 [PID 6489] INFO  Processed 49 of 86 functions
+2026-02-24 19:37:51,028 [PID 6489] INFO  Processed 56 of 86 functions
+2026-02-24 19:37:51,029 [PID 6489] INFO  Processed 63 of 86 functions
+2026-02-24 19:37:51,029 [PID 6489] INFO  Processed 65 of 86 functions
+2026-02-24 19:37:51,041 [PID 6489] INFO  Processed 72 of 86 functions
+2026-02-24 19:37:51,041 [PID 6489] INFO  Processed 79 of 86 functions
+2026-02-24 19:37:51,041 [PID 6489] INFO  Processed 86 of 86 functions
+2026-02-24 19:37:51,041 [PID 6489] PERFORMANCE  Check_TypeCheck: 0.122s
+2026-02-24 19:37:51,042 [PID 6489] MEMORY  Shared memory size post-typecheck (size: 0)
+2026-02-24 19:37:51,042 [PID 6489] INFO  Postprocessing 15 sources...
+2026-02-24 19:37:51,086 [PID 6489] INFO  Postprocessed 3 of 15 sources
+2026-02-24 19:37:51,086 [PID 6489] INFO  Postprocessed 6 of 15 sources
+2026-02-24 19:37:51,087 [PID 6489] INFO  Postprocessed 9 of 15 sources
+2026-02-24 19:37:51,087 [PID 6489] INFO  Postprocessed 12 of 15 sources
+2026-02-24 19:37:51,119 [PID 6489] ERROR Found 214 type errors!
+2026-02-24 19:38:13,262 [PID 6881] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-02-24 19:38:13,262 [PID 6881] INFO Pyre binary is located at `/Users/Ed/Apps/SavorIQ/backend/venv/bin/pyre.bin`
+2026-02-24 19:38:13,263 [PID 6881] INFO Could not determine the number of Pyre workers from configuration. Auto-set the value to 7.
+2026-02-24 19:38:13,264 [PID 6881] INFO Writing arguments into /var/folders/0d/pg6fwvjj5qb48y3r_1mbv1980000gn/T/pyre_arguments_f5l7dg88.json...
+2026-02-24 19:38:13,265 [PID 6881] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/Users/Ed/Apps/SavorIQ/backend/app"
+    ]
+  },
+  "search_paths": [
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stdlib",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/chevron",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/colorama",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ldap3",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/paramiko",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pycurl",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/pytz",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/regex",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/requests",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/retry",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/tqdm",
+    "/Users/Ed/Apps/SavorIQ/backend/venv/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [
+    ".*/venv/.*"
+  ],
+  "checked_directory_allowlist": [
+    "/Users/Ed/Apps/SavorIQ/backend/app"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/Users/Ed/Apps/SavorIQ/backend/.pyre",
+  "global_root": "/Users/Ed/Apps/SavorIQ/backend",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 9,
+    "micro": 6
+  },
+  "system_platform": "darwin",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 7,
+  "additional_logging_sections": [],
+  "show_error_traces": false,
+  "strict": false
+}
+2026-02-24 19:38:13,311 [PID 6881] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.001s
+2026-02-24 19:38:13,322 [PID 6881] PERFORMANCE  Initialized multiprocessing workers (workers: 7): 0.005s
+2026-02-24 19:38:13,322 [PID 6881] INFO  Building module tracker...
+2026-02-24 19:38:13,323 [PID 6881] PERFORMANCE  Module tracker built: 0.001s
+2026-02-24 19:38:13,323 [PID 6881] PERFORMANCE  Full environment built: 0.001s
+2026-02-24 19:38:13,323 [PID 6881] INFO  Collecting all definitions...
+2026-02-24 19:38:13,412 [PID 6881] PERFORMANCE  Collected definitions (defines: 86): 0.090s
+2026-02-24 19:38:13,413 [PID 6881] INFO  Checking 86 functions...
+2026-02-24 19:38:13,456 [PID 6881] INFO  Processed 7 of 86 functions
+2026-02-24 19:38:13,456 [PID 6881] INFO  Processed 14 of 86 functions
+2026-02-24 19:38:13,467 [PID 6881] INFO  Processed 21 of 86 functions
+2026-02-24 19:38:13,468 [PID 6881] INFO  Processed 28 of 86 functions
+2026-02-24 19:38:13,468 [PID 6881] INFO  Processed 35 of 86 functions
+2026-02-24 19:38:13,468 [PID 6881] INFO  Processed 42 of 86 functions
+2026-02-24 19:38:13,479 [PID 6881] INFO  Processed 49 of 86 functions
+2026-02-24 19:38:13,514 [PID 6881] INFO  Processed 56 of 86 functions
+2026-02-24 19:38:13,515 [PID 6881] INFO  Processed 58 of 86 functions
+2026-02-24 19:38:13,515 [PID 6881] INFO  Processed 65 of 86 functions
+2026-02-24 19:38:13,527 [PID 6881] INFO  Processed 72 of 86 functions
+2026-02-24 19:38:13,527 [PID 6881] INFO  Processed 79 of 86 functions
+2026-02-24 19:38:13,539 [PID 6881] INFO  Processed 86 of 86 functions
+2026-02-24 19:38:13,539 [PID 6881] PERFORMANCE  Check_TypeCheck: 0.120s
+2026-02-24 19:38:13,539 [PID 6881] MEMORY  Shared memory size post-typecheck (size: 0)
+2026-02-24 19:38:13,539 [PID 6881] INFO  Postprocessing 15 sources...
+2026-02-24 19:38:13,581 [PID 6881] INFO  Postprocessed 3 of 15 sources
+2026-02-24 19:38:13,581 [PID 6881] INFO  Postprocessed 6 of 15 sources
+2026-02-24 19:38:13,581 [PID 6881] INFO  Postprocessed 9 of 15 sources
+2026-02-24 19:38:13,582 [PID 6881] INFO  Postprocessed 12 of 15 sources
+2026-02-24 19:38:13,582 [PID 6881] INFO  Postprocessed 15 of 15 sources
+2026-02-24 19:38:13,582 [PID 6881] PERFORMANCE  Check_Postprocessing: 0.049s
+2026-02-24 19:38:13,582 [PID 6881] PERFORMANCE  Check (request kind: FullCheck): 0.261s
+2026-02-24 19:38:13,613 [PID 6881] ERROR Found 214 type errors!

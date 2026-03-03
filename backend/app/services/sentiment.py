@@ -12,6 +12,7 @@ import json
 import logging
 import re
 from datetime import datetime
+from typing import Any, Dict, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,12 +98,12 @@ def _generate_summary(text: str, bucket: str, score: float) -> str:
     return f"Review mentions {bucket} aspects with {sentiment} sentiment."
 
 
-def analyze_sentiment_heuristic(review_text: str) -> list[dict]:
+def analyze_sentiment_heuristic(review_text: str) -> List[Dict[str, Any]]:
     """
     Fallback heuristic: analyse review text with keyword matching.
     Returns list of bucket results.
     """
-    results = []
+    results: List[Dict[str, Any]] = []
     for bucket_name, keywords in [
         ("food", FOOD_KEYWORDS),
         ("drink", DRINK_KEYWORDS),
@@ -146,7 +147,7 @@ Review text:
 """
 
 
-async def analyze_sentiment_gemini(review_text: str) -> list[dict]:
+async def analyze_sentiment_gemini(review_text: str) -> List[Dict[str, Any]]:
     """Use Gemini to analyze review sentiment into buckets."""
     try:
         import google.generativeai as genai
@@ -166,7 +167,7 @@ async def analyze_sentiment_gemini(review_text: str) -> list[dict]:
         results = json.loads(text)
 
         # Validate structure
-        validated = []
+        validated: List[Dict[str, Any]] = []
         for item in results:
             if "bucket" in item and "score" in item:
                 validated.append({
@@ -183,7 +184,7 @@ async def analyze_sentiment_gemini(review_text: str) -> list[dict]:
 
 # ── Main Entry Point ─────────────────────────────────────────────────────
 
-async def analyze_review(review_text: str) -> list[dict]:
+async def analyze_review(review_text: str) -> List[Dict[str, Any]]:
     """
     Analyze a review's sentiment. Uses Gemini if API key is configured,
     otherwise falls back to keyword heuristic.
@@ -195,11 +196,11 @@ async def analyze_review(review_text: str) -> list[dict]:
 
 async def analyze_and_store(
     db: AsyncSession, review_id: str, review_text: str
-) -> list[SentimentScore]:
+) -> List[SentimentScore]:
     """Analyze a review and store sentiment scores in the database."""
     results = await analyze_review(review_text)
 
-    scores = []
+    scores: List[SentimentScore] = []
     for item in results:
         score = SentimentScore(
             review_id=review_id,

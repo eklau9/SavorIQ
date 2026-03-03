@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import GuestPulseCard from "../components/GuestPulseCard";
 import ManagerBriefing from "../components/ManagerBriefing";
 import ProductPulse from "../components/ProductPulse";
-import { fetchDeepAnalytics } from "../lib/api";
+import GuestPriorityCard from "../components/GuestPriorityCard";
+import { fetchDeepAnalytics, fetchGuestPriorities } from "../lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function DashboardPage() {
   const [guests, setGuests] = useState([]);
+  const [priorities, setPriorities] = useState([]);
   const [pulses, setPulses] = useState({});
   const [overview, setOverview] = useState(null);
   const [deepAnalytics, setDeepAnalytics] = useState(null);
@@ -31,11 +34,25 @@ export default function DashboardPage() {
       setDeepAnalytics(deepData);
       setOverview(deepData.overview);
 
-      // Fetch guests
-      const guestsRes = await fetch(`${API_BASE}/api/guests?limit=50`);
-      if (!guestsRes.ok) throw new Error();
-      const guestsData = await guestsRes.json();
-      setGuests(guestsData);
+      // Fetch guests and priorities independently to avoid total UI block on single failure
+      let guestsData = [];
+      try {
+        const guestsRes = await fetch(`${API_BASE}/api/guests?limit=50`);
+        if (guestsRes.ok) {
+          guestsData = await guestsRes.json();
+          setGuests(guestsData);
+        }
+      } catch (gErr) {
+        console.error("Guests fetch failed:", gErr);
+      }
+
+      try {
+        const priorityData = await fetchGuestPriorities();
+        setPriorities(priorityData || []);
+      } catch (pErr) {
+        console.error("Priority fetch failed:", pErr);
+        setPriorities([]);
+      }
 
       // Fetch pulse data for each guest
       const pulseMap = {};
@@ -105,52 +122,22 @@ export default function DashboardPage() {
 
       {overview && (
         <div className="stats-grid">
-          <div className="stat-card">
+          <Link href="/guests" className="stat-card" style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }}>
             <div className="label">Total Guests</div>
             <div className="value">{overview.total_guests}</div>
-          </div>
-          <div className="stat-card">
+          </Link>
+          <Link href="/reviews" className="stat-card" style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }}>
             <div className="label">Total Orders</div>
             <div className="value">{overview.total_orders}</div>
-          </div>
-          <div className="stat-card">
+          </Link>
+          <Link href="/reviews" className="stat-card" style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }}>
             <div className="label">Total Reviews</div>
             <div className="value">{overview.total_reviews}</div>
-          </div>
-          <div className="stat-card">
+          </Link>
+          <Link href="/reviews" className="stat-card" style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }}>
             <div className="label">Avg Rating</div>
             <div className="value">{overview.avg_rating.toFixed(1)} ★</div>
-          </div>
-        </div>
-      )}
-
-      <div className="filter-bar">
-        <h3 className="section-title">Guest Registry</h3>
-        <div className="filter-options">
-          {["all", "vip", "regular", "new"].map((t) => (
-            <button
-              key={t}
-              className={`filter-btn ${filter === t ? "active" : ""}`}
-              onClick={() => setFilter(t)}
-            >
-              {t === "all" ? "All Guests" : t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {filteredGuests.length === 0 ? (
-        <div className="empty-state">
-          <div className="icon">👤</div>
-          <p>No guests found. Ingest some review or order data to get started.</p>
-        </div>
-      ) : (
-        <div className="pulse-grid">
-          {filteredGuests.map((guest) =>
-            pulses[guest.id] ? (
-              <GuestPulseCard key={guest.id} pulse={pulses[guest.id]} />
-            ) : null
-          )}
+          </Link>
         </div>
       )}
     </>

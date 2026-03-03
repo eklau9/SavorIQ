@@ -29,14 +29,14 @@ export default function RootLayout({ children }) {
 
             <div className="nav-section">
               <div className="nav-section-title">Intelligence</div>
-              <a href="/" className="nav-link">
-                <span className="icon">👤</span> Guest Profiles
+              <a href="/intercepts" className="nav-link">
+                <span className="icon">🚨</span> Priority Inbox
+              </a>
+              <a href="/guests" className="nav-link">
+                <span className="icon">👤</span> Guest Registry
               </a>
               <a href="/reviews" className="nav-link">
                 <span className="icon">💬</span> Reviews
-              </a>
-              <a href="/" className="nav-link">
-                <span className="icon">🍽️</span> Orders
               </a>
             </div>
 

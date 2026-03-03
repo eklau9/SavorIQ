@@ -8,6 +8,12 @@ export async function fetchGuests(tier = null) {
     return res.json();
 }
 
+export async function fetchGuestPriorities() {
+    const res = await fetch(`${API_BASE}/api/guests/priorities`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch guest priorities");
+    return res.json();
+}
+
 export async function fetchGuest(id) {
     const res = await fetch(`${API_BASE}/api/guests/${id}`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch guest");
@@ -26,22 +32,26 @@ export async function fetchGuestOrders(id) {
     return res.json();
 }
 
-export async function fetchAllReviews(platform = null, search = null, sentiment = null, days = null) {
+export async function fetchAllReviews(platform = null, search = null, sentiment = null, days = null, date = null, bucket = null) {
     const params = new URLSearchParams();
     if (platform) params.set("platform", platform);
     if (search) params.set("search", search);
     if (sentiment) params.set("sentiment", sentiment);
     if (days !== null) params.set("days", days);
+    if (date) params.set("date", date);
+    if (bucket) params.set("bucket", bucket);
     const res = await fetch(`${API_BASE}/api/reviews?${params}`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch reviews");
     return res.json();
 }
 
-export async function fetchReviewStats(platform = null, search = null, days = null) {
+export async function fetchReviewStats(platform = null, search = null, days = null, date = null, bucket = null) {
     const params = new URLSearchParams();
     if (platform) params.set("platform", platform);
     if (search) params.set("search", search);
     if (days !== null) params.set("days", days);
+    if (date) params.set("date", date);
+    if (bucket) params.set("bucket", bucket);
     const res = await fetch(`${API_BASE}/api/reviews/stats?${params}`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch review stats");
     return res.json();

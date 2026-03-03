@@ -32,6 +32,14 @@ class SentimentBucket(str, Enum):
     ambiance = "ambiance"
 
 
+class GuestSegment(str, Enum):
+    vip_at_risk = "VIP_AT_RISK"           # High spend + Low sentiment
+    lost_regular = "LOST_REGULAR"         # Prev regular + No visit > 14 days
+    new_big_spender = "NEW_BIG_SPENDER"   # Tier=new + Spend > threshold
+    promoter = "PROMOTER"                 # High sentiment + High spend
+    stable_regular = "STABLE_REGULAR"     # Consistent visits + Neutral/Pos sentiment
+
+
 # ── Guest ──────────────────────────────────────────────────────────────────
 
 class GuestBase(BaseModel):
@@ -203,6 +211,19 @@ class GuestPulse(BaseModel):
     visit_count: int
     sentiment_summary: list[BucketSentiment]
     recent_reviews: list[ReviewRead]
+
+
+class GuestPrioritized(BaseModel):
+    """A guest flagged for specific manager action or intercept."""
+    guest: GuestRead
+    segment: GuestSegment
+    priority_score: float  # 0.0 to 1.0 (1.0 is highest priority)
+    reason: str
+    recommended_action: str
+    total_spend: float
+    last_visit_days_ago: int
+
+    model_config = {"from_attributes": True}
 
 
 # ── Analytics ──────────────────────────────────────────────────────────────

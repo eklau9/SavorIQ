@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 function getSentimentLabel(score) {
     if (score === null || score === undefined) return "No data";
     if (score >= 0.3) return "Great";
@@ -15,6 +17,8 @@ function getSentimentClass(score) {
 }
 
 export default function ProductPulse({ items, title, type }) {
+    const router = useRouter();
+
     return (
         <div className={`product-pulse-section ${type}`}>
             <h3>{title}</h3>
@@ -23,7 +27,13 @@ export default function ProductPulse({ items, title, type }) {
                     <div className="empty-mini">No {title.toLowerCase()} identified.</div>
                 ) : (
                     items.map((item, idx) => (
-                        <div key={idx} className="product-row">
+                        <div
+                            key={idx}
+                            className="product-row clickable"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => router.push(`/reviews?search=${encodeURIComponent(item.item_name)}`)}
+                            title={`View reviews for ${item.item_name}`}
+                        >
                             <div className="product-info">
                                 <span className="name">{item.item_name}</span>
                                 <span className="cat">{item.category}</span>

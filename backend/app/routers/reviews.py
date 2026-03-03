@@ -18,7 +18,7 @@ from app.services.sentiment import analyze_and_store
 router = APIRouter(prefix="/api", tags=["reviews"])
 
 
-def _apply_common_filters(query, platform, search, days):
+def _apply_common_filters(query, platform, search, days, date_str=None, bucket=None):
     """Apply shared filters to a review query."""
     if platform:
         query = query.where(Review.platform == platform)
@@ -27,6 +27,16 @@ def _apply_common_filters(query, platform, search, days):
     if days is not None:
         cutoff = datetime.utcnow() - timedelta(days=days)
         query = query.where(Review.reviewed_at >= cutoff)
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d")
+            next_day = target_date + timedelta(days=1)
+            query = query.where(Review.reviewed_at >= target_date)
+            query = query.where(Review.reviewed_at < next_day)
+        except ValueError:
+            pass
+    if bucket:
+        query = query.join(SentimentScore).where(SentimentScore.bucket == bucket)
     return query
 
 
@@ -35,11 +45,13 @@ async def review_stats(
     platform: str | None = None,
     search: str | None = None,
     days: int | None = Query(None, ge=1),
+    date: str | None = None,
+    bucket: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Return aggregate stats for reviews matching the current filters."""
     base = select(Review).options(selectinload(Review.sentiment_scores))
-    base = _apply_common_filters(base, platform, search, days)
+    base = _apply_common_filters(base, platform, search, days, date, bucket)
     result = await db.execute(base)
     reviews = result.scalars().all()
 
@@ -49,17 +61,44 @@ async def review_stats(
     positive = 0
     negative = 0
     neutral = 0
+    bucket_scores = {}  # {bucket: [scores]}
+    rating_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+
     for r in reviews:
         if not r.sentiment_scores:
             neutral += 1
             continue
-        avg_score = sum(s.score for s in r.sentiment_scores) / len(r.sentiment_scores)
-        if avg_score >= 0.3:
+        
+        # Track for overall sentiment
+        review_avg = sum(s.score for s in r.sentiment_scores) / len(r.sentiment_scores)
+        if review_avg >= 0.3:
             positive += 1
-        elif avg_score <= -0.3:
+        elif review_avg <= -0.3:
             negative += 1
         else:
             neutral += 1
+        
+        # Track rating distribution
+        r_int = int(round(r.rating))
+        if 1 <= r_int <= 5:
+            rating_distribution[r_int] += 1
+        
+        # Track for bucket-specific diagnostics
+        for s in r.sentiment_scores:
+            if s.bucket not in bucket_scores:
+                bucket_scores[s.bucket] = []
+            bucket_scores[s.bucket].append(s.score)
+
+    # Calculate bucket averages
+    bucket_averages = {
+        b: sum(scores) / len(scores) 
+        for b, scores in bucket_scores.items()
+    }
+
+    # Identify top strength and friction
+    sorted_buckets = sorted(bucket_averages.items(), key=lambda x: x[1], reverse=True)
+    top_strength = sorted_buckets[0][0] if sorted_buckets else None
+    top_friction = sorted_buckets[-1][0] if len(sorted_buckets) > 1 else None
 
     return {
         "total": total,
@@ -67,6 +106,10 @@ async def review_stats(
         "positive": positive,
         "negative": negative,
         "neutral": neutral,
+        "top_strength": top_strength,
+        "top_friction": top_friction,
+        "bucket_averages": {b: round(s, 2) for b, s in bucket_averages.items()},
+        "rating_distribution": rating_distribution
     }
 
 
@@ -75,41 +118,45 @@ async def list_all_reviews(
     platform: str | None = None,
     search: str | None = None,
     sentiment: str | None = None,
+    bucket: str | None = None,
     days: int | None = Query(None, ge=1),
+    date: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all reviews with search, sentiment, platform, and time filters."""
+    """List all reviews with search, sentiment, platform, bucket, and time filters."""
     query = (
         select(Review)
         .options(selectinload(Review.sentiment_scores), selectinload(Review.guest))
         .order_by(Review.reviewed_at.desc())
     )
-    query = _apply_common_filters(query, platform, search, days)
+    query = _apply_common_filters(query, platform, search, days, date, bucket)
 
-    # Execute and filter by sentiment in Python (requires loaded scores)
+    # Execute and filter by sentiment/bucket in Python (requires loaded scores)
     result = await db.execute(query)
-    reviews = result.scalars().all()
+    all_matching = result.scalars().all()
 
-    # Sentiment filter
-    if sentiment in ("positive", "negative", "neutral"):
-        filtered = []
-        for r in reviews:
-            if not r.sentiment_scores:
-                avg_score = 0
-            else:
-                avg_score = sum(s.score for s in r.sentiment_scores) / len(r.sentiment_scores)
-            if sentiment == "positive" and avg_score >= 0.3:
-                filtered.append(r)
-            elif sentiment == "negative" and avg_score <= -0.3:
-                filtered.append(r)
-            elif sentiment == "neutral" and -0.3 < avg_score < 0.3:
-                filtered.append(r)
-        reviews = filtered
+    filtered = []
+    for r in all_matching:
+        # Sentiment filter
+        avg_score = 0
+        if r.sentiment_scores:
+            avg_score = sum(s.score for s in r.sentiment_scores) / len(r.sentiment_scores)
+        
+        match_sentiment = True
+        if sentiment == "positive" and avg_score < 0.3:
+            match_sentiment = False
+        elif sentiment == "negative" and avg_score > -0.3:
+            match_sentiment = False
+        elif sentiment == "neutral" and (avg_score >= 0.3 or avg_score <= -0.3):
+            match_sentiment = False
+        
+        if match_sentiment:
+            filtered.append(r)
 
     # Apply pagination after filtering
-    reviews = reviews[skip : skip + limit]
+    reviews = filtered[skip : skip + limit]
 
     out = []
     for r in reviews:
