@@ -214,7 +214,8 @@ async def mark_intercept_action(
         )
         db.add(action)
 
-    await db.flush()
+    await db.commit()
+    await db.refresh(action)
     return action
 
 
@@ -243,7 +244,8 @@ async def create_guest(
     """Create a new guest for the restaurant."""
     guest = Guest(**data.model_dump(), restaurant_id=x_restaurant_id)
     db.add(guest)
-    await db.flush()
+    await db.commit()
+    await db.refresh(guest)
     return guest
 
 

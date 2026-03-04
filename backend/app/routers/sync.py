@@ -255,6 +255,8 @@ async def sync_apify_reviews(
         )
         db.add(log)
 
+    await db.commit()
+
     return {
         "status": "synced",
         "source": "apify",

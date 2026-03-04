@@ -243,4 +243,5 @@ async def ingest_reviews_endpoint(
             batch = reviews_to_analyze[i : i + batch_size]
             await analyze_and_store_batch(db, batch)
 
+    await db.commit()
     return report
