@@ -34,10 +34,12 @@ async def search_business(
     location: str | None = Query(None, description="City or address"),
     lat: float | None = Query(None, description="Latitude"),
     lng: float | None = Query(None, description="Longitude"),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Search for a business on both Yelp and Google Places.
     Supports location string or coordinates.
+    Now includes proactive cooldown status for each result.
     """
     results = {"yelp": [], "google": []}
 
@@ -54,6 +56,49 @@ async def search_business(
             results["google"] = await google_search(name, location, lat, lng)
         except Exception as e:
             results["google_error"] = str(e)
+
+    # ── Attach sync status to results ──
+    async def attach_sync_status(items, platform):
+        for item in items:
+            # Identifier is the URL for Apify-synced items
+            biz_id = item.get("url") if platform == "yelp" else item.get("place_url")
+            if not biz_id:
+                continue
+            
+            stmt = select(SyncLog).where(
+                SyncLog.platform == platform,
+                SyncLog.business_id == biz_id
+            )
+            result = await db.execute(stmt)
+            log = result.scalar_one_or_none()
+            
+            if log:
+                diff = datetime.utcnow() - log.last_synced_at
+                total_seconds = diff.total_seconds()
+                
+                # Humanize "ago" string
+                if total_seconds < 3600:
+                    ago_str = f"~{int(total_seconds / 60)}m"
+                elif total_seconds < 86400:
+                    ago_str = f"~{int(total_seconds / 3600)}h"
+                else:
+                    ago_str = f"~{int(total_seconds / 86400)}d"
+                
+                # Check cooldown
+                is_on_cooldown = total_seconds < (SYNC_COOLDOWN_HOURS * 3600)
+                
+                item["last_sync"] = {
+                    "last_synced_at": log.last_synced_at.isoformat(),
+                    "ago": ago_str,
+                    "on_cooldown": is_on_cooldown,
+                    "reviews_fetched": log.reviews_fetched,
+                    "new_reviews": log.new_reviews
+                }
+
+    if results["yelp"]:
+        await attach_sync_status(results["yelp"], "yelp")
+    if results["google"]:
+        await attach_sync_status(results["google"], "google")
 
     return results
 

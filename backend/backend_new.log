@@ -17527,3 +17527,53 @@ INFO:     Waiting for application startup.
 2026-03-03 22:57:12,677 INFO sqlalchemy.engine.Engine [raw sql] ()
 2026-03-03 22:57:12,677 INFO sqlalchemy.engine.Engine COMMIT
 INFO:     Application startup complete.
+2026-03-03 22:57:34,156 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:57:34,179 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
+2026-03-03 22:57:34,179 INFO sqlalchemy.engine.Engine [generated in 0.00036s] ()
+2026-03-03 22:57:34,181 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53171 - "GET /api/sync/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/sync/search?name=heytea&lat=37.41925306499828&lng=-121.9158206710011 HTTP/1.1" 200 OK
+2026-03-03 22:57:42,605 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:57:42,606 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:57:42,606 INFO sqlalchemy.engine.Engine [generated in 0.00021s] ('google', 'https://maps.google.com/?cid=2172719124561817108&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA')
+2026-03-03 22:57:42,607 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53171 - "POST /api/sync/apify-reviews?platform=google&business_url=https%3A%2F%2Fmaps.google.com%2F%3Fcid%3D2172719124561817108%26g_mp%3DCidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA&business_name=heytea+%28Milpitas%29&max_reviews=100 HTTP/1.1" 200 OK
+2026-03-03 22:57:42,616 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:57:42,617 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
+2026-03-03 22:57:42,617 INFO sqlalchemy.engine.Engine [cached since 8.438s ago] ()
+2026-03-03 22:57:42,618 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53171 - "GET /api/sync/status HTTP/1.1" 200 OK
+2026-03-03 22:57:49,421 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:57:49,422 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
+2026-03-03 22:57:49,422 INFO sqlalchemy.engine.Engine [cached since 15.24s ago] ()
+2026-03-03 22:57:49,423 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53186 - "GET /api/sync/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53186 - "GET /api/sync/search?name=heytea&lat=37.41932864541635&lng=-121.91576700258135 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53233 - "GET /api/sync/search?name=heytea&lat=37.419328649506255&lng=-121.91576700220958 HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/routers/sync.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [88806]
+INFO:     Started server process [88976]
+INFO:     Waiting for application startup.
+2026-03-03 22:59:25,362 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:59:25,362 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 22:59:25,363 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:59:25,363 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 22:59:25,363 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:59:25,364 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 22:59:25,364 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:59:25,365 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 22:59:25,365 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:59:25,365 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 22:59:25,365 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:59:25,366 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-03-03 22:59:25,366 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:59:25,367 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.

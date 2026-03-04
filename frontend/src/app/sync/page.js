@@ -226,17 +226,24 @@ export default function SyncPage() {
                                             <span className="biz-reviews">
                                                 {biz.review_count} reviews
                                             </span>
+                                            {biz.last_sync && (
+                                                <span className={`biz-last-sync ${biz.last_sync.on_cooldown ? 'cooldown' : ''}`}>
+                                                    🕒 Last synced {biz.last_sync.ago} ago
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <button
                                         className="sync-btn"
-                                        disabled={syncing[`google:${biz.place_url || biz.id}`]}
+                                        disabled={syncing[`google:${biz.place_url || biz.id}`] || biz.last_sync?.on_cooldown}
                                         onClick={() =>
                                             handleSync("google", biz.id, biz.name, biz.place_url)
                                         }
                                     >
                                         {syncing[`google:${biz.place_url || biz.id}`] ? (
                                             <span className="btn-spinner" />
+                                        ) : biz.last_sync?.on_cooldown ? (
+                                            "⏳ Cooldown"
                                         ) : (
                                             "Sync Reviews"
                                         )}
@@ -267,17 +274,24 @@ export default function SyncPage() {
                                             <span className="biz-reviews">
                                                 {biz.review_count} reviews
                                             </span>
+                                            {biz.last_sync && (
+                                                <span className={`biz-last-sync ${biz.last_sync.on_cooldown ? 'cooldown' : ''}`}>
+                                                    🕒 Last synced {biz.last_sync.ago} ago
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <button
                                         className="sync-btn"
-                                        disabled={syncing[`yelp:${biz.url || biz.id}`]}
+                                        disabled={syncing[`yelp:${biz.url || biz.id}`] || biz.last_sync?.on_cooldown}
                                         onClick={() =>
                                             handleSync("yelp", biz.id, biz.name, biz.url)
                                         }
                                     >
                                         {syncing[`yelp:${biz.url || biz.id}`] ? (
                                             <span className="btn-spinner" />
+                                        ) : biz.last_sync?.on_cooldown ? (
+                                            "⏳ Cooldown"
                                         ) : (
                                             "Sync Reviews"
                                         )}
