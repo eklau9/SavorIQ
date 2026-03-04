@@ -17577,3 +17577,30 @@ INFO:     Waiting for application startup.
 2026-03-03 22:59:25,366 INFO sqlalchemy.engine.Engine [raw sql] ()
 2026-03-03 22:59:25,367 INFO sqlalchemy.engine.Engine COMMIT
 INFO:     Application startup complete.
+2026-03-03 22:59:44,264 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:59:44,285 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:59:44,285 INFO sqlalchemy.engine.Engine [generated in 0.00031s] ('yelp', 'https://www.yelp.com/biz/heytea-milpitas-5?adjust_creative=uELC5YR_WmAWZc_XO8jFzw&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=uELC5YR_WmAWZc_XO8jFzw')
+2026-03-03 22:59:44,287 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:59:44,287 INFO sqlalchemy.engine.Engine [cached since 0.002466s ago] ('yelp', 'https://www.yelp.com/biz/heytea-san-jose-11?adjust_creative=uELC5YR_WmAWZc_XO8jFzw&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=uELC5YR_WmAWZc_XO8jFzw')
+2026-03-03 22:59:44,288 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:59:44,288 INFO sqlalchemy.engine.Engine [cached since 0.003611s ago] ('yelp', 'https://www.yelp.com/biz/heytea-sunnyvale-4?adjust_creative=uELC5YR_WmAWZc_XO8jFzw&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=uELC5YR_WmAWZc_XO8jFzw')
+2026-03-03 22:59:44,289 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:59:44,289 INFO sqlalchemy.engine.Engine [cached since 0.004586s ago] ('yelp', 'https://www.yelp.com/biz/heytea-cupertino-4?adjust_creative=uELC5YR_WmAWZc_XO8jFzw&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=uELC5YR_WmAWZc_XO8jFzw')
+2026-03-03 22:59:44,290 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:59:44,291 INFO sqlalchemy.engine.Engine [cached since 0.005971s ago] ('yelp', 'https://www.yelp.com/biz/hui-lau-shan-milpitas-2?adjust_creative=uELC5YR_WmAWZc_XO8jFzw&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=uELC5YR_WmAWZc_XO8jFzw')
+2026-03-03 22:59:44,292 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:59:44,292 INFO sqlalchemy.engine.Engine [cached since 0.007102s ago] ('google', 'https://maps.google.com/?cid=2172719124561817108&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA')
+2026-03-03 22:59:44,293 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53251 - "GET /api/sync/search?name=Heytea&location=Milpitas HTTP/1.1" 200 OK
