@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     APIFY_API_TOKEN: str = ""
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

@@ -58,7 +58,7 @@ The primary objective is to empower restaurant managers and hospitality operator
 ---
 
 ## 4. Technical Requirements
-*   **Backend**: FastAPI with SQLAlchemy (PostgreSQL).
+*   **Backend**: FastAPI with SQLAlchemy (Supabase Cloud PostgreSQL via `asyncpg`).
 *   **Frontend**: Next.js (React) with pure CSS visualizations.
 *   **APIs & Integrations**: SavorIQ uses Google Places, Yelp Fusion, Apify, Google Gemini, and Browser Geolocation. For the definitive directory of API usage, limits, and costs, see [TECHNICAL_SPEC.md](file:///Users/Ed/Apps/SavorIQ/TECHNICAL_SPEC.md).
 *   **Deployment**: Docker & Kubernetes ready.

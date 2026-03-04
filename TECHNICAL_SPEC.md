@@ -57,7 +57,20 @@ Once reviews are ingested, they pass through the Intelligence Layer:
 
 ---
 
-## 3. Data Schema
+## 3. Database Architecture & Hosting
+
+SavorIQ is migrating from a local SQLite development database to a production-ready **Supabase Cloud PostgreSQL** instance.
+
+### Connection Strategy
+- **Driver**: `asyncpg` (Asynchronous Python driver required by SQLAlchemy for FastAPI).
+- **Pooling**: **Transaction Pooler** (Port `6543`).
+    - *Why?* Transaction pooling is essential for modern serverless/API environments. It allows FastAPI to rapidly execute a query and instantly return the connection to the pool, preventing connection exhaustion under heavy load.
+- **ORM**: SQLAlchemy (`AsyncSession`).
+- **Initialization**: Tables are automatically constructed on application startup via `Base.metadata.create_all`.
+
+---
+
+## 4. Data Schema
 
 ### `SyncLog` Table
 Maintains the state of truth for cooldowns and proactive feedback.

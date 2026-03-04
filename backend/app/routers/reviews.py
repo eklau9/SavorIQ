@@ -13,7 +13,7 @@ from app.database import get_db
 from app.models import Guest, Review, SentimentScore
 from app.schemas import IngestionReport, ReviewPlatform, ReviewRead, ReviewWithGuest
 from app.services.ingestion import ingest_reviews
-from app.services.sentiment import analyze_and_store
+from app.services.sentiment import analyze_and_store_batch
 
 router = APIRouter(prefix="/api", tags=["reviews"])
 
@@ -225,7 +225,16 @@ async def ingest_reviews_endpoint(
             .limit(report.ingested)
         )
         new_reviews = result.scalars().all()
-        for review in new_reviews:
-            await analyze_and_store(db, review.id, review.content)
+        
+        # Prepare batches of 25 for Gemini
+        batch_size = 25
+        reviews_to_analyze = [
+            {"id": r.id, "text": r.content} 
+            for r in new_reviews
+        ]
+        
+        for i in range(0, len(reviews_to_analyze), batch_size):
+            batch = reviews_to_analyze[i : i + batch_size]
+            await analyze_and_store_batch(db, batch)
 
     return report
