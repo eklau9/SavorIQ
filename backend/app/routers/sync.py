@@ -86,10 +86,23 @@ async def sync_apify_reviews(
         if log:
             cutoff = datetime.utcnow() - timedelta(hours=SYNC_COOLDOWN_HOURS)
             if log.last_synced_at > cutoff:
-                hours_ago = (datetime.utcnow() - log.last_synced_at).total_seconds() / 3600
+                diff = datetime.utcnow() - log.last_synced_at
+                total_seconds = diff.total_seconds()
+                
+                if total_seconds < 3600:
+                    ago_str = f"~{int(total_seconds / 60)}m"
+                else:
+                    ago_str = f"~{int(total_seconds / 3600)}h"
+                
+                remaining_seconds = max(0, (SYNC_COOLDOWN_HOURS * 3600) - total_seconds)
+                if remaining_seconds < 3600:
+                    remaining_str = f"~{int(remaining_seconds / 60)}m"
+                else:
+                    remaining_str = f"~{int(remaining_seconds / 3600)}h"
+
                 return {
                     "status": "skipped",
-                    "message": f"Already synced {hours_ago:.1f} hours ago. Next sync available in {SYNC_COOLDOWN_HOURS - hours_ago:.1f} hours.",
+                    "message": f"Already synced {ago_str} ago. Next sync available in {remaining_str}.",
                     "last_synced": log.last_synced_at.isoformat(),
                     "reviews_fetched": log.reviews_fetched,
                     "new_reviews": log.new_reviews,

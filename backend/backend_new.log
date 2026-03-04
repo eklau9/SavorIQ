@@ -17505,3 +17505,25 @@ FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
 2026-03-03 22:50:09,801 INFO sqlalchemy.engine.Engine [cached since 30.29s ago] ()
 2026-03-03 22:50:09,802 INFO sqlalchemy.engine.Engine COMMIT
 INFO:     127.0.0.1:53066 - "GET /api/sync/status HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/routers/sync.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [88156]
+INFO:     Started server process [88806]
+INFO:     Waiting for application startup.
+2026-03-03 22:57:12,673 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:57:12,673 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 22:57:12,673 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:57:12,674 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 22:57:12,674 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:57:12,675 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 22:57:12,675 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:57:12,676 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 22:57:12,676 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:57:12,676 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 22:57:12,676 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:57:12,677 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-03-03 22:57:12,677 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:57:12,677 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
