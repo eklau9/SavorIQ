@@ -63,4 +63,5 @@ The primary objective is to empower restaurant managers and hospitality operator
 *   **AI**: Google Gemini for sentiment analysis and strategic briefings.
 *   **Review Scraping**: Apify REST API for reliable, multi-platform data ingestion.
 *   **Location Intelligence**: Browser Geolocation API for "Smart Search" without mandatory city input.
+*   **Architecture**: See [TECHNICAL_SPEC.md](file:///Users/Ed/Apps/SavorIQ/TECHNICAL_SPEC.md) for detailed pipeline and API usage strategies.
 *   **Deployment**: Docker & Kubernetes ready.

@@ -130,21 +130,78 @@ def analyze_sentiment_heuristic(review_text: str) -> List[Dict[str, Any]]:
 
 # ── Gemini Integration ────────────────────────────────────────────────────
 
-GEMINI_PROMPT = """You are a restaurant review analyst. Analyze the following review and categorize sentiment into exactly three buckets: "food", "drink", and "ambiance".
+# ── Gemini Batch Prompt ──────────────────────────────────────────────────
+
+BATCH_PROMPT = """You are a restaurant review analyst. Analyze the following list of reviews and for EACH review, categorize sentiment into exactly three buckets: "food", "drink", and "ambiance".
 
 For each bucket, provide:
-- score: a float from -1.0 (very negative) to 1.0 (very positive). Use 0.0 if the bucket is not mentioned.
+- score: a float from -1.0 (very negative) to 1.0 (very positive). Use 0.0 if not mentioned.
 - summary: a brief 1-sentence explanation.
 
-Return ONLY valid JSON in this exact format:
-[
-  {"bucket": "food", "score": 0.8, "summary": "The food was praised for its freshness."},
-  {"bucket": "drink", "score": -0.3, "summary": "Coffee was described as lukewarm."},
-  {"bucket": "ambiance", "score": 0.5, "summary": "The atmosphere was described as cozy."}
-]
+EXTREMELY IMPORTANT:
+1. You must return a JSON object with a key "results" that is a list of objects.
+2. Each object in the "results" list MUST include the "id" provided in the input list so we can map it back correctly.
+3. Return ONLY valid JSON.
 
-Review text:
+Format:
+{
+  "results": [
+    {
+      "id": "review_id_1",
+      "sentiment": [
+        {"bucket": "food", "score": 0.8, "summary": "..."},
+        {"bucket": "drink", "score": 0.0, "summary": "..."},
+        {"bucket": "ambiance", "score": 0.5, "summary": "..."}
+      ]
+    },
+    ...
+  ]
+}
+
+Reviews to analyze:
 """
+
+
+async def analyze_sentiment_batch(reviews: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Use Gemini to analyze a batch of reviews in a single call.
+    'reviews' should be a list of {'id': id, 'text': text}.
+    Returns a dict mapping review_id -> list of sentiment results.
+    """
+    if not reviews:
+        return {}
+
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        # Use simple non-structured model but ask for JSON (Flash is very good at this)
+        model = genai.GenerativeModel(settings.GEMINI_MODEL)
+
+        # Prepare batch context
+        batch_input = json.dumps(reviews)
+        response = await model.generate_content_async(BATCH_PROMPT + batch_input)
+        text = response.text.strip()
+
+        # Clean JSON
+        if "```" in text:
+            json_match = re.search(r'```(?:json)?\s*(.*?)```', text, re.DOTALL)
+            if json_match:
+                text = json_match.group(1).strip()
+
+        data = json.loads(text)
+        
+        # Mapping results
+        mapping = {}
+        for res in data.get("results", []):
+            mapping[res["id"]] = res["sentiment"]
+        
+        return mapping
+
+    except Exception as e:
+        logger.warning(f"Batch Gemini analysis failed: {e}. Falling back to individual heuristics.")
+        # Fallback: process each individually with heuristic
+        return {r["id"]: analyze_sentiment_heuristic(r["text"]) for r in reviews}
 
 
 async def analyze_sentiment_gemini(review_text: str) -> List[Dict[str, Any]]:
@@ -194,23 +251,31 @@ async def analyze_review(review_text: str) -> List[Dict[str, Any]]:
     return analyze_sentiment_heuristic(review_text)
 
 
-async def analyze_and_store(
-    db: AsyncSession, review_id: str, review_text: str
-) -> List[SentimentScore]:
-    """Analyze a review and store sentiment scores in the database."""
-    results = await analyze_review(review_text)
+async def analyze_and_store_batch(
+    db: AsyncSession, reviews: List[Dict[str, str]]
+) -> int:
+    """
+    Analyze a batch of reviews and store sentiment scores.
+    Returns the count of successfully analyzed reviews.
+    """
+    if not reviews:
+        return 0
 
-    scores: List[SentimentScore] = []
-    for item in results:
-        score = SentimentScore(
-            review_id=review_id,
-            bucket=item["bucket"],
-            score=item["score"],
-            summary=item.get("summary", ""),
-            analyzed_at=datetime.utcnow(),
-        )
-        db.add(score)
-        scores.append(score)
+    # 1. Get batch sentiment mapping
+    mapping = await analyze_sentiment_batch(reviews)
+    
+    count = 0
+    for r_id, results in mapping.items():
+        for item in results:
+            score = SentimentScore(
+                review_id=r_id,
+                bucket=item["bucket"],
+                score=float(item.get("score", 0.0)),
+                summary=item.get("summary", ""),
+                analyzed_at=datetime.utcnow(),
+            )
+            db.add(score)
+        count += 1
 
     await db.flush()
-    return scores
+    return count

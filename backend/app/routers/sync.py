@@ -15,7 +15,7 @@ from app.models import Review, SyncLog
 from app.schemas import ReviewPlatform
 from app.services.apify_sync import apify_google_reviews, apify_yelp_reviews
 from app.services.ingestion import ingest_reviews
-from app.services.sentiment import analyze_and_store
+from app.services.sentiment import analyze_and_store_batch
 from app.services.sync import (
     google_search,
     yelp_search,
@@ -176,7 +176,7 @@ async def sync_apify_reviews(
     # ── Ingest into SavorIQ ──
     report = await ingest_reviews(db, review_platform, raw_reviews)
 
-    # ── Run sentiment analysis on new reviews ──
+    # ── Run sentiment analysis on new reviews (Batch processing) ──
     if report.ingested > 0:
         result = await db.execute(
             select(Review)
@@ -184,8 +184,24 @@ async def sync_apify_reviews(
             .limit(report.ingested)
         )
         new_reviews = result.scalars().all()
-        for review in new_reviews:
-            await analyze_and_store(db, review.id, review.content)
+        
+        # Prepare batches of 25 for Gemini
+        batch_size = 25
+        reviews_to_analyze = [
+            {"id": r.id, "text": r.content} 
+            for r in new_reviews
+        ]
+        
+        from app.services.sentiment import analyze_and_store_batch
+        
+        total_batches = (len(reviews_to_analyze) + batch_size - 1) // batch_size
+        logger.info(f"Processing sentiment for {len(reviews_to_analyze)} reviews in {total_batches} batches.")
+        
+        for i in range(0, len(reviews_to_analyze), batch_size):
+            batch = reviews_to_analyze[i : i + batch_size]
+            batch_num = (i // batch_size) + 1
+            logger.info(f"Analyzing batch {batch_num}/{total_batches}...")
+            await analyze_and_store_batch(db, batch)
 
     # ── Update sync log ──
     existing = await db.execute(
