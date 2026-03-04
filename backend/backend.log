@@ -117,3 +117,125 @@ WHERE sentiment_scores.review_id IN (?)
 2026-03-03 19:47:03,649 INFO sqlalchemy.engine.Engine [cached since 0.01899s ago] ('4c4c1f20-0f28-45ca-a13b-f83f44e21602',)
 2026-03-03 19:47:03,650 INFO sqlalchemy.engine.Engine COMMIT
 INFO:     127.0.0.1:59766 - "GET /api/guests/77a48080-9e3f-4345-999a-ac7c2d4d5dc3/pulse HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/config.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [23407]
+INFO:     Started server process [24669]
+INFO:     Waiting for application startup.
+2026-03-03 20:16:23,779 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 20:16:23,779 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 20:16:23,779 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:23,780 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 20:16:23,780 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:23,780 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 20:16:23,780 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:23,781 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 20:16:23,781 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:23,781 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 20:16:23,781 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:23,782 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/services/sync.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24669]
+INFO:     Started server process [24673]
+INFO:     Waiting for application startup.
+2026-03-03 20:16:25,767 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 20:16:25,768 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 20:16:25,768 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:25,768 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 20:16:25,768 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:25,769 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 20:16:25,769 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:25,769 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 20:16:25,769 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:25,770 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 20:16:25,770 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:25,771 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/models.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24673]
+INFO:     Started server process [24681]
+INFO:     Waiting for application startup.
+2026-03-03 20:16:54,136 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 20:16:54,136 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 20:16:54,137 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:54,137 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 20:16:54,138 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:54,138 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 20:16:54,138 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:54,139 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 20:16:54,139 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:54,139 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 20:16:54,139 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:54,139 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-03-03 20:16:54,139 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:54,140 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("sync_logs")
+2026-03-03 20:16:54,140 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:16:54,141 INFO sqlalchemy.engine.Engine 
+CREATE TABLE sync_logs (
+	id VARCHAR(36) NOT NULL, 
+	platform VARCHAR(6) NOT NULL, 
+	business_id VARCHAR(200) NOT NULL, 
+	business_name VARCHAR(300) NOT NULL, 
+	last_synced_at DATETIME NOT NULL, 
+	reviews_fetched INTEGER NOT NULL, 
+	new_reviews INTEGER NOT NULL, 
+	PRIMARY KEY (id)
+)
+
+
+2026-03-03 20:16:54,141 INFO sqlalchemy.engine.Engine [no key 0.00009s] ()
+2026-03-03 20:16:54,143 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routers/sync.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24681]
+INFO:     Started server process [24684]
+INFO:     Waiting for application startup.
+2026-03-03 20:17:25,308 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 20:17:25,309 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 20:17:25,309 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:17:25,309 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 20:17:25,309 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:17:25,310 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 20:17:25,310 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:17:25,310 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 20:17:25,310 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:17:25,311 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 20:17:25,311 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:17:25,311 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-03-03 20:17:25,311 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:17:25,312 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24684]
+INFO:     Started server process [24691]
+INFO:     Waiting for application startup.
+2026-03-03 20:18:04,328 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 20:18:04,328 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 20:18:04,328 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:18:04,329 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 20:18:04,329 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:18:04,330 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 20:18:04,330 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:18:04,330 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 20:18:04,330 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:18:04,331 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 20:18:04,331 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:18:04,331 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-03-03 20:18:04,331 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 20:18:04,332 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.

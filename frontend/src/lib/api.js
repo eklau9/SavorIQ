@@ -114,3 +114,36 @@ export async function postInterceptAction(guestId, data) {
     if (!res.ok) throw new Error("Failed to post intercept action");
     return res.json();
 }
+
+// ── Sync API ──────────────────────────────────────────────────────────
+
+export async function searchBusiness(name, location, lat = null, lng = null) {
+    const params = new URLSearchParams({ name });
+    if (location) params.append("location", location);
+    if (lat) params.append("lat", lat);
+    if (lng) params.append("lng", lng);
+
+    const res = await fetch(`${API_BASE}/api/sync/search?${params}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to search businesses");
+    return res.json();
+}
+
+export async function syncApifyReviews(platform, url, businessName) {
+    const params = new URLSearchParams({
+        platform,
+        business_url: url,
+        business_name: businessName,
+        max_reviews: 100, // Default to 100 for user-triggered syncs
+    });
+    const res = await fetch(`${API_BASE}/api/sync/apify-reviews?${params}`, {
+        method: "POST",
+    });
+    if (!res.ok) throw new Error("Failed to sync reviews via Apify");
+    return res.json();
+}
+
+export async function fetchSyncStatus() {
+    const res = await fetch(`${API_BASE}/api/sync/status`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch sync status");
+    return res.json();
+}

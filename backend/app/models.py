@@ -99,3 +99,18 @@ class InterceptAction(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     guest: Mapped["Guest"] = relationship()
+
+
+class SyncLog(Base):
+    """Tracks the last time reviews were synced for a business on each platform."""
+    __tablename__ = "sync_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    platform: Mapped[str] = mapped_column(
+        Enum("yelp", "google", name="sync_platform"), nullable=False
+    )
+    business_id: Mapped[str] = mapped_column(String(200), nullable=False)  # Yelp biz ID or Google place ID
+    business_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    last_synced_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    reviews_fetched: Mapped[int] = mapped_column(Integer, default=0)
+    new_reviews: Mapped[int] = mapped_column(Integer, default=0)

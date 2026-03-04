@@ -63,7 +63,7 @@ def normalize_yelp_review(raw: YelpReviewIngest) -> dict:
         "guest_name": raw.guest_name,
         "guest_email": raw.guest_email,
         "rating": raw.rating,
-        "content": raw.text,
+        "content": raw.text or "[Rating only]",
         "reviewed_at": _parse_datetime(raw.date),
     }
 
@@ -76,7 +76,7 @@ def normalize_google_review(raw: GoogleReviewIngest) -> dict:
         "guest_name": raw.author_name,
         "guest_email": raw.author_email,
         "rating": raw.rating,
-        "content": raw.text,
+        "content": raw.text or "[Rating only]",
         "reviewed_at": _parse_datetime(raw.time),
     }
 

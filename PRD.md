@@ -44,11 +44,20 @@ The primary objective is to empower restaurant managers and hospitality operator
 *   **Executive Overview**: High-level metrics and AI Manager Briefing.
 *   **Diagnostics**: Clear visualization of "Top Performers" and "At-Risk Items."
 
+### 3.5 Review Data Integration
+*   **Primary Source**: Apify actors for both Google Maps and Yelp review scraping.
+    *   **Google**: `compass/google-maps-reviews-scraper` — Fetch all reviews including "Ratings only" content.
+    *   **Yelp**: `tri_angle~yelp-review-scraper` — Reliable scraping that bypasses paywalled Yelp API.
+*   **Sync Cadence**: Daily with 24-hour cooldown per business per platform.
+*   **Deduplication**: Each review tracked by unique `platform_review_id` to prevent duplicates across syncs.
+*   **Budget Optimization**: Initial full sync captures all historical data; subsequent daily syncs are incremental.
+
 ---
 
 ## 4. Technical Requirements
 *   **Backend**: FastAPI with SQLAlchemy (PostgreSQL).
 *   **Frontend**: Next.js (React) with pure CSS visualizations.
 *   **AI**: Google Gemini for sentiment analysis and strategic briefings.
+*   **Review Scraping**: Apify REST API for reliable, multi-platform data ingestion.
+*   **Location Intelligence**: Browser Geolocation API for "Smart Search" without mandatory city input.
 *   **Deployment**: Docker & Kubernetes ready.
-

@@ -148,7 +148,7 @@ class YelpReviewIngest(BaseModel):
     guest_name: str
     guest_email: str | None = None
     rating: float
-    text: str
+    text: str | None = None
     date: str  # ISO date string
 
 
@@ -158,7 +158,7 @@ class GoogleReviewIngest(BaseModel):
     author_name: str
     author_email: str | None = None
     rating: float
-    text: str
+    text: str | None = None
     time: str  # ISO datetime string
 
 

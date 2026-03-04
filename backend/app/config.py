@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-flash-latest"
 
+    # Google Places API (New)
+    GOOGLE_PLACES_API_KEY: str = ""
+
+    # Yelp Fusion API
+    YELP_API_KEY: str = ""
+
+    # Apify (review scraping for Google Maps + Yelp)
+    APIFY_API_TOKEN: str = ""
+
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 

@@ -24,16 +24,26 @@ export default function GuestRegistryPage() {
                 const guestsData = await guestsRes.json();
                 setGuests(guestsData);
 
-                // Fetch pulses for the guests
-                const pulseMap = {};
-                for (const guest of guestsData) {
+                // Fetch pulses for the guests in parallel
+                const pulsePromises = guestsData.map(async (guest) => {
                     try {
                         const pulseRes = await fetch(`${API_BASE}/api/guests/${guest.id}/pulse`);
                         if (pulseRes.ok) {
-                            pulseMap[guest.id] = await pulseRes.json();
+                            return { id: guest.id, data: await pulseRes.json() };
                         }
-                    } catch { }
-                }
+                    } catch (err) {
+                        console.error(`Failed to fetch pulse for guest ${guest.id}:`, err);
+                    }
+                    return null;
+                });
+
+                const pulseResults = await Promise.all(pulsePromises);
+                const pulseMap = {};
+                pulseResults.forEach((res) => {
+                    if (res) {
+                        pulseMap[res.id] = res.data;
+                    }
+                });
                 setPulses(pulseMap);
             }
         } catch (err) {

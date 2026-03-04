@@ -155,7 +155,7 @@ async def analyze_sentiment_gemini(review_text: str) -> List[Dict[str, Any]]:
         genai.configure(api_key=settings.GEMINI_API_KEY)
         model = genai.GenerativeModel(settings.GEMINI_MODEL)
 
-        response = model.generate_content(GEMINI_PROMPT + review_text)
+        response = await model.generate_content_async(GEMINI_PROMPT + review_text)
         text = response.text.strip()
 
         # Extract JSON from response (handle markdown code blocks)
