@@ -50,7 +50,10 @@ The primary objective is to empower restaurant managers and hospitality operator
     *   **Yelp**: `tri_angle~yelp-review-scraper` — Reliable scraping that bypasses paywalled Yelp API.
 *   **Sync Cadence**: Daily with 24-hour cooldown per business per platform.
 *   **Deduplication**: Each review tracked by unique `platform_review_id` to prevent duplicates across syncs.
-*   **Budget Optimization**: Initial full sync captures all historical data; subsequent daily syncs are incremental.
+*   **Budget & Usage Strategy**:
+    *   **Discovery (Lightweight)**: The search bar utilizes the Yelp Fusion and Google Places APIs for "Discovery" (finding names, addresses, and URLs). These are low-cost, high-speed requests.
+    *   **Sync (Intensive)**: Apify actors are utilized ONLY when the "Sync Reviews" button is triggered. This conserves credits by reserving intensive scraping for confirmed data ingestion.
+    *   **Proactive Feedback**: Search results cross-reference `SyncLog` data to proactively display cooldown status and disable sync triggers for recently updated businesses.
 
 ---
 
