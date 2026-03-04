@@ -17452,3 +17452,56 @@ INFO:     Waiting for application startup.
 2026-03-03 22:49:02,399 INFO sqlalchemy.engine.Engine [raw sql] ()
 2026-03-03 22:49:02,400 INFO sqlalchemy.engine.Engine COMMIT
 INFO:     Application startup complete.
+INFO:     127.0.0.1:53050 - "GET /api/sync/search?name=heytea&lat=37.41932236695142&lng=-121.91586052027388 HTTP/1.1" 200 OK
+2026-03-03 22:49:39,481 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:49:39,502 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:49:39,503 INFO sqlalchemy.engine.Engine [generated in 0.00032s] ('google', 'https://maps.google.com/?cid=2172719124561817108&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA')
+2026-03-03 22:49:39,504 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53058 - "POST /api/sync/apify-reviews?platform=google&business_url=https%3A%2F%2Fmaps.google.com%2F%3Fcid%3D2172719124561817108%26g_mp%3DCidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA&business_name=heytea+%28Milpitas%29&max_reviews=100 HTTP/1.1" 200 OK
+2026-03-03 22:49:39,509 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:49:39,510 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
+2026-03-03 22:49:39,510 INFO sqlalchemy.engine.Engine [generated in 0.00026s] ()
+2026-03-03 22:49:39,512 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53058 - "GET /api/sync/status HTTP/1.1" 200 OK
+2026-03-03 22:49:41,313 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:49:41,313 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:49:41,314 INFO sqlalchemy.engine.Engine [cached since 1.811s ago] ('google', 'https://maps.google.com/?cid=2172719124561817108&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA')
+2026-03-03 22:49:41,315 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53058 - "POST /api/sync/apify-reviews?platform=google&business_url=https%3A%2F%2Fmaps.google.com%2F%3Fcid%3D2172719124561817108%26g_mp%3DCidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA&business_name=heytea+%28Milpitas%29&max_reviews=100 HTTP/1.1" 200 OK
+2026-03-03 22:49:41,324 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:49:41,324 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
+2026-03-03 22:49:41,324 INFO sqlalchemy.engine.Engine [cached since 1.814s ago] ()
+2026-03-03 22:49:41,325 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53058 - "GET /api/sync/status HTTP/1.1" 200 OK
+2026-03-03 22:50:09,138 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:50:09,138 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:50:09,138 INFO sqlalchemy.engine.Engine [cached since 29.64s ago] ('google', 'https://maps.google.com/?cid=2172719124561817108&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA')
+2026-03-03 22:50:09,140 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53066 - "POST /api/sync/apify-reviews?platform=google&business_url=https%3A%2F%2Fmaps.google.com%2F%3Fcid%3D2172719124561817108%26g_mp%3DCidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA&business_name=heytea+%28Milpitas%29&max_reviews=100 HTTP/1.1" 200 OK
+2026-03-03 22:50:09,149 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:50:09,149 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
+2026-03-03 22:50:09,149 INFO sqlalchemy.engine.Engine [cached since 29.64s ago] ()
+2026-03-03 22:50:09,151 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53066 - "GET /api/sync/status HTTP/1.1" 200 OK
+2026-03-03 22:50:09,788 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:50:09,788 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs 
+WHERE sync_logs.platform = ? AND sync_logs.business_id = ?
+2026-03-03 22:50:09,788 INFO sqlalchemy.engine.Engine [cached since 30.29s ago] ('google', 'https://maps.google.com/?cid=2172719124561817108&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA')
+2026-03-03 22:50:09,790 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53066 - "POST /api/sync/apify-reviews?platform=google&business_url=https%3A%2F%2Fmaps.google.com%2F%3Fcid%3D2172719124561817108%26g_mp%3DCidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA&business_name=heytea+%28Milpitas%29&max_reviews=100 HTTP/1.1" 200 OK
+2026-03-03 22:50:09,800 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:50:09,801 INFO sqlalchemy.engine.Engine SELECT sync_logs.id, sync_logs.platform, sync_logs.business_id, sync_logs.business_name, sync_logs.last_synced_at, sync_logs.reviews_fetched, sync_logs.new_reviews 
+FROM sync_logs ORDER BY sync_logs.last_synced_at DESC
+2026-03-03 22:50:09,801 INFO sqlalchemy.engine.Engine [cached since 30.29s ago] ()
+2026-03-03 22:50:09,802 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53066 - "GET /api/sync/status HTTP/1.1" 200 OK

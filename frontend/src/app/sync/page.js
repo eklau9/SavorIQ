@@ -153,6 +153,58 @@ export default function SyncPage() {
                 </div>
             )}
 
+            {/* Sync Activity (Moved to top for visibility) */}
+            {syncResults.length > 0 && (
+                <div className="sync-activity">
+                    <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ margin: 0 }}>⚡ Recent Activity</h3>
+                        <button
+                            onClick={() => setSyncResults([])}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem'
+                            }}
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                    {syncResults.slice().reverse().map((r, i) => (
+                        <div
+                            key={i}
+                            className={`sync-result-card ${r.status === "error" ? "error" : r.status === "skipped" ? "skipped" : "success"}`}
+                        >
+                            <div className="sync-result-header">
+                                <span className={`platform-dot ${r.platform}`} />
+                                <strong>{r.businessName}</strong>
+                                <span className={`sync-status-badge ${r.status}`}>
+                                    {r.status === "synced"
+                                        ? "✓ Synced"
+                                        : r.status === "skipped"
+                                            ? "⏳ Cooldown"
+                                            : "✕ Error"}
+                                </span>
+                            </div>
+                            {r.status === "synced" && (
+                                <p className="sync-result-detail">
+                                    Fetched {r.total_fetched} reviews •{" "}
+                                    <strong>{r.new_ingested} new</strong> •{" "}
+                                    {r.duplicates_skipped} duplicates skipped
+                                </p>
+                            )}
+                            {r.status === "skipped" && (
+                                <p className="sync-result-detail">{r.message}</p>
+                            )}
+                            {r.status === "error" && (
+                                <p className="sync-result-detail">{r.message}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Search Results */}
             {results && (
                 <div className="sync-results">
@@ -247,48 +299,10 @@ export default function SyncPage() {
                 </div>
             )}
 
-            {/* Sync Results */}
-            {syncResults.length > 0 && (
-                <div className="sync-activity">
-                    <h3>Sync Activity</h3>
-                    {syncResults.map((r, i) => (
-                        <div
-                            key={i}
-                            className={`sync-result-card ${r.status === "error" ? "error" : r.status === "skipped" ? "skipped" : "success"}`}
-                        >
-                            <div className="sync-result-header">
-                                <span className={`platform-dot ${r.platform}`} />
-                                <strong>{r.businessName}</strong>
-                                <span className={`sync-status-badge ${r.status}`}>
-                                    {r.status === "synced"
-                                        ? "✓ Synced"
-                                        : r.status === "skipped"
-                                            ? "⏳ Cooldown"
-                                            : "✕ Error"}
-                                </span>
-                            </div>
-                            {r.status === "synced" && (
-                                <p className="sync-result-detail">
-                                    Fetched {r.total_fetched} reviews •{" "}
-                                    <strong>{r.new_ingested} new</strong> •{" "}
-                                    {r.duplicates_skipped} duplicates skipped
-                                </p>
-                            )}
-                            {r.status === "skipped" && (
-                                <p className="sync-result-detail">{r.message}</p>
-                            )}
-                            {r.status === "error" && (
-                                <p className="sync-result-detail">{r.message}</p>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
-
             {/* Sync History */}
             {syncLogs.length > 0 && (
                 <div className="sync-history">
-                    <h3>Sync History</h3>
+                    <h3>📜 Sync History</h3>
                     <div className="sync-log-grid">
                         {syncLogs.map((log, i) => (
                             <div className="sync-log-card" key={i}>
@@ -298,7 +312,7 @@ export default function SyncPage() {
                                 </div>
                                 <div className="log-meta">
                                     <span>Last synced: {formatTimeAgo(log.last_synced_at)}</span>
-                                    <span>{log.reviews_fetched} fetched</span>
+                                    <span>{log.reviews_fetched} reviews</span>
                                     <span>{log.new_reviews} new</span>
                                 </div>
                             </div>
