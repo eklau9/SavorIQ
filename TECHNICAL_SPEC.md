@@ -26,11 +26,19 @@ To optimize API costs and performance, the system follows a split architecture:
 - **Usage**: Triggered on every search bar input.
 - **Cost**: Low/Free (utilizes Google $200/mo credit and Yelp's 5k/mo free tier).
 
-### Stage 2: Syncing (Intensive)
+### Stage 2: Syncing
+### Database Schema (Supabase)
+- **restaurants**: Master table for tenants.
+- **guests**: Scoped to `restaurant_id`.
+- **reviews**: Scoped to `restaurant_id`.
+- **orders**: Scoped to `restaurant_id`.
+- **sentiment_scores**: Linked to reviews.
+- **intercept_actions**: Tracks manager responses, scoped to `restaurant_id`.
+- **sync_logs**: Tracks Apify sync history, scoped to `restaurant_id`.
 - **API**: Apify REST API (Actor Scrapers).
 - **Goal**: Deep-scrape historical and new reviews.
 - **Usage**: Triggered manually by user via "Sync Reviews" button.
-- **Guardrails**: 
+- **Guardrails**:
     - 24-hour cooldown per store.
     - Proactive frontend blocking if `SyncLog` shows recent activity.
 - **Cost**: Consumes Apify compute credits.
@@ -59,6 +67,20 @@ Once reviews are ingested, they pass through the Intelligence Layer:
 
 ## 3. Database Architecture & Hosting
 
+## Technical Architecture
+- **Backend:** FastAPI (Python)
+- **Database:** Supabase Cloud PostgreSQL (Multi-tenant)
+- **ORM:** SQLAlchemy (Async)
+- **AI Engine:** Google Gemini Pro (Sentiment & Insights)
+- **Scraper:** Apify (Yelp & Google Maps)
+- **Frontend:** Next.js (App Router)
+
+### Multi-Tenancy & Data Isolation
+SavorIQ uses a **Hard Isolation** strategy at the database level:
+- Every table (`guests`, `reviews`, `orders`, `intercept_actions`) includes a `restaurant_id`.
+- The Backend enforces isolation using an `X-Restaurant-ID` header.
+- New restaurant tenants are auto-provisioned during the first sync of a business location.
+- Row-Level Security (RLS) is conceptually enforced by the API layer scoping all queries to the provided `restaurant_id`.
 SavorIQ is migrating from a local SQLite development database to a production-ready **Supabase Cloud PostgreSQL** instance.
 
 ### Connection Strategy

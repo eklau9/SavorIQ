@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RestaurantSwitcher from "./RestaurantSwitcher";
 
 export default function Sidebar() {
     const pathname = usePathname();
@@ -52,6 +53,8 @@ export default function Sidebar() {
                     <span className="subtitle">Guest Intelligence</span>
                 </div>
             </div>
+
+            <RestaurantSwitcher />
 
             {navItems.map((section) => (
                 <div className="nav-section" key={section.section}>

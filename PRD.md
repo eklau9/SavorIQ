@@ -5,6 +5,13 @@
 
 The primary objective is to empower restaurant managers and hospitality operators with actionable insights by connecting **what guests buy** (order history) with **how they feel** (review sentiment). 
 
+### Key Objectives
+1.  **AI-Driven Guest Resolution:** Identify critical review patterns and provide actionable manager intercepts.
+2.  **Multi-Platform Integration:** Unified view of Yelp and Google Maps reviews alongside internal order data.
+3.  **Tiered Loyalty Insights:** Segment guests into VIP, Regular, and New based on spend and feedback frequency.
+4.  **Multi-Tenant Isolation:** Ensure absolute data privacy between different restaurant locations/brands.
+5.  **Operational Intelligence:** Surface food/drink/ambiance trends to drive menu and service improvements.
+
 ---
 
 ## 2. Target Audience

@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Header
+from typing import Optional
 
 from app.database import get_db
 from app.models import Guest, Review, SentimentScore
@@ -18,8 +19,9 @@ from app.services.sentiment import analyze_and_store_batch
 router = APIRouter(prefix="/api", tags=["reviews"])
 
 
-def _apply_common_filters(query, platform, search, days, date_str=None, bucket=None):
-    """Apply shared filters to a review query."""
+def _apply_common_filters(query, restaurant_id, platform, search, days, date_str=None, bucket=None):
+    """Apply shared filters to a review query, including tenant isolation."""
+    query = query.where(Review.restaurant_id == restaurant_id)
     if platform:
         query = query.where(Review.platform == platform)
     if search:
@@ -47,11 +49,12 @@ async def review_stats(
     days: int | None = Query(None, ge=1),
     date: str | None = None,
     bucket: str | None = None,
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return aggregate stats for reviews matching the current filters."""
+    """Return aggregate stats for reviews matching the current filters, scoped to restaurant."""
     base = select(Review).options(selectinload(Review.sentiment_scores))
-    base = _apply_common_filters(base, platform, search, days, date, bucket)
+    base = _apply_common_filters(base, x_restaurant_id, platform, search, days, date, bucket)
     result = await db.execute(base)
     reviews = result.scalars().all()
 
@@ -123,15 +126,16 @@ async def list_all_reviews(
     date: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all reviews with search, sentiment, platform, bucket, and time filters."""
+    """List all reviews with filters, scoped to restaurant."""
     query = (
         select(Review)
         .options(selectinload(Review.sentiment_scores), selectinload(Review.guest))
         .order_by(Review.reviewed_at.desc())
     )
-    query = _apply_common_filters(query, platform, search, days, date, bucket)
+    query = _apply_common_filters(query, x_restaurant_id, platform, search, days, date, bucket)
 
     # Execute and filter by sentiment/bucket in Python (requires loaded scores)
     result = await db.execute(query)
@@ -172,12 +176,13 @@ async def list_guest_reviews(
     platform: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get reviews for a specific guest, optionally filtered by platform."""
+    """Get reviews for a specific guest, scoped to restaurant."""
     query = (
         select(Review)
-        .where(Review.guest_id == guest_id)
+        .where(Review.guest_id == guest_id, Review.restaurant_id == x_restaurant_id)
         .options(selectinload(Review.sentiment_scores))
         .order_by(Review.reviewed_at.desc())
         .offset(skip)
@@ -192,6 +197,7 @@ async def list_guest_reviews(
 @router.post("/reviews/ingest", response_model=IngestionReport)
 async def ingest_reviews_endpoint(
     payload: dict,
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -214,7 +220,7 @@ async def ingest_reviews_endpoint(
         )
 
     reviews_data = payload.get("reviews", [])
-    report = await ingest_reviews(db, platform, reviews_data)
+    report = await ingest_reviews(db, x_restaurant_id, platform, reviews_data)
 
     # Run sentiment analysis on newly ingested reviews
     if report.ingested > 0:

@@ -23,28 +23,6 @@ export default function GuestRegistryPage() {
             if (guestsRes.ok) {
                 const guestsData = await guestsRes.json();
                 setGuests(guestsData);
-
-                // Fetch pulses for the guests in parallel
-                const pulsePromises = guestsData.map(async (guest) => {
-                    try {
-                        const pulseRes = await fetch(`${API_BASE}/api/guests/${guest.id}/pulse`);
-                        if (pulseRes.ok) {
-                            return { id: guest.id, data: await pulseRes.json() };
-                        }
-                    } catch (err) {
-                        console.error(`Failed to fetch pulse for guest ${guest.id}:`, err);
-                    }
-                    return null;
-                });
-
-                const pulseResults = await Promise.all(pulsePromises);
-                const pulseMap = {};
-                pulseResults.forEach((res) => {
-                    if (res) {
-                        pulseMap[res.id] = res.data;
-                    }
-                });
-                setPulses(pulseMap);
             }
         } catch (err) {
             console.error("Failed to load guests:", err);
@@ -93,12 +71,37 @@ export default function GuestRegistryPage() {
                     <p>No guests found matching this tier.</p>
                 </div>
             ) : (
-                <div className="pulse-grid">
-                    {filteredGuests.map((guest) =>
-                        pulses[guest.id] ? (
-                            <GuestPulseCard key={guest.id} pulse={pulses[guest.id]} />
-                        ) : null
-                    )}
+                <div className="guest-list-simplified">
+                    {filteredGuests.map((guest) => {
+                        const meta = {
+                            vip: { label: "VIP", color: "var(--accent-violet)", bg: "rgba(124, 58, 237, 0.15)" },
+                            regular: { label: "Regular", color: "var(--accent-emerald)", bg: "rgba(52, 211, 153, 0.15)" },
+                            new: { label: "New", color: "var(--text-secondary)", bg: "rgba(100, 116, 139, 0.15)" },
+                        }[guest.tier] || {};
+
+                        return (
+                            <div key={guest.id} className="simplified-guest-row">
+                                <div className="guest-info">
+                                    <h3 style={{ margin: 0, fontSize: "1.1rem" }}>{guest.name}</h3>
+                                    <span style={{
+                                        background: meta.bg,
+                                        color: meta.color,
+                                        padding: "2px 8px",
+                                        borderRadius: "12px",
+                                        fontSize: "0.8rem",
+                                        marginTop: "4px",
+                                        display: "inline-block"
+                                    }}>
+                                        {meta.label}
+                                    </span>
+                                </div>
+                                <div className="guest-visits" style={{ fontSize: "0.9rem", color: "var(--text-secondary)", textAlign: "right" }}>
+                                    <div>First Visit: {new Date(guest.first_visit).toLocaleDateString()}</div>
+                                    <div>Last Visit: {new Date(guest.last_visit).toLocaleDateString()}</div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

@@ -14,12 +14,26 @@ def _uuid() -> str:
     return str(uuid.uuid4())
 
 
+class Restaurant(Base):
+    __tablename__ = "restaurants"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    guests: Mapped[List["Guest"]] = relationship(back_populates="restaurant", cascade="all, delete-orphan")
+    orders: Mapped[List["Order"]] = relationship(back_populates="restaurant", cascade="all, delete-orphan")
+    reviews: Mapped[List["Review"]] = relationship(back_populates="restaurant", cascade="all, delete-orphan")
+
+
 class Guest(Base):
     __tablename__ = "guests"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    email: Mapped[Optional[str]] = mapped_column(String(254), unique=True, nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(254), nullable=True) # Removed unique constraint across tenants
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     tier: Mapped[str] = mapped_column(
         Enum("new", "regular", "vip", name="guest_tier"), default="new"
@@ -29,6 +43,7 @@ class Guest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
+    restaurant: Mapped["Restaurant"] = relationship(back_populates="guests")
     orders: Mapped[List["Order"]] = relationship(back_populates="guest", cascade="all, delete-orphan")
     reviews: Mapped[List["Review"]] = relationship(back_populates="guest", cascade="all, delete-orphan")
 
@@ -37,6 +52,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
     guest_id: Mapped[str] = mapped_column(String(36), ForeignKey("guests.id"), nullable=False)
     item_name: Mapped[str] = mapped_column(String(200), nullable=False)
     category: Mapped[str] = mapped_column(
@@ -46,6 +62,7 @@ class Order(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     ordered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    restaurant: Mapped["Restaurant"] = relationship(back_populates="orders")
     guest: Mapped["Guest"] = relationship(back_populates="orders")
 
 
@@ -53,6 +70,7 @@ class Review(Base):
     __tablename__ = "reviews"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
     guest_id: Mapped[str] = mapped_column(String(36), ForeignKey("guests.id"), nullable=False)
     platform: Mapped[str] = mapped_column(
         Enum("yelp", "google", name="review_platform"), nullable=False
@@ -63,6 +81,7 @@ class Review(Base):
     reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     ingested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    restaurant: Mapped["Restaurant"] = relationship(back_populates="reviews")
     guest: Mapped["Guest"] = relationship(back_populates="reviews")
     sentiment_scores: Mapped[List["SentimentScore"]] = relationship(
         back_populates="review", cascade="all, delete-orphan"
@@ -88,6 +107,7 @@ class InterceptAction(Base):
     __tablename__ = "intercept_actions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
     guest_id: Mapped[str] = mapped_column(String(36), ForeignKey("guests.id"), nullable=False)
     status: Mapped[str] = mapped_column(
         Enum("open", "actioned", "resolved", "dismissed", name="intercept_status"),
@@ -106,6 +126,7 @@ class SyncLog(Base):
     __tablename__ = "sync_logs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
     platform: Mapped[str] = mapped_column(
         Enum("yelp", "google", name="sync_platform"), nullable=False
     )

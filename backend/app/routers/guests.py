@@ -7,7 +7,8 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from typing import Optional
 
 from app.database import get_db
 from app.schemas import (
@@ -22,20 +23,28 @@ from app.schemas import (
     InterceptActionCreate,
     InterceptActionRead,
 )
-from app.models import Guest, Order, Review, SentimentScore, InterceptAction
+from app.models import Guest, Order, Review, SentimentScore, InterceptAction, Restaurant
 
-router = APIRouter(prefix="/api/guests", tags=["guests"])
+router = APIRouter(prefix="/api", tags=["guests"])
 
 
-@router.get("", response_model=list[GuestRead])
+@router.get("/restaurants")
+async def list_restaurants(db: AsyncSession = Depends(get_db)):
+    """List all restaurants for the tenant switcher."""
+    result = await db.execute(select(Restaurant).order_by(Restaurant.name))
+    return result.scalars().all()
+
+
+@router.get("/guests", response_model=list[GuestRead])
 async def list_guests(
     tier: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all guests with optional tier filter and pagination."""
-    query = select(Guest)
+    """List all guests with optional tier filter and pagination, scoped to restaurant."""
+    query = select(Guest).where(Guest.restaurant_id == x_restaurant_id)
     if tier:
         query = query.where(Guest.tier == tier)
     query = query.offset(skip).limit(limit).order_by(Guest.last_visit.desc())
@@ -43,15 +52,18 @@ async def list_guests(
     return result.scalars().all()
 
 
-@router.get("/priorities", response_model=list[GuestPrioritized])
-async def list_guest_priorities(db: AsyncSession = Depends(get_db)):
+@router.get("/guests/priorities", response_model=list[GuestPrioritized])
+async def list_guest_priorities(
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Returns a prioritized list of guests needing manager action.
-    Applies logic based on review frequency, rating thresholds, and resolution status.
+    Returns a prioritized list of guests needing manager action for the current restaurant.
     """
-    # Load guests with related data
+    # Load guests for this restaurant with related data
     query = (
         select(Guest)
+        .where(Guest.restaurant_id == x_restaurant_id)
         .options(
             selectinload(Guest.orders),
             selectinload(Guest.reviews).selectinload(Review.sentiment_scores)
@@ -60,8 +72,10 @@ async def list_guest_priorities(db: AsyncSession = Depends(get_db)):
     result = await db.execute(query)
     guests = result.scalars().all()
     
-    # Load all existing actions to check status
-    actions_result = await db.execute(select(InterceptAction))
+    # Load existing actions for this restaurant
+    actions_result = await db.execute(
+        select(InterceptAction).where(InterceptAction.restaurant_id == x_restaurant_id)
+    )
     all_actions = actions_result.scalars().all()
     # Map by guest_id
     actions_map: dict[str, InterceptAction] = {f"{a.guest_id}:{a.segment}": a for a in all_actions}
@@ -160,20 +174,24 @@ async def list_guest_priorities(db: AsyncSession = Depends(get_db)):
     return prioritized
 
 
-@router.post("/{guest_id}/intercept/action", response_model=InterceptActionRead)
+@router.post("/guests/{guest_id}/intercept/action", response_model=InterceptActionRead)
 async def mark_intercept_action(
     guest_id: str,
     data: InterceptActionCreate,
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Update the status of a guest intercept (e.g., mark as Actioned or Resolved)."""
-    # Check if guest exists
-    guest_result = await db.execute(select(Guest).where(Guest.id == guest_id))
+    """Update the status of a guest intercept scoped to restaurant."""
+    # Check if guest exists in this restaurant
+    guest_result = await db.execute(
+        select(Guest).where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
+    )
     if not guest_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Guest not found")
+        raise HTTPException(status_code=404, detail="Guest not found in this restaurant")
 
     # Check for existing action for this guest + segment
     query = select(InterceptAction).where(
+        InterceptAction.restaurant_id == x_restaurant_id,
         InterceptAction.guest_id == guest_id,
         InterceptAction.segment == data.segment
     )
@@ -188,6 +206,7 @@ async def mark_intercept_action(
     else:
         # Create new
         action = InterceptAction(
+            restaurant_id=x_restaurant_id,
             guest_id=guest_id,
             status=data.status.value,
             segment=data.segment,
@@ -199,32 +218,48 @@ async def mark_intercept_action(
     return action
 
 
-@router.get("/{guest_id}", response_model=GuestRead)
-async def get_guest(guest_id: str, db: AsyncSession = Depends(get_db)):
-    """Get a single guest by ID."""
-    result = await db.execute(select(Guest).where(Guest.id == guest_id))
+@router.get("/guests/{guest_id}", response_model=GuestRead)
+async def get_guest(
+    guest_id: str, 
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a single guest by ID, scoped to restaurant."""
+    result = await db.execute(
+        select(Guest).where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
+    )
     guest = result.scalar_one_or_none()
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
     return guest
 
 
-@router.post("", response_model=GuestRead, status_code=201)
-async def create_guest(data: GuestCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new guest."""
-    guest = Guest(**data.model_dump())
+@router.post("/guests", response_model=GuestRead, status_code=201)
+async def create_guest(
+    data: GuestCreate, 
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new guest for the restaurant."""
+    guest = Guest(**data.model_dump(), restaurant_id=x_restaurant_id)
     db.add(guest)
     await db.flush()
     return guest
 
 
-@router.get("/{guest_id}/pulse", response_model=GuestPulse)
-async def get_guest_pulse(guest_id: str, db: AsyncSession = Depends(get_db)):
+@router.get("/guests/{guest_id}/pulse", response_model=GuestPulse)
+async def get_guest_pulse(
+    guest_id: str, 
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Guest Pulse — aggregate view combining purchase data + review sentiment.
+    Guest Pulse — aggregate view combining purchase data + review sentiment, scoped to restaurant.
     """
     # Fetch guest
-    result = await db.execute(select(Guest).where(Guest.id == guest_id))
+    result = await db.execute(
+        select(Guest).where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
+    )
     guest = result.scalar_one_or_none()
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")

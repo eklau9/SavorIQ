@@ -1,0 +1,203 @@
+Ensuring Supabase tables exist...
+2026-03-04 00:23:25,457 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2026-03-04 00:23:25,457 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-04 00:23:25,675 INFO sqlalchemy.engine.Engine select current_schema()
+2026-03-04 00:23:25,675 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-04 00:23:25,966 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2026-03-04 00:23:25,967 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-04 00:23:26,179 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-04 00:23:26,184 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-03-04 00:23:26,184 INFO sqlalchemy.engine.Engine [generated in 0.00026s] ('guests', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-03-04 00:23:26,424 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-03-04 00:23:26,424 INFO sqlalchemy.engine.Engine [cached since 0.2401s ago] ('orders', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-03-04 00:23:26,495 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-03-04 00:23:26,495 INFO sqlalchemy.engine.Engine [cached since 0.3108s ago] ('reviews', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-03-04 00:23:26,566 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-03-04 00:23:26,566 INFO sqlalchemy.engine.Engine [cached since 0.3825s ago] ('sentiment_scores', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-03-04 00:23:26,638 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-03-04 00:23:26,638 INFO sqlalchemy.engine.Engine [cached since 0.454s ago] ('intercept_actions', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-03-04 00:23:26,710 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-03-04 00:23:26,710 INFO sqlalchemy.engine.Engine [cached since 0.5259s ago] ('sync_logs', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-03-04 00:23:26,782 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-03-04 00:23:26,782 INFO sqlalchemy.engine.Engine [generated in 0.00026s] ('guest_tier', 'pg_catalog')
+2026-03-04 00:23:26,924 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-03-04 00:23:26,924 INFO sqlalchemy.engine.Engine [cached since 0.1422s ago] ('order_category', 'pg_catalog')
+2026-03-04 00:23:26,995 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-03-04 00:23:26,995 INFO sqlalchemy.engine.Engine [cached since 0.2136s ago] ('review_platform', 'pg_catalog')
+2026-03-04 00:23:27,069 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-03-04 00:23:27,069 INFO sqlalchemy.engine.Engine [cached since 0.2871s ago] ('sentiment_bucket', 'pg_catalog')
+2026-03-04 00:23:27,142 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-03-04 00:23:27,142 INFO sqlalchemy.engine.Engine [cached since 0.3601s ago] ('intercept_status', 'pg_catalog')
+2026-03-04 00:23:27,214 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-03-04 00:23:27,214 INFO sqlalchemy.engine.Engine [cached since 0.432s ago] ('sync_platform', 'pg_catalog')
+2026-03-04 00:23:27,286 INFO sqlalchemy.engine.Engine COMMIT
+Connecting to legacy SQLite DB at /Users/Ed/Desktop/savoriq.db...
+2026-03-04 00:23:28,476 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-04 00:23:28,477 INFO sqlalchemy.engine.Engine TRUNCATE TABLE sentiment_scores CASCADE;
+2026-03-04 00:23:28,477 INFO sqlalchemy.engine.Engine [generated in 0.00023s] ()
+2026-03-04 00:23:28,698 INFO sqlalchemy.engine.Engine TRUNCATE TABLE intercept_actions CASCADE;
+2026-03-04 00:23:28,698 INFO sqlalchemy.engine.Engine [generated in 0.00037s] ()
+2026-03-04 00:23:28,842 INFO sqlalchemy.engine.Engine TRUNCATE TABLE orders CASCADE;
+2026-03-04 00:23:28,842 INFO sqlalchemy.engine.Engine [generated in 0.00037s] ()
+2026-03-04 00:23:28,985 INFO sqlalchemy.engine.Engine TRUNCATE TABLE reviews CASCADE;
+2026-03-04 00:23:28,985 INFO sqlalchemy.engine.Engine [generated in 0.00028s] ()
+2026-03-04 00:23:29,131 INFO sqlalchemy.engine.Engine TRUNCATE TABLE guests CASCADE;
+2026-03-04 00:23:29,131 INFO sqlalchemy.engine.Engine [generated in 0.00028s] ()
+2026-03-04 00:23:29,294 INFO sqlalchemy.engine.Engine TRUNCATE TABLE sync_logs CASCADE;
+2026-03-04 00:23:29,294 INFO sqlalchemy.engine.Engine [generated in 0.00031s] ()
+2026-03-04 00:23:29,437 INFO sqlalchemy.engine.Engine COMMIT
+Cleared any existing data in destination tables.
+Migrating guests...
+2026-03-04 00:23:30,507 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-04 00:23:30,525 INFO sqlalchemy.engine.Engine INSERT INTO guests (id, name, email, phone, tier, first_visit, last_visit, created_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::guest_tier, $6::TIMESTAMP WITHOUT TIME ZONE, $7::TIMESTAMP WITHOUT TIME ZONE, $8::TIMESTAMP WITHOUT TIME ZONE)
+2026-03-04 00:23:30,525 INFO sqlalchemy.engine.Engine [generated in 0.00394s] [('fe55d960-e456-4c3f-b3db-0c3aedfb9bf5', 'Amitha Pious', None, None, 'new', datetime.datetime(2026, 2, 9, 1, 27, 51), datetime.datetime(2026, 2, 9, 1, 27, 51), datetime.datetime(2026, 3, 4, 4, 22, 29, 785579)), ('0429509a-72ea-49bb-a693-42fd0553416e', 'Edna G', None, None, 'new', datetime.datetime(2025, 12, 30, 3, 19, 58), datetime.datetime(2025, 12, 30, 3, 19, 58), datetime.datetime(2026, 3, 4, 4, 22, 29, 793650)), ('e6aac00c-36d7-4f40-862b-c9006af196a1', 'Yatpuquattro', None, None, 'new', datetime.datetime(2025, 11, 19, 2, 12, 54), datetime.datetime(2025, 11, 19, 2, 12, 54), datetime.datetime(2026, 3, 4, 4, 22, 29, 798659)), ('40ba968f-9ed5-4ef1-a8e7-b2b075fae10e', 'Y. A. Zhang', None, None, 'new', datetime.datetime(2025, 10, 26, 8, 42), datetime.datetime(2025, 10, 26, 8, 42), datetime.datetime(2026, 3, 4, 4, 22, 29, 803695)), ('df1f4009-4f28-4a94-b933-a69282c97872', 'Sabahat Ali', None, None, 'new', datetime.datetime(2025, 11, 15, 5, 18, 16), datetime.datetime(2025, 11, 15, 5, 18, 16), datetime.datetime(2026, 3, 4, 4, 22, 29, 808011)), ('832d2a13-1f93-4300-92df-076a0650438b', 'hh T', None, None, 'new', datetime.datetime(2026, 2, 23, 16, 20, 28), datetime.datetime(2026, 2, 23, 16, 20, 28), datetime.datetime(2026, 3, 4, 5, 18, 4, 690265)), ('29240b2b-4438-427f-9b9e-916396f56577', 'radha vani', None, None, 'new', datetime.datetime(2026, 2, 14, 23, 54, 13), datetime.datetime(2026, 2, 14, 23, 54, 13), datetime.datetime(2026, 3, 4, 5, 18, 4, 698033)), ('6b87600f-edf9-446f-a5d3-b58b6da890e9', 'vikram chandra', None, None, 'new', datetime.datetime(2026, 2, 14, 2, 55, 33), datetime.datetime(2026, 2, 14, 2, 55, 33), datetime.datetime(2026, 3, 4, 5, 18, 4, 703148))  ... displaying 10 of 797 total bound parameter sets ...  ('aa9f4123-17fb-483b-95ef-b40d5cd6e566', 'David Liao', None, None, 'new', datetime.datetime(2025, 2, 7, 19, 14, 21), datetime.datetime(2025, 2, 7, 19, 14, 21), datetime.datetime(2026, 3, 4, 6, 16, 26, 402658)), ('408876e3-fc83-475e-8a82-bb452a1c1f5a', 'J Z', None, None, 'new', datetime.datetime(2025, 2, 7, 19, 13, 57), datetime.datetime(2025, 2, 7, 19, 13, 57), datetime.datetime(2026, 3, 4, 6, 16, 26, 406593))]
+2026-03-04 00:23:31,209 INFO sqlalchemy.engine.Engine COMMIT
+  -> Migrated 797 guests.
+Migrating orders...
+  -> Migrated 0 orders.
+Migrating reviews...
+2026-03-04 00:23:32,257 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-04 00:23:32,275 INFO sqlalchemy.engine.Engine INSERT INTO reviews (id, guest_id, platform, platform_review_id, rating, content, reviewed_at, ingested_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::review_platform, $4::VARCHAR, $5::FLOAT, $6::VARCHAR, $7::TIMESTAMP WITHOUT TIME ZONE, $8::TIMESTAMP WITHOUT TIME ZONE)
+2026-03-04 00:23:32,275 INFO sqlalchemy.engine.Engine [generated in 0.00418s] [('1c3475ee-1d37-4bde-a564-338f32232929', 'fe55d960-e456-4c3f-b3db-0c3aedfb9bf5', 'google', 'Ci9DQUlRQUNvZENodHljRjlvT2tsWmIydHJZWEpsYm5OM2VtNXNhRTUyTTNRMlltYxAB', 5.0, 'This place came as a recommendation from a friend. Tried it for the first time a couple of weeks ago. The matcha drinks are exceptionally smooth and  ... (265 characters truncated) ... s in the evening.\nThe menu is limited and has a wait time of 20-40 mins. Recommend ordering  through the app.\nOverall  great tea place in the area.', datetime.datetime(2026, 2, 9, 1, 27, 51), datetime.datetime(2026, 3, 4, 4, 49, 45, 915223)), ('4f574461-b4de-42f8-a4ec-19cdaa5c37c1', '0429509a-72ea-49bb-a693-42fd0553416e', 'google', 'Ci9DQUlRQUNvZENodHljRjlvT25KYWNVUlNMV2h2VlRSU1MycHlTbE5CU0ZBMGIzYxAB', 4.0, 'They finally have a Hey Tea in our area. This is one of 3 locations. Waiting for the one in Fremont. Originally had this in NY. Love their drinks but ... (385 characters truncated) ... My go to drink is the blue coconut mango and coconut mango. There are others I want to try. Recommend their drink but hope the lines get better soon.', datetime.datetime(2025, 12, 30, 3, 19, 58), datetime.datetime(2026, 3, 4, 4, 49, 45, 920030)), ('0bfde196-df35-4010-b9e1-668ddfcf7264', 'e6aac00c-36d7-4f40-862b-c9006af196a1', 'google', 'Ci9DQUlRQUNvZENodHljRjlvT2poM1RteHZSM0JOY0dwTGNsQnNhbE5TZUhad05WRRAB', 4.0, 'Tried 2 drinks that left quite an impression! Cloud Longing Tea Latter (warm), and wow, it was absolutely delightful. The warmth brought out the crea ... (34 characters truncated) ... ght notes. Had Supreme Brown Sugar Bobo Milk which also good. Overall, the tea flavor wasn’t as pronounced as I expected, still enjoyable experience.', datetime.datetime(2025, 11, 19, 2, 12, 54), datetime.datetime(2026, 3, 4, 4, 49, 45, 923039)), ('7a5f4894-c33f-427c-84cb-131cca03619e', 'df1f4009-4f28-4a94-b933-a69282c97872', 'google', 'Ci9DQUlRQUNvZENodHljRjlvT25ZMVlqTk1WVGgxYmw5SE9WOU1hRXRUYUVwYWNWRRAB', 5.0, 'OK, so I’ll start with the positive. Their triple matcha supreme is hands-down the most intense matcha experience that you will probably ever have -  ... (397 characters truncated) ... hey do very well.\n\nHowever it’s not at the level of the most elite boba places like Boba bliss which is a solid tier above in quality and flavours.', datetime.datetime(2025, 11, 15, 5, 18, 16), datetime.datetime(2026, 3, 4, 4, 49, 45, 928454)), ('1e389ca5-57fa-4828-9eae-5c4b8944dadf', '832d2a13-1f93-4300-92df-076a0650438b', 'google', 'Ci9DQUlRQUNvZENodHljRjlvT25nNFJWWlJiVlkwZEhKS1JWbHplbXN5V2xOdFVHYxAB', 1.0, 'Visited the store yesterday. It was busy. Ordered 5 drinks. When I picked up and requested a bag, the front staff (male) was super rude. His face sho ... (28 characters truncated) ... ’t observe any friendly behavior from the staffs in the store. Won’t come back again although the drinks are ok. Not worth the long wait and rudeness', datetime.datetime(2026, 2, 23, 16, 20, 28), datetime.datetime(2026, 3, 4, 5, 18, 4, 691737)), ('7ec1fe7c-c64c-4074-9e87-c3fbad5b4229', '29240b2b-4438-427f-9b9e-916396f56577', 'google', 'Ci9DQUlRQUNvZENodHljRjlvT2t4RU1UaFhSazlPYVdObFpXb3lSazFYTld0a2NIYxAB', 5.0, 'i love Mango coconut boom 💛', datetime.datetime(2026, 2, 14, 23, 54, 13), datetime.datetime(2026, 3, 4, 5, 18, 4, 698958)), ('1ea88ec0-a508-4e27-bc6e-20e202b4e88e', '19d9f061-14c4-48d9-97bf-a46b96fbd866', 'google', 'ChdDSUhNMG9nS0VJQ0FnTURJekozTG1BRRAB', 4.0, "Order #77223 appeared on the pickup screen, indicating that it was ready. However, when I asked a staff member, I was told it was not yet available.  ... (166 characters truncated) ... mber. If I had not asked again, I may have continued waiting forever.\n\nEdit; I've re-visited multiple times since, and haven't had this issue again", datetime.datetime(2026, 1, 29, 8, 12, 16), datetime.datetime(2026, 3, 4, 5, 18, 4, 711157)), ('0803f471-d2fa-46c3-9b34-415c6da49f65', 'a86ffa4b-4e6a-4862-ac4c-4db5f07d7b1f', 'google', 'Ci9DQUlRQUNvZENodHljRjlvT21WWVZsbzJla1o2VkVreU56aERlbmQ2U1hKM1pWRRAB', 5.0, "The staff here knows that they're doing an excellent job serving all the clientele they receive on a daily basis. Keep up the great work Heytea gang!", datetime.datetime(2026, 1, 28, 5, 35, 47), datetime.datetime(2026, 3, 4, 5, 18, 4, 715674))  ... displaying 10 of 797 total bound parameter sets ...  ('12f985f0-f064-4e29-b06d-72ef773abeaf', 'aa9f4123-17fb-483b-95ef-b40d5cd6e566', 'google', 'ChZDSUhNMG9nS0VJQ0FnTURBd3R1OVpBEAE', 5.0, '[Rating only]', datetime.datetime(2025, 2, 7, 19, 14, 21), datetime.datetime(2026, 3, 4, 6, 16, 26, 403236)), ('dd0bf84a-b62f-4d95-a62e-974a085f3b85', '408876e3-fc83-475e-8a82-bb452a1c1f5a', 'google', 'ChZDSUhNMG9nS0VJQ0FnTURBd3B2TkRBEAE', 5.0, 'A new boba place with good fruit flavors! Despite the long line, the staff was efficient and fast', datetime.datetime(2025, 2, 7, 19, 13, 57), datetime.datetime(2026, 3, 4, 6, 16, 26, 407098))]
+2026-03-04 00:23:33,176 INFO sqlalchemy.engine.Engine COMMIT
+  -> Migrated 797 reviews.
+Migrating sentiment scores...
+2026-03-04 00:23:34,207 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-04 00:23:34,228 INFO sqlalchemy.engine.Engine INSERT INTO sentiment_scores (id, review_id, bucket, score, summary, analyzed_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::sentiment_bucket, $4::FLOAT, $5::VARCHAR, $6::TIMESTAMP WITHOUT TIME ZONE)
+2026-03-04 00:23:34,228 INFO sqlalchemy.engine.Engine [generated in 0.00463s] [('3c31f8c4-5644-4a4c-8356-208eb3f8db04', '4e7f3c34-bb28-4fdf-b838-feed8a263979', 'food', 0.9, 'The mochi was highly praised for being exceptionally fresh, warm, and having a texture that melts in the mouth.', datetime.datetime(2026, 3, 4, 4, 22, 40, 200283)), ('213ef6e9-bb3e-47a1-8acc-33701b94789e', '4e7f3c34-bb28-4fdf-b838-feed8a263979', 'drink', 0.7, 'The drinks, particularly the matcha and mango options, were described as high-quality and intense, though slightly below the level of top-tier competitors.', datetime.datetime(2026, 3, 4, 4, 22, 40, 200507)), ('715223d4-1688-4af3-b097-ac4bebab1a71', '4e7f3c34-bb28-4fdf-b838-feed8a263979', 'ambiance', 0.0, 'The reviewer did not mention the atmosphere or decor of the establishment.', datetime.datetime(2026, 3, 4, 4, 22, 40, 200600)), ('e9094981-c2bb-49f4-8502-2953c5e060a9', 'df4c68e1-39ba-4407-b24e-e858f0fac5e4', 'food', 0.0, 'The review does not mention any food items.', datetime.datetime(2026, 3, 4, 4, 22, 46, 624420)), ('46bc435a-a134-41c8-813e-607b59e0aa02', 'df4c68e1-39ba-4407-b24e-e858f0fac5e4', 'drink', 0.4, 'The matcha and kale drinks were generally enjoyed for their taste, though one was too sweet and the wait time was excessive.', datetime.datetime(2026, 3, 4, 4, 22, 46, 624588)), ('bfc8088f-58b8-440b-8089-2caaddc84461', 'df4c68e1-39ba-4407-b24e-e858f0fac5e4', 'ambiance', 0.0, 'The review does not provide any feedback on the atmosphere or decor.', datetime.datetime(2026, 3, 4, 4, 22, 46, 624669)), ('2aa1a600-f327-43ae-a772-c37d27fb3133', '427b5d83-439e-4fb1-a693-5f6bb15163fa', 'food', 0.0, 'The review does not mention any food items.', datetime.datetime(2026, 3, 4, 4, 22, 50, 694441)), ('c4e213ca-58b7-4edc-a174-ad7907d392d2', '427b5d83-439e-4fb1-a693-5f6bb15163fa', 'drink', 0.8, 'The drinks were highly praised for being delightful and creamy, though the tea flavor was slightly weaker than expected.', datetime.datetime(2026, 3, 4, 4, 22, 50, 694566))  ... displaying 10 of 1125 total bound parameter sets ...  ('2a023e9e-8e41-488b-bb95-2fda1d6f1b53', '1290650d-16fc-469e-80a1-e3229f4db689', 'food', 0.0, 'No specific category detected in review.', datetime.datetime(2026, 3, 4, 6, 16, 53, 548634)), ('022f8a7b-3de2-4573-82ac-6ad856b86d4d', '4f6feee9-aff3-4544-991e-a7141a0ee24c', 'food', 0.0, 'No specific category detected in review.', datetime.datetime(2026, 3, 4, 6, 16, 53, 812480))]
+2026-03-04 00:23:35,026 INFO sqlalchemy.engine.Engine ROLLBACK
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 565, in _executemany
+    return await self._connection.executemany(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/asyncpg/connection.py", line 391, in executemany
+    return await self._executemany(command, args, timeout)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/asyncpg/connection.py", line 1911, in _executemany
+    result, _ = await self._do_execute(query, executor, timeout)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/asyncpg/connection.py", line 1945, in _do_execute
+    result = await executor(stmt, None)
+  File "asyncpg/protocol/protocol.pyx", line 267, in bind_execute_many
+asyncpg.exceptions.ForeignKeyViolationError: insert or update on table "sentiment_scores" violates foreign key constraint "sentiment_scores_review_id_fkey"
+DETAIL:  Key (review_id)=(4e7f3c34-bb28-4fdf-b838-feed8a263979) is not present in table "reviews".
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1936, in _exec_single_context
+    self.dialect.do_executemany(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 938, in do_executemany
+    cursor.executemany(statement, parameters)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 577, in executemany
+    return self._adapt_connection.await_(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 569, in _executemany
+    self._handle_exception(error)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 501, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 784, in _handle_exception
+    raise translated_error from error
+sqlalchemy.dialects.postgresql.asyncpg.IntegrityError: <class 'asyncpg.exceptions.ForeignKeyViolationError'>: insert or update on table "sentiment_scores" violates foreign key constraint "sentiment_scores_review_id_fkey"
+DETAIL:  Key (review_id)=(4e7f3c34-bb28-4fdf-b838-feed8a263979) is not present in table "reviews".
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/migrate_to_supabase.py", line 166, in <module>
+    asyncio.run(migrate())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/migrate_to_supabase.py", line 115, in migrate
+    await session.commit()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/ext/asyncio/session.py", line 1009, in commit
+    await greenlet_spawn(self.sync_session.commit)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
+    result = context.switch(value)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2028, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
+    self.session.flush()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 4352, in flush
+    self._flush(objects)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 4488, in _flush
+    transaction.rollback(_capture_exception=True)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 4448, in _flush
+    flush_context.execute()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/persistence.py", line 1048, in _emit_insert_statements
+    result = connection.execute(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1936, in _exec_single_context
+    self.dialect.do_executemany(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 938, in do_executemany
+    cursor.executemany(statement, parameters)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 577, in executemany
+    return self._adapt_connection.await_(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 569, in _executemany
+    self._handle_exception(error)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 501, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 784, in _handle_exception
+    raise translated_error from error
+sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.ForeignKeyViolationError'>: insert or update on table "sentiment_scores" violates foreign key constraint "sentiment_scores_review_id_fkey"
+DETAIL:  Key (review_id)=(4e7f3c34-bb28-4fdf-b838-feed8a263979) is not present in table "reviews".
+[SQL: INSERT INTO sentiment_scores (id, review_id, bucket, score, summary, analyzed_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::sentiment_bucket, $4::FLOAT, $5::VARCHAR, $6::TIMESTAMP WITHOUT TIME ZONE)]
+[parameters: [('3c31f8c4-5644-4a4c-8356-208eb3f8db04', '4e7f3c34-bb28-4fdf-b838-feed8a263979', 'food', 0.9, 'The mochi was highly praised for being exceptionally fresh, warm, and having a texture that melts in the mouth.', datetime.datetime(2026, 3, 4, 4, 22, 40, 200283)), ('213ef6e9-bb3e-47a1-8acc-33701b94789e', '4e7f3c34-bb28-4fdf-b838-feed8a263979', 'drink', 0.7, 'The drinks, particularly the matcha and mango options, were described as high-quality and intense, though slightly below the level of top-tier competitors.', datetime.datetime(2026, 3, 4, 4, 22, 40, 200507)), ('715223d4-1688-4af3-b097-ac4bebab1a71', '4e7f3c34-bb28-4fdf-b838-feed8a263979', 'ambiance', 0.0, 'The reviewer did not mention the atmosphere or decor of the establishment.', datetime.datetime(2026, 3, 4, 4, 22, 40, 200600)), ('e9094981-c2bb-49f4-8502-2953c5e060a9', 'df4c68e1-39ba-4407-b24e-e858f0fac5e4', 'food', 0.0, 'The review does not mention any food items.', datetime.datetime(2026, 3, 4, 4, 22, 46, 624420)), ('46bc435a-a134-41c8-813e-607b59e0aa02', 'df4c68e1-39ba-4407-b24e-e858f0fac5e4', 'drink', 0.4, 'The matcha and kale drinks were generally enjoyed for their taste, though one was too sweet and the wait time was excessive.', datetime.datetime(2026, 3, 4, 4, 22, 46, 624588)), ('bfc8088f-58b8-440b-8089-2caaddc84461', 'df4c68e1-39ba-4407-b24e-e858f0fac5e4', 'ambiance', 0.0, 'The review does not provide any feedback on the atmosphere or decor.', datetime.datetime(2026, 3, 4, 4, 22, 46, 624669)), ('2aa1a600-f327-43ae-a772-c37d27fb3133', '427b5d83-439e-4fb1-a693-5f6bb15163fa', 'food', 0.0, 'The review does not mention any food items.', datetime.datetime(2026, 3, 4, 4, 22, 50, 694441)), ('c4e213ca-58b7-4edc-a174-ad7907d392d2', '427b5d83-439e-4fb1-a693-5f6bb15163fa', 'drink', 0.8, 'The drinks were highly praised for being delightful and creamy, though the tea flavor was slightly weaker than expected.', datetime.datetime(2026, 3, 4, 4, 22, 50, 694566))  ... displaying 10 of 1125 total bound parameter sets ...  ('2a023e9e-8e41-488b-bb95-2fda1d6f1b53', '1290650d-16fc-469e-80a1-e3229f4db689', 'food', 0.0, 'No specific category detected in review.', datetime.datetime(2026, 3, 4, 6, 16, 53, 548634)), ('022f8a7b-3de2-4573-82ac-6ad856b86d4d', '4f6feee9-aff3-4544-991e-a7141a0ee24c', 'food', 0.0, 'No specific category detected in review.', datetime.datetime(2026, 3, 4, 6, 16, 53, 812480))]]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)

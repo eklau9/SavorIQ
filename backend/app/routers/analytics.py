@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import sqlalchemy
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
+from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,13 +28,16 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 
 @router.get("/overview", response_model=OverviewStats)
-async def get_overview(db: AsyncSession = Depends(get_db)):
-    """Aggregate statistics across all guests, orders, and reviews."""
+async def get_overview(
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Aggregate statistics across all guests, orders, and reviews, scoped to restaurant."""
     # Totals
-    guests_count = (await db.execute(select(func.count(Guest.id)))).scalar() or 0
-    orders_count = (await db.execute(select(func.count(Order.id)))).scalar() or 0
-    reviews_count = (await db.execute(select(func.count(Review.id)))).scalar() or 0
-    avg_rating = (await db.execute(select(func.avg(Review.rating)))).scalar() or 0.0
+    guests_count = (await db.execute(select(func.count(Guest.id)).where(Guest.restaurant_id == x_restaurant_id))).scalar() or 0
+    orders_count = (await db.execute(select(func.count(Order.id)).where(Order.restaurant_id == x_restaurant_id))).scalar() or 0
+    reviews_count = (await db.execute(select(func.count(Review.id)).where(Review.restaurant_id == x_restaurant_id))).scalar() or 0
+    avg_rating = (await db.execute(select(func.avg(Review.rating)).where(Review.restaurant_id == x_restaurant_id))).scalar() or 0.0
 
     # Sentiment by bucket
     bucket_rows = (
@@ -42,7 +46,10 @@ async def get_overview(db: AsyncSession = Depends(get_db)):
                 SentimentScore.bucket,
                 func.avg(SentimentScore.score).label("avg_score"),
                 func.count(SentimentScore.id).label("review_count"),
-            ).group_by(SentimentScore.bucket)
+            )
+            .join(Review, SentimentScore.review_id == Review.id)
+            .where(Review.restaurant_id == x_restaurant_id)
+            .group_by(SentimentScore.bucket)
         )
     ).all()
 
@@ -65,9 +72,12 @@ async def get_overview(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/deep", response_model=DeepAnalytics)
-async def get_deep_analytics(db: AsyncSession = Depends(get_db)):
-    """Provide deep insights: item performance + AI strategy briefing."""
-    overview = await get_overview(db)
+async def get_deep_analytics(
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Provide deep insights scoped to restaurant."""
+    overview = await get_overview(x_restaurant_id, db)
 
     # 1. Calculate item popularity
     order_rows = (
@@ -76,14 +86,18 @@ async def get_deep_analytics(db: AsyncSession = Depends(get_db)):
                 Order.item_name,
                 Order.category,
                 func.count(Order.id).label("count")
-            ).group_by(Order.item_name, Order.category)
+            )
+            .where(Order.restaurant_id == x_restaurant_id)
+            .group_by(Order.item_name, Order.category)
         )
     ).all()
 
-    # 2. Get all reviews with sentiment
+    # 2. Get all reviews for this restaurant with sentiment
     reviews = (
         await db.execute(
-            select(Review).options(
+            select(Review)
+            .where(Review.restaurant_id == x_restaurant_id)
+            .options(
                 sqlalchemy.orm.selectinload(Review.sentiment_scores)
             )
         )
@@ -142,17 +156,23 @@ async def get_deep_analytics(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/sentiment", response_model=SentimentAnalytics)
-async def get_sentiment_analytics(db: AsyncSession = Depends(get_db)):
-    """Sentiment breakdown: per-bucket averages, monthly trend, highlights."""
+async def get_sentiment_analytics(
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Sentiment breakdown: per-bucket averages, monthly trend, highlights, scoped to restaurant."""
 
-    # 1. Per-bucket averages (reuse existing logic)
+    # 1. Per-bucket averages
     bucket_rows = (
         await db.execute(
             select(
                 SentimentScore.bucket,
                 func.avg(SentimentScore.score).label("avg_score"),
                 func.count(SentimentScore.id).label("review_count"),
-            ).group_by(SentimentScore.bucket)
+            )
+            .join(Review, SentimentScore.review_id == Review.id)
+            .where(Review.restaurant_id == x_restaurant_id)
+            .group_by(SentimentScore.bucket)
         )
     ).all()
 
@@ -173,6 +193,8 @@ async def get_sentiment_analytics(db: AsyncSession = Depends(get_db)):
                 SentimentScore.bucket,
                 func.avg(SentimentScore.score).label("avg_score"),
             )
+            .join(Review, SentimentScore.review_id == Review.id)
+            .where(Review.restaurant_id == x_restaurant_id)
             .group_by("month", SentimentScore.bucket)
             .order_by("month")
         )
@@ -193,6 +215,7 @@ async def get_sentiment_analytics(db: AsyncSession = Depends(get_db)):
         await db.execute(
             select(SentimentScore, Review.content)
             .join(Review, SentimentScore.review_id == Review.id)
+            .where(Review.restaurant_id == x_restaurant_id)
         )
     ).all()
 
@@ -219,8 +242,11 @@ async def get_sentiment_analytics(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/operations", response_model=OperationsAnalytics)
-async def get_operations_analytics(db: AsyncSession = Depends(get_db)):
-    """Operational KPIs: revenue, segments, data health, platform split."""
+async def get_operations_analytics(
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Operational KPIs: revenue, segments, data health, platform split, scoped to restaurant."""
 
     # 1. Revenue
     rev_row = (
@@ -229,12 +255,13 @@ async def get_operations_analytics(db: AsyncSession = Depends(get_db)):
                 func.sum(Order.price * Order.quantity).label("total_revenue"),
                 func.count(Order.id).label("total_orders"),
             )
+            .where(Order.restaurant_id == x_restaurant_id)
         )
     ).first()
     total_revenue = float(rev_row.total_revenue or 0)
     total_orders = rev_row.total_orders or 0
 
-    guests_count = (await db.execute(select(func.count(Guest.id)))).scalar() or 1
+    guests_count = (await db.execute(select(func.count(Guest.id)).where(Guest.restaurant_id == x_restaurant_id))).scalar() or 1
     avg_order_value = round(total_revenue / max(total_orders, 1), 2)
     orders_per_guest = round(total_orders / max(guests_count, 1), 1)
 
@@ -245,7 +272,9 @@ async def get_operations_analytics(db: AsyncSession = Depends(get_db)):
                 Order.category,
                 func.sum(Order.price * Order.quantity).label("revenue"),
                 func.count(Order.id).label("count"),
-            ).group_by(Order.category)
+            )
+            .where(Order.restaurant_id == x_restaurant_id)
+            .group_by(Order.category)
         )
     ).all()
 
@@ -262,6 +291,7 @@ async def get_operations_analytics(db: AsyncSession = Depends(get_db)):
     tier_rows = (
         await db.execute(
             select(Guest.tier, func.count(Guest.id).label("count"))
+            .where(Guest.restaurant_id == x_restaurant_id)
             .group_by(Guest.tier)
         )
     ).all()
@@ -275,21 +305,27 @@ async def get_operations_analytics(db: AsyncSession = Depends(get_db)):
     guests_with_orders = (
         await db.execute(
             select(func.count(func.distinct(Order.guest_id)))
+            .where(Order.restaurant_id == x_restaurant_id)
         )
     ).scalar() or 0
 
     guests_with_reviews = (
         await db.execute(
             select(func.count(func.distinct(Review.guest_id)))
+            .where(Review.restaurant_id == x_restaurant_id)
         )
     ).scalar() or 0
 
-    # Guests that appear in BOTH tables
+    # Guests that appear in BOTH tables within this restaurant
     guests_with_both = (
         await db.execute(
             select(func.count()).select_from(
                 select(Order.guest_id)
-                .intersect(select(Review.guest_id))
+                .where(Order.restaurant_id == x_restaurant_id)
+                .intersect(
+                    select(Review.guest_id)
+                    .where(Review.restaurant_id == x_restaurant_id)
+                )
                 .subquery()
             )
         )
@@ -301,6 +337,7 @@ async def get_operations_analytics(db: AsyncSession = Depends(get_db)):
     platform_rows = (
         await db.execute(
             select(Review.platform, func.count(Review.id).label("count"))
+            .where(Review.restaurant_id == x_restaurant_id)
             .group_by(Review.platform)
         )
     ).all()

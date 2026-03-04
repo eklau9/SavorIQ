@@ -7,16 +7,19 @@ export const metadata = {
 };
 
 import Sidebar from "@/components/Sidebar";
+import { RestaurantProvider } from "@/context/RestaurantContext";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <div className="app-layout">
-          <Sidebar />
+        <RestaurantProvider>
+          <div className="app-layout">
+            <Sidebar />
 
-          <main className="main-content">{children}</main>
-        </div>
+            <main className="main-content">{children}</main>
+          </div>
+        </RestaurantProvider>
       </body>
     </html>
   );

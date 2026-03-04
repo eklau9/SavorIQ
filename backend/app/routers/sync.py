@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.config import settings
 from app.database import get_db
-from app.models import Review, SyncLog
+from app.models import Restaurant, Review, SyncLog
 from app.schemas import ReviewPlatform
 from app.services.apify_sync import apify_google_reviews, apify_yelp_reviews
 from app.services.ingestion import ingest_reviews
@@ -111,6 +111,7 @@ async def sync_apify_reviews(
     business_name: str = Query("Unknown", description="Business display name"),
     max_reviews: int = Query(100000, description="Max reviews to fetch (default 100,000)"),
     force: bool = Query(False, description="Force sync even if synced today"),
+    restaurant_id: str | None = Query(None, description="Optional target restaurant ID to append data to"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -129,6 +130,10 @@ async def sync_apify_reviews(
         )
         log = existing.scalar_one_or_none()
         if log:
+            # If restaurant_id was provided, ensure it matches or we are force-linking?
+            # For now, just use the existing mapping if it exists
+            target_restaurant_id = log.restaurant_id
+            
             cutoff = datetime.utcnow() - timedelta(hours=SYNC_COOLDOWN_HOURS)
             if log.last_synced_at > cutoff:
                 diff = datetime.utcnow() - log.last_synced_at
@@ -152,6 +157,27 @@ async def sync_apify_reviews(
                     "reviews_fetched": log.reviews_fetched,
                     "new_reviews": log.new_reviews,
                 }
+    else:
+        # Even if forcing, we need to find the target_restaurant_id if it exists
+        existing = await db.execute(
+            select(SyncLog).where(
+                SyncLog.platform == platform,
+                SyncLog.business_id == business_id,
+            )
+        )
+        log = existing.scalar_one_or_none()
+        target_restaurant_id = log.restaurant_id if log else restaurant_id
+
+    # ── Provision new Restaurant if no mapping exists ──
+    if not target_restaurant_id:
+        logger.info(f"First-time sync for {business_name}. Provisioning new Restaurant tenant.")
+        new_restaurant = Restaurant(name=business_name)
+        db.add(new_restaurant)
+        await db.flush() # Get the generated ID
+        target_restaurant_id = new_restaurant.id
+    
+    # Ensure restaurant_id is set for downstream services
+    restaurant_id = target_restaurant_id
 
     # ── Fetch reviews via Apify ──
     logger.info(f"Syncing Apify reviews for {platform} - URL: {business_url}")
@@ -174,7 +200,7 @@ async def sync_apify_reviews(
         raise HTTPException(status_code=502, detail=f"Apify {platform} error: {str(e)}")
 
     # ── Ingest into SavorIQ ──
-    report = await ingest_reviews(db, review_platform, raw_reviews)
+    report = await ingest_reviews(db, restaurant_id, review_platform, raw_reviews)
 
     # ── Run sentiment analysis on new reviews (Batch processing) ──
     if report.ingested > 0:
@@ -216,8 +242,10 @@ async def sync_apify_reviews(
         log.reviews_fetched = len(raw_reviews)
         log.new_reviews = report.ingested
         log.business_name = business_name
+        # Keep existing restaurant_id mapping
     else:
         log = SyncLog(
+            restaurant_id=restaurant_id, # Link new log to the restaurant it created/received
             platform=platform,
             business_id=business_id,
             business_name=business_name,

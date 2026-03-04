@@ -22,23 +22,27 @@ logger = logging.getLogger(__name__)
 
 
 async def _get_or_create_guest(
-    db: AsyncSession, name: str, email: str | None = None
+    db: AsyncSession, restaurant_id: str, name: str, email: str | None = None
 ) -> Guest:
-    """Find existing guest by email or name, or create a new one."""
+    """Find existing guest by email or name within a restaurant, or create a new one."""
     if email:
-        result = await db.execute(select(Guest).where(Guest.email == email))
+        result = await db.execute(
+            select(Guest).where(Guest.restaurant_id == restaurant_id, Guest.email == email)
+        )
         guest = result.scalar_one_or_none()
         if guest:
             return guest
 
-    # Fallback: match by exact name
-    result = await db.execute(select(Guest).where(Guest.name == name))
+    # Fallback: match by exact name within the restaurant
+    result = await db.execute(
+        select(Guest).where(Guest.restaurant_id == restaurant_id, Guest.name == name)
+    )
     guest = result.scalar_one_or_none()
     if guest:
         return guest
 
-    # Create new guest
-    guest = Guest(name=name, email=email, tier="new")
+    # Create new guest for this restaurant
+    guest = Guest(restaurant_id=restaurant_id, name=name, email=email, tier="new")
     db.add(guest)
     await db.flush()
     return guest
@@ -105,6 +109,7 @@ async def check_duplicate(db: AsyncSession, platform_review_id: str) -> bool:
 
 async def ingest_reviews(
     db: AsyncSession,
+    restaurant_id: str,
     platform: ReviewPlatform,
     reviews_data: list[dict],
 ) -> IngestionReport:
@@ -139,9 +144,10 @@ async def ingest_reviews(
                 report.duplicates_skipped += 1
                 continue
 
-            # Get or create guest
+            # Get or create guest scoped to restaurant
             guest = await _get_or_create_guest(
                 db,
+                restaurant_id=restaurant_id,
                 name=normalized["guest_name"],
                 email=normalized.get("guest_email"),
             )
@@ -155,6 +161,7 @@ async def ingest_reviews(
 
             # Create review
             review = Review(
+                restaurant_id=restaurant_id,
                 guest_id=guest.id,
                 platform=normalized["platform"].value,
                 platform_review_id=normalized["platform_review_id"],
@@ -177,6 +184,7 @@ async def ingest_reviews(
 
 async def ingest_orders(
     db: AsyncSession,
+    restaurant_id: str,
     orders_data: list[dict],
 ) -> OrderIngestionReport:
     """Bulk ingest orders from JSON data."""
@@ -190,7 +198,7 @@ async def ingest_orders(
         try:
             parsed = OrderIngestItem.model_validate(raw_data)
             guest = await _get_or_create_guest(
-                db, name=parsed.guest_name, email=parsed.guest_email
+                db, restaurant_id=restaurant_id, name=parsed.guest_name, email=parsed.guest_email
             )
 
             ordered_at = _parse_datetime(parsed.ordered_at)
@@ -212,6 +220,7 @@ async def ingest_orders(
                 guest.tier = "regular"
 
             order = Order(
+                restaurant_id=restaurant_id,
                 guest_id=guest.id,
                 item_name=parsed.item_name,
                 category=parsed.category.value,

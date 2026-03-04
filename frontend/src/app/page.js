@@ -54,17 +54,7 @@ export default function DashboardPage() {
         setPriorities([]);
       }
 
-      // Fetch pulse data for each guest
-      const pulseMap = {};
-      for (const guest of guestsData) {
-        try {
-          const pulseRes = await fetch(`${API_BASE}/api/guests/${guest.id}/pulse`);
-          if (pulseRes.ok) {
-            pulseMap[guest.id] = await pulseRes.json();
-          }
-        } catch { }
-      }
-      setPulses(pulseMap);
+      setPulses({});
     } catch (err) {
       console.error("Failed to load data:", err);
     } finally {

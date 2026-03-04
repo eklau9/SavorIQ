@@ -1,35 +1,63 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+/**
+ * Helper to get the active restaurant ID from localStorage.
+ */
+function getActiveRestaurantId() {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("activeRestaurantId");
+}
+
+/**
+ * Wrapper for fetch that automatically injects the X-Restaurant-ID header.
+ */
+async function apiFetch(endpoint, options = {}) {
+    const restaurantId = getActiveRestaurantId();
+    const headers = {
+        ...options.headers,
+    };
+
+    if (restaurantId) {
+        headers["X-Restaurant-ID"] = restaurantId;
+    }
+
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `API Error: ${res.status}`);
+    }
+
+    return res.json();
+}
+
+export async function fetchRestaurants() {
+    return apiFetch("/api/restaurants", { cache: "no-store" });
+}
+
 export async function fetchGuests(tier = null) {
     const params = new URLSearchParams();
     if (tier) params.set("tier", tier);
-    const res = await fetch(`${API_BASE}/api/guests?${params}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch guests");
-    return res.json();
+    return apiFetch(`/api/guests?${params}`, { cache: "no-store" });
 }
 
 export async function fetchGuestPriorities() {
-    const res = await fetch(`${API_BASE}/api/guests/priorities`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch guest priorities");
-    return res.json();
+    return apiFetch("/api/guests/priorities", { cache: "no-store" });
 }
 
 export async function fetchGuest(id) {
-    const res = await fetch(`${API_BASE}/api/guests/${id}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch guest");
-    return res.json();
+    return apiFetch(`/api/guests/${id}`, { cache: "no-store" });
 }
 
 export async function fetchGuestPulse(id) {
-    const res = await fetch(`${API_BASE}/api/guests/${id}/pulse`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch guest pulse");
-    return res.json();
+    return apiFetch(`/api/guests/${id}/pulse`, { cache: "no-store" });
 }
 
 export async function fetchGuestOrders(id) {
-    const res = await fetch(`${API_BASE}/api/guests/${id}/orders`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch orders");
-    return res.json();
+    return apiFetch(`/api/guests/${id}/orders`, { cache: "no-store" });
 }
 
 export async function fetchAllReviews(platform = null, search = null, sentiment = null, days = null, date = null, bucket = null) {
@@ -40,9 +68,7 @@ export async function fetchAllReviews(platform = null, search = null, sentiment 
     if (days !== null) params.set("days", days);
     if (date) params.set("date", date);
     if (bucket) params.set("bucket", bucket);
-    const res = await fetch(`${API_BASE}/api/reviews?${params}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch reviews");
-    return res.json();
+    return apiFetch(`/api/reviews?${params}`, { cache: "no-store" });
 }
 
 export async function fetchReviewStats(platform = null, search = null, days = null, date = null, bucket = null) {
@@ -52,67 +78,51 @@ export async function fetchReviewStats(platform = null, search = null, days = nu
     if (days !== null) params.set("days", days);
     if (date) params.set("date", date);
     if (bucket) params.set("bucket", bucket);
-    const res = await fetch(`${API_BASE}/api/reviews/stats?${params}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch review stats");
-    return res.json();
+    return apiFetch(`/api/reviews/stats?${params}`, { cache: "no-store" });
 }
 
 export async function fetchGuestReviews(id) {
-    const res = await fetch(`${API_BASE}/api/guests/${id}/reviews`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch reviews");
-    return res.json();
+    return apiFetch(`/api/guests/${id}/reviews`, { cache: "no-store" });
 }
 
 export async function fetchOverview() {
-    const res = await fetch(`${API_BASE}/api/analytics/overview`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch overview");
-    return res.json();
+    return apiFetch("/api/analytics/overview", { cache: "no-store" });
 }
 
 export async function fetchDeepAnalytics() {
-    const res = await fetch(`${API_BASE}/api/analytics/deep`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch deep analytics");
-    return res.json();
+    return apiFetch("/api/analytics/deep", { cache: "no-store" });
 }
 
 export async function ingestReviews(data) {
-    const res = await fetch(`${API_BASE}/api/reviews/ingest`, {
+    return apiFetch("/api/reviews/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
-    return res.json();
 }
 
 export async function ingestOrders(data) {
-    const res = await fetch(`${API_BASE}/api/orders/ingest`, {
+    return apiFetch("/api/orders/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
-    return res.json();
 }
 
 export async function fetchSentimentAnalytics() {
-    const res = await fetch(`${API_BASE}/api/analytics/sentiment`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch sentiment analytics");
-    return res.json();
+    return apiFetch("/api/analytics/sentiment", { cache: "no-store" });
 }
 
 export async function fetchOperationsAnalytics() {
-    const res = await fetch(`${API_BASE}/api/analytics/operations`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch operations analytics");
-    return res.json();
+    return apiFetch("/api/analytics/operations", { cache: "no-store" });
 }
 
 export async function postInterceptAction(guestId, data) {
-    const res = await fetch(`${API_BASE}/api/guests/${guestId}/intercept/action`, {
+    return apiFetch(`/api/guests/${guestId}/intercept/action`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Failed to post intercept action");
-    return res.json();
 }
 
 // ── Sync API ──────────────────────────────────────────────────────────
@@ -123,9 +133,7 @@ export async function searchBusiness(name, location, lat = null, lng = null) {
     if (lat) params.append("lat", lat);
     if (lng) params.append("lng", lng);
 
-    const res = await fetch(`${API_BASE}/api/sync/search?${params}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to search businesses");
-    return res.json();
+    return apiFetch(`/api/sync/search?${params}`, { cache: "no-store" });
 }
 
 export async function syncApifyReviews(platform, url, businessName) {
@@ -135,15 +143,11 @@ export async function syncApifyReviews(platform, url, businessName) {
         business_name: businessName,
         max_reviews: 100, // Default to 100 for user-triggered syncs
     });
-    const res = await fetch(`${API_BASE}/api/sync/apify-reviews?${params}`, {
+    return apiFetch(`/api/sync/apify-reviews?${params}`, {
         method: "POST",
     });
-    if (!res.ok) throw new Error("Failed to sync reviews via Apify");
-    return res.json();
 }
 
 export async function fetchSyncStatus() {
-    const res = await fetch(`${API_BASE}/api/sync/status`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch sync status");
-    return res.json();
+    return apiFetch("/api/sync/status", { cache: "no-store" });
 }
