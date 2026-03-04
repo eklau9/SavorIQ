@@ -60,8 +60,5 @@ The primary objective is to empower restaurant managers and hospitality operator
 ## 4. Technical Requirements
 *   **Backend**: FastAPI with SQLAlchemy (PostgreSQL).
 *   **Frontend**: Next.js (React) with pure CSS visualizations.
-*   **AI**: Google Gemini for sentiment analysis and strategic briefings.
-*   **Review Scraping**: Apify REST API for reliable, multi-platform data ingestion.
-*   **Location Intelligence**: Browser Geolocation API for "Smart Search" without mandatory city input.
-*   **Architecture**: See [TECHNICAL_SPEC.md](file:///Users/Ed/Apps/SavorIQ/TECHNICAL_SPEC.md) for detailed pipeline and API usage strategies.
+*   **APIs & Integrations**: SavorIQ uses Google Places, Yelp Fusion, Apify, Google Gemini, and Browser Geolocation. For the definitive directory of API usage, limits, and costs, see [TECHNICAL_SPEC.md](file:///Users/Ed/Apps/SavorIQ/TECHNICAL_SPEC.md).
 *   **Deployment**: Docker & Kubernetes ready.

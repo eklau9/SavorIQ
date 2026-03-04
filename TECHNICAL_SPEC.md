@@ -1,8 +1,22 @@
-# Technical Specification: Review Ingestion & Intelligence Pipeline
+# Technical Specification: System Architecture & API Integrations
 
-This document details the internal architecture of the SavorIQ review processing system, providing a technical reference for the "Two-Stage" discovery and ingestion flow.
+This document details the internal architecture, API usage, and intelligence pipeline for SavorIQ.
 
-## 1. Multi-Stage Discovery & Syncing
+## 1. APIs & External Services Directory
+
+SavorIQ relies on the following external services to function. This is the definitive list of all APIs, their purpose, and their current billing/usage strategy:
+
+| Service | Category | Purpose | Tier / Usage Limit |
+| :--- | :--- | :--- | :--- |
+| **Google Places API (New)** | Discovery Search | Lightweight text search to find Google Place IDs, URLs, and basic metadata. | Free ($200/mo credit allows ~10,000 free searches). |
+| **Yelp Fusion API** | Discovery Search | Lightweight text search to find Yelp Business IDs, URLs, and basic metadata. | Free (5,000 requests/month). |
+| **Apify REST API** | Review Sync | Runs headless actor bots (`compass/google-maps-reviews-scraper`, `tri_angle~yelp-review-scraper`) to bypass strict API limits and deep-scrape historical review data. | Paid (Consumes Apify compute credits). |
+| **Google Gemini API** | AI Intelligence | Powers both the per-review Sentiment Analysis (categorization) and the Executive Dashboard Manager Briefings. Uses `gemini-1.5-flash` model. | Free Tier (15 Requests Per Minute, 1,500 Requests Per Day). |
+| **Browser Geolocation API** | Client Feature | Native frontend browser feature used for location-aware "Smart Search" when the city field is left blank. | Free (Native HTML5). |
+
+---
+
+## 2. Multi-Stage Discovery & Syncing
 
 To optimize API costs and performance, the system follows a split architecture:
 
