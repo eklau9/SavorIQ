@@ -17428,3 +17428,27 @@ INFO:     Waiting for application startup.
 2026-03-03 22:44:24,806 INFO sqlalchemy.engine.Engine [raw sql] ()
 2026-03-03 22:44:24,807 INFO sqlalchemy.engine.Engine COMMIT
 INFO:     Application startup complete.
+INFO:     127.0.0.1:53009 - "GET /api/sync/search?name=heytea&lat=37.41931504144518&lng=-121.91583722585644 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53009 - "GET /api/sync/search?name=heytea&lat=37.419322462585306&lng=-121.91586030728483 HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/services/sync.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [87873]
+INFO:     Started server process [88156]
+INFO:     Waiting for application startup.
+2026-03-03 22:49:02,396 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 22:49:02,396 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 22:49:02,396 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:49:02,397 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 22:49:02,397 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:49:02,397 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 22:49:02,397 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:49:02,398 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 22:49:02,398 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:49:02,398 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 22:49:02,398 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:49:02,399 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-03-03 22:49:02,399 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 22:49:02,400 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.

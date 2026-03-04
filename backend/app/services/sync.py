@@ -72,8 +72,13 @@ async def yelp_search(
 GOOGLE_PLACES_BASE = "https://places.googleapis.com/v1"
 
 
-async def google_search(name: str, location: str) -> list[dict]:
-    """Search Google Places for businesses matching a text query."""
+async def google_search(
+    name: str,
+    location: str | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+) -> list[dict]:
+    """Search Google Places for businesses matching a text query or coordinates."""
     if not settings.GOOGLE_PLACES_API_KEY:
         raise ValueError("GOOGLE_PLACES_API_KEY is not configured.")
 
@@ -82,7 +87,23 @@ async def google_search(name: str, location: str) -> list[dict]:
         "X-Goog-Api-Key": settings.GOOGLE_PLACES_API_KEY,
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri",
     }
-    body = {"textQuery": f"{name} {location}"}
+
+    # Construct query
+    query = name
+    if location:
+        query = f"{name} {location}"
+
+    body: dict[str, Any] = {"textQuery": query}
+
+    # Add location bias if coordinates are provided
+    if lat is not None and lng is not None:
+        # 2000 meter radius circle bias around the point (slightly larger for better discovery)
+        body["locationBias"] = {
+            "circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": 2000.0,
+            }
+        }
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.post(
