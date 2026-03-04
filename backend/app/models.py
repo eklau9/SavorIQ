@@ -82,3 +82,20 @@ class SentimentScore(Base):
     analyzed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     review: Mapped["Review"] = relationship(back_populates="sentiment_scores")
+
+
+class InterceptAction(Base):
+    __tablename__ = "intercept_actions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    guest_id: Mapped[str] = mapped_column(String(36), ForeignKey("guests.id"), nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("open", "actioned", "resolved", "dismissed", name="intercept_status"),
+        default="open"
+    )
+    segment: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "VIP_AT_RISK"
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    actioned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    guest: Mapped["Guest"] = relationship()

@@ -42,10 +42,10 @@ export default function RootLayout({ children }) {
 
             <div className="nav-section">
               <div className="nav-section-title">Analysis</div>
-              <a href="/" className="nav-link">
+              <a href="/sentiment" className="nav-link">
                 <span className="icon">🎯</span> Sentiment
               </a>
-              <a href="/" className="nav-link">
+              <a href="/analytics" className="nav-link">
                 <span className="icon">📈</span> Analytics
               </a>
             </div>

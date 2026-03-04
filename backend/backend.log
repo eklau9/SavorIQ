@@ -1,0 +1,119 @@
+INFO:     Will watch for changes in these directories: ['/Users/Ed/Apps/SavorIQ/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [23370] using WatchFiles
+INFO:     Started server process [23407]
+INFO:     Waiting for application startup.
+2026-03-03 19:28:15,406 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:28:15,406 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("guests")
+2026-03-03 19:28:15,406 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 19:28:15,407 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-03-03 19:28:15,407 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 19:28:15,408 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reviews")
+2026-03-03 19:28:15,408 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 19:28:15,408 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sentiment_scores")
+2026-03-03 19:28:15,408 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 19:28:15,409 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("intercept_actions")
+2026-03-03 19:28:15,409 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-03 19:28:15,410 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     Application startup complete.
+2026-03-03 19:28:23,846 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:28:23,848 INFO sqlalchemy.engine.Engine SELECT guests.id, guests.name, guests.email, guests.phone, guests.tier, guests.first_visit, guests.last_visit, guests.created_at 
+FROM guests
+2026-03-03 19:28:23,848 INFO sqlalchemy.engine.Engine [generated in 0.00016s] ()
+2026-03-03 19:28:23,852 INFO sqlalchemy.engine.Engine SELECT reviews.guest_id AS reviews_guest_id, reviews.id AS reviews_id, reviews.platform AS reviews_platform, reviews.platform_review_id AS reviews_platform_review_id, reviews.rating AS reviews_rating, reviews.content AS reviews_content, reviews.reviewed_at AS reviews_reviewed_at, reviews.ingested_at AS reviews_ingested_at 
+FROM reviews 
+WHERE reviews.guest_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-03-03 19:28:23,852 INFO sqlalchemy.engine.Engine [generated in 0.00025s] ('5ce71994-52d0-4b19-a2e2-f4e13ffec07f', 'f9f301fb-6242-4fe2-aed2-774803818793', '76782bc3-8eb2-4ade-b092-495706c1fbc1', '77a48080-9e3f-4345-999a-ac7c2d4d5dc3', '085337ae-0e68-4803-bec9-9c26d96efba6', 'a3eea6a5-d97e-4ebf-b83b-9b4fbe671354', '2a65ed4e-78d9-4875-b141-d0b92b1b43f9', 'ae3db4ca-362b-4961-872b-dc9abf6b6270', 'b7824830-fcfa-4b13-b98e-d84d79ed2890', 'd85c6b4c-0714-42e1-a929-eb923f4dd075', 'de4026aa-39cd-419a-bc26-6c9b987b1c5a', 'f6b8528c-9830-465e-a36c-f0bb2e36506b', 'b4640ab5-524b-45d3-8735-50f64be82291', 'a6355cba-8abd-4aac-adfe-b6fa375722cf', '41265b23-b467-4ae6-b7ae-9feac2f9f5a4', '40bb96d9-9b66-43c3-9777-600158c90aba')
+2026-03-03 19:28:23,856 INFO sqlalchemy.engine.Engine SELECT orders.guest_id AS orders_guest_id, orders.id AS orders_id, orders.item_name AS orders_item_name, orders.category AS orders_category, orders.price AS orders_price, orders.quantity AS orders_quantity, orders.ordered_at AS orders_ordered_at 
+FROM orders 
+WHERE orders.guest_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-03-03 19:28:23,856 INFO sqlalchemy.engine.Engine [generated in 0.00024s] ('5ce71994-52d0-4b19-a2e2-f4e13ffec07f', 'f9f301fb-6242-4fe2-aed2-774803818793', '76782bc3-8eb2-4ade-b092-495706c1fbc1', '77a48080-9e3f-4345-999a-ac7c2d4d5dc3', '085337ae-0e68-4803-bec9-9c26d96efba6', 'a3eea6a5-d97e-4ebf-b83b-9b4fbe671354', '2a65ed4e-78d9-4875-b141-d0b92b1b43f9', 'ae3db4ca-362b-4961-872b-dc9abf6b6270', 'b7824830-fcfa-4b13-b98e-d84d79ed2890', 'd85c6b4c-0714-42e1-a929-eb923f4dd075', 'de4026aa-39cd-419a-bc26-6c9b987b1c5a', 'f6b8528c-9830-465e-a36c-f0bb2e36506b', 'b4640ab5-524b-45d3-8735-50f64be82291', 'a6355cba-8abd-4aac-adfe-b6fa375722cf', '41265b23-b467-4ae6-b7ae-9feac2f9f5a4', '40bb96d9-9b66-43c3-9777-600158c90aba')
+2026-03-03 19:28:23,861 INFO sqlalchemy.engine.Engine SELECT sentiment_scores.review_id AS sentiment_scores_review_id, sentiment_scores.id AS sentiment_scores_id, sentiment_scores.bucket AS sentiment_scores_bucket, sentiment_scores.score AS sentiment_scores_score, sentiment_scores.summary AS sentiment_scores_summary, sentiment_scores.analyzed_at AS sentiment_scores_analyzed_at 
+FROM sentiment_scores 
+WHERE sentiment_scores.review_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-03-03 19:28:23,861 INFO sqlalchemy.engine.Engine [generated in 0.00032s] ('279ab084-3f11-475a-855f-154655a3db97', 'ca52b777-2e55-4984-9cf4-0682715d268f', '44719b92-a0dd-4776-bca3-79c21124857a', 'fb5b31d3-c550-4ba2-b14f-f17116b4390c', '4c4c1f20-0f28-45ca-a13b-f83f44e21602', '1f181ec0-b120-4486-9c07-5e78092e951a', '33003cbf-d43d-4533-aa24-19202aecb507', 'b886e7be-f49e-4ccd-bf64-b63b827ebade', '83c1ad27-1d6c-4784-9d51-650c3e0f391a', '8090cb2b-7e97-422a-a42c-b268deaa6707', '5e0a430e-ea18-4213-aa91-1250bc472e9d', '507bc667-c431-43af-adee-c90b38d07a4f', 'e394bf8c-1624-4ef0-ab38-f473ad4d9de9', '2cb6c4cf-7547-4aeb-8ecf-5411fac8426d', '46e906b7-750e-426c-8dda-2779ef5a5952', '3645376f-04a4-4a12-abd1-f93da2735df4')
+2026-03-03 19:28:23,864 INFO sqlalchemy.engine.Engine SELECT intercept_actions.id, intercept_actions.guest_id, intercept_actions.status, intercept_actions.segment, intercept_actions.notes, intercept_actions.actioned_at, intercept_actions.updated_at 
+FROM intercept_actions
+2026-03-03 19:28:23,864 INFO sqlalchemy.engine.Engine [generated in 0.00023s] ()
+2026-03-03 19:28:23,869 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:58589 - "GET /api/guests/priorities HTTP/1.1" 200 OK
+2026-03-03 19:47:03,624 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:47:03,625 INFO sqlalchemy.engine.Engine SELECT orders.id, orders.guest_id, orders.item_name, orders.category, orders.price, orders.quantity, orders.ordered_at 
+FROM orders 
+WHERE orders.guest_id = ? ORDER BY orders.ordered_at DESC
+ LIMIT ? OFFSET ?
+2026-03-03 19:47:03,625 INFO sqlalchemy.engine.Engine [generated in 0.00018s] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3', 50, 0)
+2026-03-03 19:47:03,625 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:47:03,626 INFO sqlalchemy.engine.Engine SELECT guests.id, guests.name, guests.email, guests.phone, guests.tier, guests.first_visit, guests.last_visit, guests.created_at 
+FROM guests 
+WHERE guests.id = ?
+2026-03-03 19:47:03,626 INFO sqlalchemy.engine.Engine [generated in 0.00016s] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3',)
+2026-03-03 19:47:03,626 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:47:03,627 INFO sqlalchemy.engine.Engine SELECT reviews.id, reviews.guest_id, reviews.platform, reviews.platform_review_id, reviews.rating, reviews.content, reviews.reviewed_at, reviews.ingested_at 
+FROM reviews 
+WHERE reviews.guest_id = ? ORDER BY reviews.reviewed_at DESC
+ LIMIT ? OFFSET ?
+2026-03-03 19:47:03,627 INFO sqlalchemy.engine.Engine [generated in 0.00015s] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3', 20, 0)
+2026-03-03 19:47:03,629 INFO sqlalchemy.engine.Engine SELECT orders.id, orders.guest_id, orders.item_name, orders.category, orders.price, orders.quantity, orders.ordered_at 
+FROM orders 
+WHERE orders.guest_id = ? ORDER BY orders.ordered_at DESC
+2026-03-03 19:47:03,629 INFO sqlalchemy.engine.Engine [generated in 0.00014s] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3',)
+2026-03-03 19:47:03,629 INFO sqlalchemy.engine.Engine COMMIT
+2026-03-03 19:47:03,631 INFO sqlalchemy.engine.Engine SELECT sentiment_scores.review_id AS sentiment_scores_review_id, sentiment_scores.id AS sentiment_scores_id, sentiment_scores.bucket AS sentiment_scores_bucket, sentiment_scores.score AS sentiment_scores_score, sentiment_scores.summary AS sentiment_scores_summary, sentiment_scores.analyzed_at AS sentiment_scores_analyzed_at 
+FROM sentiment_scores 
+WHERE sentiment_scores.review_id IN (?)
+2026-03-03 19:47:03,631 INFO sqlalchemy.engine.Engine [generated in 0.00018s] ('4c4c1f20-0f28-45ca-a13b-f83f44e21602',)
+INFO:     127.0.0.1:59767 - "GET /api/guests/77a48080-9e3f-4345-999a-ac7c2d4d5dc3/orders HTTP/1.1" 200 OK
+2026-03-03 19:47:03,633 INFO sqlalchemy.engine.Engine COMMIT
+2026-03-03 19:47:03,634 INFO sqlalchemy.engine.Engine SELECT reviews.id, reviews.guest_id, reviews.platform, reviews.platform_review_id, reviews.rating, reviews.content, reviews.reviewed_at, reviews.ingested_at 
+FROM reviews 
+WHERE reviews.guest_id = ? ORDER BY reviews.reviewed_at DESC
+ LIMIT ? OFFSET ?
+2026-03-03 19:47:03,634 INFO sqlalchemy.engine.Engine [generated in 0.00021s] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3', 10, 0)
+INFO:     127.0.0.1:59769 - "GET /api/guests/77a48080-9e3f-4345-999a-ac7c2d4d5dc3/reviews HTTP/1.1" 200 OK
+2026-03-03 19:47:03,636 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:47:03,637 INFO sqlalchemy.engine.Engine SELECT orders.id, orders.guest_id, orders.item_name, orders.category, orders.price, orders.quantity, orders.ordered_at 
+FROM orders 
+WHERE orders.guest_id = ? ORDER BY orders.ordered_at DESC
+ LIMIT ? OFFSET ?
+2026-03-03 19:47:03,637 INFO sqlalchemy.engine.Engine [cached since 0.01204s ago] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3', 50, 0)
+2026-03-03 19:47:03,638 INFO sqlalchemy.engine.Engine SELECT sentiment_scores.review_id AS sentiment_scores_review_id, sentiment_scores.id AS sentiment_scores_id, sentiment_scores.bucket AS sentiment_scores_bucket, sentiment_scores.score AS sentiment_scores_score, sentiment_scores.summary AS sentiment_scores_summary, sentiment_scores.analyzed_at AS sentiment_scores_analyzed_at 
+FROM sentiment_scores 
+WHERE sentiment_scores.review_id IN (?)
+2026-03-03 19:47:03,638 INFO sqlalchemy.engine.Engine [cached since 0.007349s ago] ('4c4c1f20-0f28-45ca-a13b-f83f44e21602',)
+2026-03-03 19:47:03,640 INFO sqlalchemy.engine.Engine COMMIT
+2026-03-03 19:47:03,640 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:47:03,641 INFO sqlalchemy.engine.Engine SELECT reviews.id, reviews.guest_id, reviews.platform, reviews.platform_review_id, reviews.rating, reviews.content, reviews.reviewed_at, reviews.ingested_at 
+FROM reviews 
+WHERE reviews.guest_id = ? ORDER BY reviews.reviewed_at DESC
+ LIMIT ? OFFSET ?
+2026-03-03 19:47:03,641 INFO sqlalchemy.engine.Engine [cached since 0.01388s ago] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3', 20, 0)
+2026-03-03 19:47:03,641 INFO sqlalchemy.engine.Engine COMMIT
+2026-03-03 19:47:03,643 INFO sqlalchemy.engine.Engine SELECT sentiment_scores.review_id AS sentiment_scores_review_id, sentiment_scores.id AS sentiment_scores_id, sentiment_scores.bucket AS sentiment_scores_bucket, sentiment_scores.score AS sentiment_scores_score, sentiment_scores.summary AS sentiment_scores_summary, sentiment_scores.analyzed_at AS sentiment_scores_analyzed_at 
+FROM sentiment_scores 
+WHERE sentiment_scores.review_id IN (?)
+2026-03-03 19:47:03,643 INFO sqlalchemy.engine.Engine [cached since 0.01219s ago] ('4c4c1f20-0f28-45ca-a13b-f83f44e21602',)
+INFO:     127.0.0.1:59766 - "GET /api/guests/77a48080-9e3f-4345-999a-ac7c2d4d5dc3/pulse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59767 - "GET /api/guests/77a48080-9e3f-4345-999a-ac7c2d4d5dc3/orders HTTP/1.1" 200 OK
+2026-03-03 19:47:03,645 INFO sqlalchemy.engine.Engine COMMIT
+2026-03-03 19:47:03,645 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-03 19:47:03,646 INFO sqlalchemy.engine.Engine SELECT guests.id, guests.name, guests.email, guests.phone, guests.tier, guests.first_visit, guests.last_visit, guests.created_at 
+FROM guests 
+WHERE guests.id = ?
+2026-03-03 19:47:03,646 INFO sqlalchemy.engine.Engine [cached since 0.02007s ago] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3',)
+INFO:     127.0.0.1:59769 - "GET /api/guests/77a48080-9e3f-4345-999a-ac7c2d4d5dc3/reviews HTTP/1.1" 200 OK
+2026-03-03 19:47:03,647 INFO sqlalchemy.engine.Engine SELECT orders.id, orders.guest_id, orders.item_name, orders.category, orders.price, orders.quantity, orders.ordered_at 
+FROM orders 
+WHERE orders.guest_id = ? ORDER BY orders.ordered_at DESC
+2026-03-03 19:47:03,647 INFO sqlalchemy.engine.Engine [cached since 0.0184s ago] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3',)
+2026-03-03 19:47:03,648 INFO sqlalchemy.engine.Engine SELECT reviews.id, reviews.guest_id, reviews.platform, reviews.platform_review_id, reviews.rating, reviews.content, reviews.reviewed_at, reviews.ingested_at 
+FROM reviews 
+WHERE reviews.guest_id = ? ORDER BY reviews.reviewed_at DESC
+ LIMIT ? OFFSET ?
+2026-03-03 19:47:03,648 INFO sqlalchemy.engine.Engine [cached since 0.01418s ago] ('77a48080-9e3f-4345-999a-ac7c2d4d5dc3', 10, 0)
+2026-03-03 19:47:03,649 INFO sqlalchemy.engine.Engine SELECT sentiment_scores.review_id AS sentiment_scores_review_id, sentiment_scores.id AS sentiment_scores_id, sentiment_scores.bucket AS sentiment_scores_bucket, sentiment_scores.score AS sentiment_scores_score, sentiment_scores.summary AS sentiment_scores_summary, sentiment_scores.analyzed_at AS sentiment_scores_analyzed_at 
+FROM sentiment_scores 
+WHERE sentiment_scores.review_id IN (?)
+2026-03-03 19:47:03,649 INFO sqlalchemy.engine.Engine [cached since 0.01899s ago] ('4c4c1f20-0f28-45ca-a13b-f83f44e21602',)
+2026-03-03 19:47:03,650 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:59766 - "GET /api/guests/77a48080-9e3f-4345-999a-ac7c2d4d5dc3/pulse HTTP/1.1" 200 OK

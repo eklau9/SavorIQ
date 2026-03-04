@@ -40,6 +40,13 @@ class GuestSegment(str, Enum):
     stable_regular = "STABLE_REGULAR"     # Consistent visits + Neutral/Pos sentiment
 
 
+class InterceptStatus(str, Enum):
+    open = "open"
+    actioned = "actioned"
+    resolved = "resolved"
+    dismissed = "dismissed"
+
+
 # ── Guest ──────────────────────────────────────────────────────────────────
 
 class GuestBase(BaseModel):
@@ -222,6 +229,30 @@ class GuestPrioritized(BaseModel):
     recommended_action: str
     total_spend: float
     last_visit_days_ago: int
+    review_count: int = 0
+    current_status: InterceptStatus = InterceptStatus.open
+    current_action: InterceptActionRead | None = None
+
+    model_config = {"from_attributes": True}
+
+
+# ── Intercept Actions ──────────────────────────────────────────────────────
+
+class InterceptActionBase(BaseModel):
+    status: InterceptStatus
+    notes: str | None = None
+    segment: str
+
+
+class InterceptActionCreate(InterceptActionBase):
+    guest_id: str
+
+
+class InterceptActionRead(InterceptActionBase):
+    id: str
+    guest_id: str
+    actioned_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -261,3 +292,51 @@ class DeepAnalytics(BaseModel):
     top_performers: list[ItemPerformance]
     risks: list[ItemPerformance]
     briefing: ManagerBriefing
+
+
+# ── Sentiment Analytics ───────────────────────────────────────────────────
+
+class SentimentTrendPoint(BaseModel):
+    month: str  # "2026-01"
+    food_avg: float | None = None
+    drink_avg: float | None = None
+    ambiance_avg: float | None = None
+
+
+class BucketHighlight(BaseModel):
+    bucket: SentimentBucket
+    best_snippet: str | None = None
+    best_score: float | None = None
+    worst_snippet: str | None = None
+    worst_score: float | None = None
+
+
+class SentimentAnalytics(BaseModel):
+    buckets: list[BucketSentiment]
+    trend: list[SentimentTrendPoint]
+    highlights: list[BucketHighlight]
+
+
+# ── Operations Analytics ──────────────────────────────────────────────────
+
+class CategoryRevenue(BaseModel):
+    category: str
+    revenue: float
+    order_count: int
+
+
+class GuestTierCount(BaseModel):
+    tier: str
+    count: int
+
+
+class OperationsAnalytics(BaseModel):
+    total_revenue: float
+    avg_order_value: float
+    orders_per_guest: float
+    category_breakdown: list[CategoryRevenue]
+    tier_distribution: list[GuestTierCount]
+    data_completeness: float  # 0.0 to 1.0
+    total_guests: int
+    guests_with_both: int
+    platform_split: dict[str, int]  # {"google": 10, "yelp": 6}

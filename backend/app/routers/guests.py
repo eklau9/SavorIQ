@@ -10,7 +10,6 @@ from sqlalchemy.orm import selectinload
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database import get_db
-from app.models import Guest, Order, Review, SentimentScore
 from app.schemas import (
     BucketSentiment,
     GuestCreate,
@@ -19,7 +18,11 @@ from app.schemas import (
     GuestSegment,
     GuestPrioritized,
     ReviewRead,
+    InterceptStatus,
+    InterceptActionCreate,
+    InterceptActionRead,
 )
+from app.models import Guest, Order, Review, SentimentScore, InterceptAction
 
 router = APIRouter(prefix="/api/guests", tags=["guests"])
 
@@ -44,9 +47,9 @@ async def list_guests(
 async def list_guest_priorities(db: AsyncSession = Depends(get_db)):
     """
     Returns a prioritized list of guests needing manager action.
-    Applies segmentation logic based on spend, visit frequency, and sentiment.
+    Applies logic based on review frequency, rating thresholds, and resolution status.
     """
-    # Load all guests with their orders and reviews/sentiment
+    # Load guests with related data
     query = (
         select(Guest)
         .options(
@@ -57,75 +60,143 @@ async def list_guest_priorities(db: AsyncSession = Depends(get_db)):
     result = await db.execute(query)
     guests = result.scalars().all()
     
+    # Load all existing actions to check status
+    actions_result = await db.execute(select(InterceptAction))
+    all_actions = actions_result.scalars().all()
+    # Map by guest_id
+    actions_map: dict[str, InterceptAction] = {f"{a.guest_id}:{a.segment}": a for a in all_actions}
+
     now = datetime.utcnow()
     prioritized = []
 
     for g in guests:
-        # Calculate base metrics
-        total_spend = sum(o.price * o.quantity for o in g.orders)
-        last_visit = g.last_visit or g.created_at
-        days_since_visit = (now - last_visit).days
+        # 1. Review Frequency calculation
+        review_count = len(g.reviews)
+        is_vip = review_count >= 3
         
-        avg_sentiment = 0.0
-        review_count = 0
-        all_scores = []
+        # 2. Sentiment calculation
+        all_sentiment_scores = []
+        low_rating_reviews = [r for r in g.reviews if r.rating <= 2]
+        latest_review = g.reviews[0] if g.reviews else None # reviews are sorted by reviewed_at desc in relationship if we had it, but let's sort manually to be sure
+        
+        sorted_reviews = sorted(g.reviews, key=lambda x: x.reviewed_at, reverse=True)
+        latest_review = sorted_reviews[0] if sorted_reviews else None
+        
         for r in g.reviews:
-            all_scores.extend([s.score for s in r.sentiment_scores])
+            all_sentiment_scores.extend([s.score for s in r.sentiment_scores])
         
-        if all_scores:
-            avg_sentiment = sum(all_scores) / len(all_scores)
-            review_count = len(all_scores)
-
+        avg_sentiment = sum(all_sentiment_scores) / len(all_sentiment_scores) if all_sentiment_scores else 0.0
+        total_spend = sum(o.price * o.quantity for o in g.orders)
+        
         # ── Segmentation Logic ──
         segment = None
         reason = ""
         action = ""
         priority = 0.0
 
-        # 1. VIP at Risk (CRITICAL)
-        if g.reviews and g.tier == "vip" and avg_sentiment < -0.2:
+        # Logic A: VIP with 1-2 star review (CRITICAL)
+        if is_vip and any(r.rating <= 2 for r in g.reviews):
             segment = GuestSegment.vip_at_risk
-            reason = f"VIP guest with negative sentiment ({avg_sentiment:.2f}) across {review_count} reviews."
-            action = "Personal reach-out by GM. Offer a complimentary meal or private tasting."
+            reason = f"VIP reviewer ({review_count} reviews) left a low rating."
+            action = "Personal outreach by GM. High influence guest."
             priority = 1.0
 
-        # 2. Lost Regular (HIGH)
-        elif g.reviews and g.tier == "regular" and days_since_visit > 14:
-            segment = GuestSegment.lost_regular
-            reason = f"Regular guest who hasn't visited in {days_since_visit} days."
-            action = "Send a 'We Miss You' email with a loyalty bonus or free beverage coupon."
-            priority = 0.8
+        # Logic B: Regular/New with 1-2 star review (HIGH)
+        elif any(r.rating <= 2 for r in g.reviews):
+            segment = GuestSegment.lost_regular if review_count >= 2 else GuestSegment.new_big_spender
+            reason = f"Guest left a critical review ({latest_review.rating if latest_review else '?'}/5 stars)."
+            action = "Standard recovery playbook: Reply to review + offer incentive."
+            priority = 0.7
 
-        # 3. New Big Spender (MEDIUM)
-        elif g.reviews and g.tier == "new" and total_spend > 50:
-            segment = GuestSegment.new_big_spender
-            reason = f"New guest with high initial spend (${total_spend:.2f})."
-            action = "Personal welcome note. Ensure they are invited to the loyalty program on next visit."
-            priority = 0.6
-
-        # 4. Promoter (LOW/MONITOR)
-        elif g.reviews and avg_sentiment > 0.6 and total_spend > 100:
-            segment = GuestSegment.promoter
-            reason = f"High-value advocate with positive sentiment ({avg_sentiment:.2f})."
-            action = "Thank them for their support. Consider for exclusive 'Insider' events."
-            priority = 0.4
+        # Note: 3-star reviews are ignored for Priority Inbox per user request
 
         if segment:
-            prioritized.append(
-                GuestPrioritized(
-                    guest=GuestRead.model_validate(g),
-                    segment=segment,
-                    priority_score=priority,
-                    reason=reason,
-                    recommended_action=action,
-                    total_spend=round(total_spend, 2),
-                    last_visit_days_ago=days_since_visit
+            # 3. Resolution & Auto-logic
+            action_key = f"{g.id}:{segment.value}"
+            existing_action = actions_map.get(action_key)
+            status = InterceptStatus.open
+            notes = None
+            
+            if existing_action:
+                status = InterceptStatus(existing_action.status)
+                notes = existing_action.notes
+
+            # Auto-Dismiss Logic: 3 months (90 days) or 6 months (180 days) for VIPs
+            days_since_review = (now - latest_review.reviewed_at).days if latest_review else 0
+            dismiss_threshold = 180 if is_vip else 90
+            
+            if status == InterceptStatus.open and days_since_review > dismiss_threshold:
+                status = InterceptStatus.dismissed
+                # Persist auto-dismiss? For now just reflect in response
+            
+            # Auto-Resolve Logic: Newer review is 4-5 stars
+            if status in [InterceptStatus.open, InterceptStatus.actioned] and latest_review and latest_review.rating >= 4:
+                # Need to check if there WAS a bad review BEFORE this good one
+                has_bad_review_previously = any(r.rating <= 2 and r.reviewed_at < latest_review.reviewed_at for r in g.reviews)
+                if has_bad_review_previously:
+                    status = InterceptStatus.resolved
+                    notes = notes or "Auto-resolved: Guest left a follow-up 4-5 star review."
+
+            # Only show Open, Actioned, and maybe recently Resolved? 
+            # Usually Priority Inbox is for things needing work.
+            if status in [InterceptStatus.open, InterceptStatus.actioned]:
+                prioritized.append(
+                    GuestPrioritized(
+                        guest=GuestRead.model_validate(g),
+                        segment=segment,
+                        priority_score=priority,
+                        reason=reason,
+                        recommended_action=action,
+                        total_spend=round(total_spend, 2),
+                        last_visit_days_ago=(now - (g.last_visit or g.created_at)).days,
+                        review_count=review_count,
+                        current_status=status,
+                        current_action=InterceptActionRead.model_validate(existing_action) if existing_action else None
+                    )
                 )
-            )
 
     # Sort by priority score (desc)
     prioritized.sort(key=lambda x: x.priority_score, reverse=True)
     return prioritized
+
+
+@router.post("/{guest_id}/intercept/action", response_model=InterceptActionRead)
+async def mark_intercept_action(
+    guest_id: str,
+    data: InterceptActionCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update the status of a guest intercept (e.g., mark as Actioned or Resolved)."""
+    # Check if guest exists
+    guest_result = await db.execute(select(Guest).where(Guest.id == guest_id))
+    if not guest_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Guest not found")
+
+    # Check for existing action for this guest + segment
+    query = select(InterceptAction).where(
+        InterceptAction.guest_id == guest_id,
+        InterceptAction.segment == data.segment
+    )
+    result = await db.execute(query)
+    action = result.scalar_one_or_none()
+
+    if action:
+        # Update existing
+        action.status = data.status.value
+        action.notes = data.notes
+        # Updated_at will be handled by onupdate
+    else:
+        # Create new
+        action = InterceptAction(
+            guest_id=guest_id,
+            status=data.status.value,
+            segment=data.segment,
+            notes=data.notes
+        )
+        db.add(action)
+
+    await db.flush()
+    return action
 
 
 @router.get("/{guest_id}", response_model=GuestRead)

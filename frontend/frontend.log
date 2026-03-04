@@ -1,0 +1,12 @@
+
+> frontend@0.1.0 dev
+> next dev --port 3000
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.2.180:3000
+
+✓ Starting...
+✓ Ready in 560ms
+ GET /intercepts 200 in 429ms (compile: 223ms, render: 206ms)
+ GET /guest/77a48080-9e3f-4345-999a-ac7c2d4d5dc3 200 in 541ms (compile: 513ms, render: 28ms)

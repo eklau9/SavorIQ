@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import GuestPriorityCard from "@/components/GuestPriorityCard";
-import { fetchGuestPriorities } from "@/lib/api";
+import { fetchGuestPriorities, postInterceptAction } from "@/lib/api";
 
 export default function PriorityInboxPage() {
     const [priorities, setPriorities] = useState([]);
@@ -22,6 +22,28 @@ export default function PriorityInboxPage() {
             setPriorities([]);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleAction(guestId, segment, status) {
+        try {
+            let notes = "";
+            if (status === 'actioned') {
+                notes = prompt("Record your action (e.g., 'Called guest, offered free meal'):");
+                if (notes === null) return; // Cancelled
+            }
+
+            await postInterceptAction(guestId, {
+                status,
+                segment,
+                notes
+            });
+
+            // Reload data to reflect changes
+            await loadData();
+        } catch (err) {
+            console.error("Failed to update intercept:", err);
+            alert("Failed to update status. Please try again.");
         }
     }
 
@@ -54,7 +76,11 @@ export default function PriorityInboxPage() {
                     </div>
                     <div className="priority-grid">
                         {priorities.map((p) => (
-                            <GuestPriorityCard key={p.guest.id} item={p} />
+                            <GuestPriorityCard
+                                key={`${p.guest.id}-${p.segment}`}
+                                item={p}
+                                onAction={handleAction}
+                            />
                         ))}
                     </div>
                 </div>

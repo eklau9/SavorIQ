@@ -13,18 +13,8 @@ logger = logging.getLogger(__name__)
 
 BRIEFING_PROMPT = """You are a strategic restaurant consultant. Analyze the provided restaurant performance data and generate a high-level briefing for the owner.
 
-Input Data:
-1. Bucket Sentiment: Average sentiment scores for Food, Drink, and Ambiance.
-2. Top Performers: Best-selling items with high sentiment.
-3. Risk Items: Best-selling items with poor sentiment.
-4. Recent Trends: Specific highlights from guest feedback.
-
-Output Requirements:
-- A concise summary (2-3 sentences) of the overall restaurant health.
-- Exactly 3-4 actionable insights categorized as:
-  - "win": Celebrate the success of a popular item or practice.
-  - "risk": Identify a critical issue that needs immediate attention.
-  - "action": Sustained improvements or new opportunities.
+- **Handling 3-Star Reviews**: Treat 3-star feedback as "neutral-to-positive" operational feedback. Use these to suggest "action" insights (e.g., "Guest mentioned inconsistent seasoning — consider a kitchen workshop").
+- **Handling 1-2 Star Reviews**: Treat these as "risks". They require immediate "risk" insights.
 - **Highlight ALL item names** in the summary AND in the insight descriptions using these markers:
   - `++Item Name++` for positive items (e.g., top performers like **Espresso** or **Oat Milk Latte**).
   - `--Item Name--` for negative/risk items (e.g., risks like **Cold Brew** or **Chicken Curry**).

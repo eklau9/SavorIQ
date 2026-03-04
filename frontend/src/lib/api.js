@@ -92,3 +92,25 @@ export async function ingestOrders(data) {
     });
     return res.json();
 }
+
+export async function fetchSentimentAnalytics() {
+    const res = await fetch(`${API_BASE}/api/analytics/sentiment`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch sentiment analytics");
+    return res.json();
+}
+
+export async function fetchOperationsAnalytics() {
+    const res = await fetch(`${API_BASE}/api/analytics/operations`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch operations analytics");
+    return res.json();
+}
+
+export async function postInterceptAction(guestId, data) {
+    const res = await fetch(`${API_BASE}/api/guests/${guestId}/intercept/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to post intercept action");
+    return res.json();
+}
