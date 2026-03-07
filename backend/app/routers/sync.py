@@ -109,19 +109,23 @@ async def sync_apify_reviews(
     platform: str = Query(..., description="Platform: 'yelp' or 'google'"),
     business_url: str = Query(..., description="Full Google Maps or Yelp URL"),
     business_name: str = Query("Unknown", description="Business display name"),
-    max_reviews: int = Query(100000, description="Max reviews to fetch (default 100,000)"),
     force: bool = Query(False, description="Force sync even if synced today"),
     restaurant_id: str | None = Query(None, description="Optional target restaurant ID to append data to"),
+    x_restaurant_id: str | None = Header(None, alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Sync reviews via Apify actors (Google Maps Reviews Scraper / Yelp Scraper).
     Fetches more reviews than direct APIs and works with paywalled Yelp.
     """
+    # ── Resolve target restaurant ID ──
+    # Priority: 1. Explicit param, 2. Header
+    target_restaurant_id = restaurant_id or x_restaurant_id
+    
     # ── Daily sync guard ──
     # For sync logs, we use the business URL as ID for Apify syncs
     business_id = business_url
-    target_restaurant_id = restaurant_id # Initialize target_restaurant_id
+    
     if not force:
         existing = await db.execute(
             select(SyncLog).where(
@@ -131,8 +135,7 @@ async def sync_apify_reviews(
         )
         log = existing.scalar_one_or_none()
         if log:
-            # If restaurant_id was provided, ensure it matches or we are force-linking?
-            # For now, just use the existing mapping if it exists
+            # If we already have a log for this specific URL, we always use its restaurant
             target_restaurant_id = log.restaurant_id
             
             cutoff = datetime.utcnow() - timedelta(hours=SYNC_COOLDOWN_HOURS)
@@ -173,14 +176,28 @@ async def sync_apify_reviews(
 
     # ── Provision new Restaurant if no mapping exists ──
     if not target_restaurant_id:
-        # Check if a restaurant with the same name already exists to avoid duplicates
+        # Check if a restaurant with the same name already exists
         existing_resto = await db.execute(select(Restaurant).where(Restaurant.name == business_name))
         matched = existing_resto.scalar_one_or_none()
         
         if matched:
-            logger.info(f"Matched existing restaurant '{business_name}' (ID: {matched.id}).")
-            target_restaurant_id = matched.id
-        else:
+            # SAFETY: Only merge by name if this restaurant doesn't ALREADY have
+            # a sync log for this platform. If it does, they are likely different locations.
+            platform_check = await db.execute(
+                select(SyncLog).where(
+                    SyncLog.restaurant_id == matched.id,
+                    SyncLog.platform == platform
+                )
+            )
+            has_conflicting_sync = platform_check.scalar_one_or_none()
+            
+            if not has_conflicting_sync:
+                logger.info(f"Matched existing restaurant '{business_name}' (ID: {matched.id}). No platform conflict.")
+                target_restaurant_id = matched.id
+            else:
+                logger.info(f"Restaurant name '{business_name}' exists but belongs to a different {platform} URL. Creating separate entry.")
+
+        if not target_restaurant_id:
             logger.info(f"First-time sync for {business_name}. Provisioning new Restaurant tenant.")
             new_restaurant = Restaurant(name=business_name)
             db.add(new_restaurant)
