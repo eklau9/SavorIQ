@@ -173,11 +173,19 @@ async def sync_apify_reviews(
 
     # ── Provision new Restaurant if no mapping exists ──
     if not target_restaurant_id:
-        logger.info(f"First-time sync for {business_name}. Provisioning new Restaurant tenant.")
-        new_restaurant = Restaurant(name=business_name)
-        db.add(new_restaurant)
-        await db.flush() # Get the generated ID
-        target_restaurant_id = new_restaurant.id
+        # Check if a restaurant with the same name already exists to avoid duplicates
+        existing_resto = await db.execute(select(Restaurant).where(Restaurant.name == business_name))
+        matched = existing_resto.scalar_one_or_none()
+        
+        if matched:
+            logger.info(f"Matched existing restaurant '{business_name}' (ID: {matched.id}).")
+            target_restaurant_id = matched.id
+        else:
+            logger.info(f"First-time sync for {business_name}. Provisioning new Restaurant tenant.")
+            new_restaurant = Restaurant(name=business_name)
+            db.add(new_restaurant)
+            await db.flush() # Get the generated ID
+            target_restaurant_id = new_restaurant.id
     
     # Ensure restaurant_id is set for downstream services
     restaurant_id = target_restaurant_id
