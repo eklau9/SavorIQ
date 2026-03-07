@@ -230,7 +230,12 @@ async def sync_apify_reviews(
             batch = reviews_to_analyze[i : i + batch_size]
             batch_num = (i // batch_size) + 1
             logger.info(f"Analyzing batch {batch_num}/{total_batches}...")
-            await analyze_and_store_batch(db, batch)
+            try:
+                await analyze_and_store_batch(db, batch)
+            except Exception as e:
+                logger.error(f"Sentiment analysis failed for batch starting at {i}: {e}")
+                # Continue with next batch so we don't crash the whole sync
+                continue
 
     # ── Update sync log ──
     existing = await db.execute(

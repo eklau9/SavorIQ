@@ -41,6 +41,8 @@ async def get_overview(
     reviews_count = (await db.execute(select(func.count(Review.id)).where(Review.restaurant_id == x_restaurant_id))).scalar() or 0
     avg_rating = (await db.execute(select(func.avg(Review.rating)).where(Review.restaurant_id == x_restaurant_id))).scalar() or 0.0
 
+    print(f"DEBUG OVERVIEW: restaurant={x_restaurant_id}, guests={guests_count}, reviews={reviews_count}")
+
     # Sentiment by bucket
     bucket_rows = (
         await db.execute(

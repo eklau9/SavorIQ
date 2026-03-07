@@ -167,19 +167,25 @@ async def analyze_sentiment_batch(reviews: List[Dict[str, str]]) -> Dict[str, Li
     Use Gemini to analyze a batch of reviews in a single call.
     'reviews' should be a list of {'id': id, 'text': text}.
     Returns a dict mapping review_id -> list of sentiment results.
+
+    Uses a temporary ID mapping (idx_0, idx_1...) to prevent Gemini from 
+    truncating long UUID strings in the JSON response.
     """
     if not reviews:
         return {}
+
+    # 1. Create mapping to protect IDs from LLM truncation
+    id_map = {f"idx_{i}": r["id"] for i, r in enumerate(reviews)}
+    gemini_reviews = [{"id": f"idx_{i}", "text": r["text"]} for i, r in enumerate(reviews)]
 
     try:
         import google.generativeai as genai
 
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        # Use simple non-structured model but ask for JSON (Flash is very good at this)
         model = genai.GenerativeModel(settings.GEMINI_MODEL)
 
         # Prepare batch context
-        batch_input = json.dumps(reviews)
+        batch_input = json.dumps(gemini_reviews)
         response = await model.generate_content_async(BATCH_PROMPT + batch_input)
         text = response.text.strip()
 
@@ -191,10 +197,15 @@ async def analyze_sentiment_batch(reviews: List[Dict[str, str]]) -> Dict[str, Li
 
         data = json.loads(text)
         
-        # Mapping results
+        # Mapping results back to original IDs
         mapping = {}
         for res in data.get("results", []):
-            mapping[res["id"]] = res["sentiment"]
+            temp_id = res["id"]
+            original_id = id_map.get(temp_id)
+            if original_id:
+                mapping[original_id] = res["sentiment"]
+            else:
+                logger.warning(f"Gemini returned unknown temp ID: {temp_id}")
         
         return mapping
 
