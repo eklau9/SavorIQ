@@ -1,29 +1,18 @@
-"""Guest endpoints — CRUD + Guest Pulse aggregate."""
+"""Guest management endpoints — listing, metrics, and pulse."""
 
 from __future__ import annotations
 
 from datetime import datetime
+from typing import List, Optional
 
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
-from typing import Optional
 
 from app.database import get_db
-from app.schemas import (
-    BucketSentiment,
-    GuestCreate,
-    GuestPulse,
-    GuestRead,
-    GuestSegment,
-    GuestPrioritized,
-    ReviewRead,
-    InterceptStatus,
-    InterceptActionCreate,
-    InterceptActionRead,
-)
-from app.models import Guest, Order, Review, SentimentScore, InterceptAction, Restaurant
+from app.models import Guest, InterceptAction, Order, Restaurant, Review
+from app.schemas import GuestPulse, GuestRead, GuestPrioritized, ReviewRead
 
 router = APIRouter(prefix="/api", tags=["guests"])
 
@@ -45,6 +34,7 @@ async def list_guests(
     db: AsyncSession = Depends(get_db),
 ):
     """List all guests with advanced sorting and expanded limits, scoped to restaurant."""
+    print(f"DEBUG: list_guests called with limit={limit}, restaurant_id={x_restaurant_id}")
     
     # Subquery for guest metrics (avg rating, review count)
     subq = (
@@ -84,12 +74,24 @@ async def list_guests(
     result = await db.execute(query)
     rows = result.all() # Each row is (Guest, avg_rating, review_count)
     
+    print(f"DEBUG: list_guests returning {len(rows)} rows")
+    
     out = []
     for g, avg, count in rows:
-        gr = GuestRead.model_validate(g)
-        gr.avg_rating = round(float(avg), 1) if avg is not None else 0.0
-        gr.visit_count = count or 0
-        out.append(gr)
+        # Create a dictionary instead of relying on model_validate to handle post-init attribute setting better
+        res = {
+            "id": g.id,
+            "name": g.name,
+            "email": g.email,
+            "phone": g.phone,
+            "tier": g.tier,
+            "first_visit": g.first_visit.isoformat() if g.first_visit else None,
+            "last_visit": g.last_visit.isoformat() if g.last_visit else None,
+            "created_at": g.created_at.isoformat(),
+            "avg_rating": round(float(avg), 1) if avg is not None else 0.0,
+            "visit_count": count or 0
+        }
+        out.append(res)
         
     return out
 
@@ -128,251 +130,188 @@ async def list_guest_priorities(
     for g in guests:
         # 1. Review Frequency calculation
         review_count = len(g.reviews)
-        is_vip = review_count >= 3
+        avg_rating = sum(r.rating for r in g.reviews) / review_count if review_count > 0 else 0
         
-        # 2. Sentiment calculation
-        all_sentiment_scores = []
-        low_rating_reviews = [r for r in g.reviews if r.rating <= 2]
-        latest_review = g.reviews[0] if g.reviews else None # reviews are sorted by reviewed_at desc in relationship if we had it, but let's sort manually to be sure
-        
-        sorted_reviews = sorted(g.reviews, key=lambda x: x.reviewed_at, reverse=True)
-        latest_review = sorted_reviews[0] if sorted_reviews else None
-        
-        for r in g.reviews:
-            all_sentiment_scores.extend([s.score for s in r.sentiment_scores])
-        
-        avg_sentiment = sum(all_sentiment_scores) / len(all_sentiment_scores) if all_sentiment_scores else 0.0
+        # 2. Spend / Loyalty
         total_spend = sum(o.price * o.quantity for o in g.orders)
         
-        # ── Segmentation Logic ──
+        # 3. Recency
+        last_visit_days_ago = (now - g.last_visit).days if g.last_visit else 365
+        
+        # 4. Sentiment Analysis (buckets)
+        bad_food_mentions = 0
+        bad_service_mentions = 0
+        for r in g.reviews:
+            for s in r.sentiment_scores:
+                if s.score < -0.3:
+                    if s.bucket == "food": bad_food_mentions += 1
+                    elif s.bucket in ["ambiance", "service"]: bad_service_mentions += 1
+
+        # ── Segments ──
+        score = 0
         segment = None
         reason = ""
         action = ""
-        priority = 0.0
 
-        # Logic A: VIP with 1-2 star review (CRITICAL)
-        if is_vip and any(r.rating <= 2 for r in g.reviews):
-            segment = GuestSegment.vip_at_risk
-            reason = f"VIP reviewer ({review_count} reviews) left a low rating."
-            action = "Personal outreach by GM. High influence guest."
-            priority = 1.0
-
-        # Logic B: Regular/New with 1-2 star review (HIGH)
-        elif any(r.rating <= 2 for r in g.reviews):
-            segment = GuestSegment.lost_regular if review_count >= 2 else GuestSegment.new_big_spender
-            reason = f"Guest left a critical review ({latest_review.rating if latest_review else '?'}/5 stars)."
-            action = "Standard recovery playbook: Reply to review + offer incentive."
-            priority = 0.7
-
-        # Note: 3-star reviews are ignored for Priority Inbox per user request
+        if g.tier == "vip" and avg_rating < 3.5:
+            segment = "VIP_AT_RISK"
+            score = 95
+            reason = "VIP Guest with declining rating"
+            action = "Personal manager outreach recommended"
+        elif g.tier == "regular" and last_visit_days_ago > 30:
+            segment = "LOST_REGULAR"
+            score = 75
+            reason = "Regular guest hasn't visited in 30+ days"
+            action = "Send 'We Miss You' offer"
+        elif g.tier == "new" and total_spend > 50:
+            segment = "NEW_BIG_SPENDER"
+            score = 85
+            reason = "High first-visit spend"
+            action = "Welcome gift on next visit"
 
         if segment:
-            # 3. Resolution & Auto-logic
-            action_key = f"{g.id}:{segment.value}"
-            existing_action = actions_map.get(action_key)
-            status = InterceptStatus.open
-            notes = None
-            
-            if existing_action:
-                status = InterceptStatus(existing_action.status)
-                notes = existing_action.notes
+            # Check if we already have an action recorded
+            action_key = f"{g.id}:{segment}"
+            current_action = actions_map.get(action_key)
+            status = current_action.status if current_action else "open"
 
-            # Auto-Dismiss Logic: 3 months (90 days) or 6 months (180 days) for VIPs
-            days_since_review = (now - latest_review.reviewed_at).days if latest_review else 0
-            dismiss_threshold = 180 if is_vip else 90
-            
-            if status == InterceptStatus.open and days_since_review > dismiss_threshold:
-                status = InterceptStatus.dismissed
-                # Persist auto-dismiss? For now just reflect in response
-            
-            # Auto-Resolve Logic: Newer review is 4-5 stars
-            if status in [InterceptStatus.open, InterceptStatus.actioned] and latest_review and latest_review.rating >= 4:
-                # Need to check if there WAS a bad review BEFORE this good one
-                has_bad_review_previously = any(r.rating <= 2 and r.reviewed_at < latest_review.reviewed_at for r in g.reviews)
-                if has_bad_review_previously:
-                    status = InterceptStatus.resolved
-                    notes = notes or "Auto-resolved: Guest left a follow-up 4-5 star review."
+            prioritized.append(GuestPrioritized(
+                guest=GuestRead.model_validate(g),
+                segment=segment,
+                priority_score=score,
+                reason=reason,
+                recommended_action=action,
+                total_spend=total_spend,
+                last_visit_days_ago=last_visit_days_ago,
+                review_count=review_count,
+                current_status=status,
+                current_action=current_action # Will be mapped by Pydantic
+            ))
 
-            # Only show Open, Actioned, and maybe recently Resolved? 
-            # Usually Priority Inbox is for things needing work.
-            if status in [InterceptStatus.open, InterceptStatus.actioned]:
-                prioritized.append(
-                    GuestPrioritized(
-                        guest=GuestRead.model_validate(g),
-                        segment=segment,
-                        priority_score=priority,
-                        reason=reason,
-                        recommended_action=action,
-                        total_spend=round(total_spend, 2),
-                        last_visit_days_ago=(now - (g.last_visit or g.created_at)).days,
-                        review_count=review_count,
-                        current_status=status,
-                        current_action=InterceptActionRead.model_validate(existing_action) if existing_action else None
-                    )
-                )
-
-    # Sort by priority score (desc)
+    # Sort by priority score DESC
     prioritized.sort(key=lambda x: x.priority_score, reverse=True)
     return prioritized
 
 
-@router.post("/guests/{guest_id}/intercept/action", response_model=InterceptActionRead)
-async def mark_intercept_action(
+@router.post("/guests/{guest_id}/intercept/action")
+async def guest_intercept_action(
     guest_id: str,
-    data: InterceptActionCreate,
+    payload: dict,
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Update the status of a guest intercept scoped to restaurant."""
-    # Check if guest exists in this restaurant
-    guest_result = await db.execute(
-        select(Guest).where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
-    )
-    if not guest_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Guest not found in this restaurant")
+    """Record a manager action taken for a specific guest segment."""
+    status = payload.get("status", "actioned")
+    segment = payload.get("segment")
+    notes = payload.get("notes")
 
-    # Check for existing action for this guest + segment
-    query = select(InterceptAction).where(
-        InterceptAction.restaurant_id == x_restaurant_id,
-        InterceptAction.guest_id == guest_id,
-        InterceptAction.segment == data.segment
+    if not segment:
+        raise HTTPException(status_code=400, detail="Segment is required")
+
+    # Update or Create
+    query = (
+        select(InterceptAction)
+        .where(
+            InterceptAction.guest_id == guest_id,
+            InterceptAction.segment == segment,
+            InterceptAction.restaurant_id == x_restaurant_id
+        )
     )
     result = await db.execute(query)
     action = result.scalar_one_or_none()
 
     if action:
-        # Update existing
-        action.status = data.status.value
-        action.notes = data.notes
-        # Updated_at will be handled by onupdate
+        action.status = status
+        action.notes = notes
+        action.actioned_at = datetime.utcnow()
     else:
-        # Create new
         action = InterceptAction(
-            restaurant_id=x_restaurant_id,
             guest_id=guest_id,
-            status=data.status.value,
-            segment=data.segment,
-            notes=data.notes
+            restaurant_id=x_restaurant_id,
+            segment=segment,
+            status=status,
+            notes=notes
         )
         db.add(action)
 
     await db.commit()
-    await db.refresh(action)
-    return action
+    return {"status": "success", "id": action.id}
 
 
 @router.get("/guests/{guest_id}", response_model=GuestRead)
 async def get_guest(
-    guest_id: str, 
+    guest_id: str,
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get a single guest by ID, scoped to restaurant."""
-    result = await db.execute(
-        select(Guest).where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
+    """Retrieve full profile for a specific guest."""
+    query = (
+        select(Guest)
+        .where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
+        .options(selectinload(Guest.reviews), selectinload(Guest.orders))
     )
+    result = await db.execute(query)
     guest = result.scalar_one_or_none()
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
-    return guest
-
-
-@router.post("/guests", response_model=GuestRead, status_code=201)
-async def create_guest(
-    data: GuestCreate, 
-    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
-    db: AsyncSession = Depends(get_db)
-):
-    """Create a new guest for the restaurant."""
-    guest = Guest(**data.model_dump(), restaurant_id=x_restaurant_id)
-    db.add(guest)
-    await db.commit()
-    await db.refresh(guest)
+    
     return guest
 
 
 @router.get("/guests/{guest_id}/pulse", response_model=GuestPulse)
 async def get_guest_pulse(
-    guest_id: str, 
+    guest_id: str,
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Guest Pulse — aggregate view combining purchase data + review sentiment, scoped to restaurant.
+    Returns the 'Guest Pulse' — an AI-friendly summary of a guest's loyalty,
+    recent items, and sentiment across categories.
     """
-    # Fetch guest
-    result = await db.execute(
-        select(Guest).where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
+    query = (
+        select(Guest)
+        .where(Guest.id == guest_id, Guest.restaurant_id == x_restaurant_id)
+        .options(
+            selectinload(Guest.orders),
+            selectinload(Guest.reviews).selectinload(Review.sentiment_scores)
+        )
     )
+    result = await db.execute(query)
     guest = result.scalar_one_or_none()
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
 
-    # Orders stats
-    orders_result = await db.execute(
-        select(Order).where(Order.guest_id == guest_id).order_by(Order.ordered_at.desc())
-    )
-    orders = orders_result.scalars().all()
-    total_spend = sum(o.price * o.quantity for o in orders)
-
-    # Unique visit dates
-    visit_dates = {o.ordered_at.date() for o in orders}
-    visit_count = len(visit_dates) if visit_dates else 1
-
-    # Favorite items (top 3 by frequency)
+    # Metrics
+    total_orders = len(guest.orders)
+    total_spend = sum(o.price * o.quantity for o in guest.orders)
+    
+    # Favorite Items (Top 3)
     item_counts: dict[str, int] = {}
-    for o in orders:
+    for o in guest.orders:
         item_counts[o.item_name] = item_counts.get(o.item_name, 0) + o.quantity
-    favorite_items = sorted(item_counts, key=item_counts.get, reverse=True)[:3]
-
-    # Reviews with sentiment
-    reviews_result = await db.execute(
-        select(Review)
-        .where(Review.guest_id == guest_id)
-        .options(selectinload(Review.sentiment_scores))
-        .order_by(Review.reviewed_at.desc())
-        .limit(10)
-    )
-    reviews = reviews_result.scalars().all()
-
-    # Aggregate sentiment by bucket
-    bucket_scores: dict[str, list[float]] = {"food": [], "drink": [], "ambiance": []}
-    for r in reviews:
+    favorite_items = sorted(item_counts.keys(), key=lambda x: item_counts[x], reverse=True)[:3]
+    
+    # Sentiment Summary By Bucket
+    bucket_data: dict[str, list[float]] = {}
+    for r in guest.reviews:
         for s in r.sentiment_scores:
-            if s.bucket in bucket_scores:
-                bucket_scores[s.bucket].append(s.score)
-
-    # Cross-reference: check which categories the guest has ordered
-    order_categories = {o.category for o in orders}  # {"food", "drink"}
-
-    sentiment_summary = []
-    for bucket, scores in bucket_scores.items():
-        if scores:
-            sentiment_summary.append(
-                BucketSentiment(
-                    bucket=bucket,
-                    avg_score=round(sum(scores) / len(scores), 2),
-                    review_count=len(scores),
-                )
-            )
-        elif bucket in order_categories:
-            # Guest ordered items in this category but no review mentions it
-            sentiment_summary.append(
-                BucketSentiment(
-                    bucket=bucket,
-                    avg_score=0.0,
-                    review_count=0,
-                )
-            )
+            bucket_data.setdefault(s.bucket, []).append(s.score)
+    
+    sentiment_summary = [
+        {
+            "bucket": b,
+            "avg_score": round(sum(scores) / len(scores), 2),
+            "review_count": len(scores)
+        }
+        for b, scores in bucket_data.items()
+    ]
 
     return GuestPulse(
         guest=GuestRead.model_validate(guest),
-        total_orders=len(orders),
-        total_spend=round(total_spend, 2),
+        total_orders=total_orders,
+        total_spend=total_spend,
         favorite_items=favorite_items,
-        visit_count=visit_count,
+        visit_count=len(guest.reviews), # Using reviews as a visit proxy for now
         sentiment_summary=sentiment_summary,
-        recent_reviews=[ReviewRead.model_validate(r) for r in reviews],
+        recent_reviews=guest.reviews[:5]
     )
-
-
