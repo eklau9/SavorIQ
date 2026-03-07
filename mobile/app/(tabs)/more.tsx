@@ -105,36 +105,6 @@ export default function MoreScreen() {
                 <MenuItem icon="bar-chart" label="Operations Analytics" subtitle="Revenue & performance metrics" />
             </View>
 
-            {/* API Settings */}
-            <View style={s.section}>
-                <Text style={s.sectionTitle}>API Environment</Text>
-                <View style={s.apiCard}>
-                    <Text style={s.apiCurrentLabel}>Current: <Text style={{ color: colors.accent.gold }}>{currentApi}</Text></Text>
-                    <View style={s.apiBtnRow}>
-                        <TouchableOpacity style={s.apiBtn} onPress={() => handleSwitchApi(null, 'Default')}>
-                            <Text style={s.apiBtnText}>Auto</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={s.apiBtn} onPress={() => handleSwitchApi('http://192.168.68.58:8000', 'Local Mac')}>
-                            <Text style={s.apiBtnText}>Local Mac</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={s.apiBtn} onPress={() => handleSwitchApi('https://savoriq-api-production.up.railway.app', 'Railway')}>
-                            <Text style={s.apiBtnText}>Railway</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={s.apiDesc}>Use 'Local Mac' if on the same WiFi as your computer for much faster performance.</Text>
-                </View>
-            </View>
-
-            {/* Account */}
-            <View style={s.section}>
-                <Text style={s.sectionTitle}>Account</Text>
-                <MenuItem
-                    icon="log-out"
-                    label="Reset Access Key"
-                    subtitle="Clear current secret key"
-                    onPress={handleSignOut}
-                />
-            </View>
 
             {/* App Info */}
             <View style={s.section}>

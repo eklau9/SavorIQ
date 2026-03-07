@@ -42,7 +42,10 @@ async def yelp_search(
         params["latitude"] = lat
         params["longitude"] = lng
     else:
-        raise ValueError("Either location or lat/lng must be provided for search.")
+        # Default to a generic location if nothing else is provided
+        # This prevents the search from failing completely if the user just types a name
+        logger.info("No location or coordinates provided, defaulting Yelp search to 'USA'")
+        params["location"] = "USA"
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.get(f"{YELP_BASE}/businesses/search", headers=headers, params=params)
