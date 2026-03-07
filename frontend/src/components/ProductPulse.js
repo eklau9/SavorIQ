@@ -2,22 +2,14 @@
 
 import { useRouter } from "next/navigation";
 
-function getSentimentLabel(score) {
-    if (score === null || score === undefined) return "No data";
-    if (score >= 0.3) return "Great";
-    if (score <= -0.3) return "Poor";
-    return "Neutral";
-}
-
-function getSentimentClass(score) {
-    if (score === null || score === undefined) return "none";
-    if (score >= 0.3) return "positive";
-    if (score <= -0.3) return "negative";
-    return "neutral";
-}
-
 export default function ProductPulse({ items, title, type }) {
     const router = useRouter();
+
+    // Context-aware labels based on which list this component renders
+    const isRisk = type === "danger";
+    const isInfo = type === "info";
+    const sentimentLabel = isInfo ? "Not on Menu" : isRisk ? "Criticized" : "Praised";
+    const sentimentClass = isInfo ? "info" : isRisk ? "negative" : "positive";
 
     return (
         <div className={`product-pulse-section ${type}`}>
@@ -36,16 +28,22 @@ export default function ProductPulse({ items, title, type }) {
                         >
                             <div className="product-info">
                                 <span className="name">{item.item_name}</span>
-                                <span className="cat">{item.category}</span>
+                                {!isInfo && <span className="cat">{item.category}</span>}
                             </div>
                             <div className="product-stats">
                                 <div className="stat">
-                                    <span className="val">{item.order_count}</span>
-                                    <span className="lbl">Orders</span>
+                                    <span className="val">{item.review_count}</span>
+                                    <span className="lbl">Mentions</span>
                                 </div>
-                                <div className={`sentiment-indicator ${getSentimentClass(item.avg_sentiment)}`}>
-                                    <span className="val">{getSentimentLabel(item.avg_sentiment)}</span>
-                                    <span className="lbl">{item.review_count > 0 ? `${item.review_count} reviews` : "No mentions"}</span>
+                                <div className={`sentiment-indicator ${sentimentClass}`}>
+                                    <span className="val">
+                                        {isInfo && item.avg_rating != null
+                                            ? `${item.avg_rating.toFixed(1)} ★`
+                                            : sentimentLabel}
+                                    </span>
+                                    <span className="lbl">
+                                        {isInfo ? "avg rating" : isRisk ? "in 1-3★ reviews" : "in 4-5★ reviews"}
+                                    </span>
                                 </div>
                             </div>
                         </div>

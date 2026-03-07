@@ -12,6 +12,8 @@ SavorIQ relies on the following external services to function. This is the defin
 | **Yelp Fusion API** | Discovery Search | Lightweight text search to find Yelp Business IDs, URLs, and basic metadata. | Free (5,000 requests/month). |
 | **Apify REST API** | Review Sync | Runs headless actor bots (`compass/google-maps-reviews-scraper`, `tri_angle~yelp-review-scraper`) to bypass strict API limits and deep-scrape historical review data. | Paid (Consumes Apify compute credits). |
 | **Google Gemini API** | AI Intelligence | Powers both the per-review Sentiment Analysis (categorization) and the Executive Dashboard Manager Briefings. Uses `gemini-1.5-flash` model. | Free Tier (15 Requests Per Minute, 1,500 Requests Per Day). |
+| **Railway** | Backend Hosting | Hosts the FastAPI backend as a Docker container with a public HTTPS endpoint (`savoriq-api-production.up.railway.app`). | Free Tier ($5/mo credit, ~500 compute hours). |
+| **Supabase** | Database Hosting | Cloud PostgreSQL database with connection pooling (Transaction Pooler on port 6543). | Free Tier (500MB storage, 2 projects). |
 | **Browser Geolocation API** | Client Feature | Native frontend browser feature used for location-aware "Smart Search" when the city field is left blank. | Free (Native HTML5). |
 
 ---
@@ -69,11 +71,13 @@ Once reviews are ingested, they pass through the Intelligence Layer:
 
 ## Technical Architecture
 - **Backend:** FastAPI (Python)
+- **Backend Hosting:** Railway (Docker) — `https://savoriq-api-production.up.railway.app`
 - **Database:** Supabase Cloud PostgreSQL (Multi-tenant)
 - **ORM:** SQLAlchemy (Async)
 - **AI Engine:** Google Gemini Pro (Sentiment & Insights)
 - **Scraper:** Apify (Yelp & Google Maps)
-- **Frontend:** Next.js (App Router)
+- **Frontend (Web):** Next.js (App Router)
+- **Frontend (Mobile):** Expo / React Native (5-tab navigation, shared API)
 
 ### Multi-Tenancy & Data Isolation
 SavorIQ uses a **Hard Isolation** strategy at the database level:

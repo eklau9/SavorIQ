@@ -159,6 +159,30 @@ async def ingest_reviews(
             if guest.last_visit is None or reviewed_at > guest.last_visit:
                 guest.last_visit = reviewed_at
 
+            # Update tier logic after each review
+            metrics_result = await db.execute(
+                select(
+                    func.count(Review.id).label("review_count"),
+                    func.count(Order.id).label("order_count")
+                ).where(Review.guest_id == guest.id, Review.restaurant_id == restaurant_id)
+            )
+            metrics = metrics_result.one()
+            review_count = metrics.review_count
+            order_count = metrics.order_count
+
+            now = datetime.utcnow()
+            days_since_last = (now - guest.last_visit).days if guest.last_visit else 0
+            days_since_first = (now - guest.first_visit).days if guest.first_visit else 0
+
+            if review_count >= 3:
+                guest.tier = "vip"
+            elif days_since_last > 30:
+                guest.tier = "slipping"
+            elif days_since_first <= 30 and order_count < 3:
+                guest.tier = "new"
+            else:
+                guest.tier = "regular"
+
             # Create review
             review = Review(
                 restaurant_id=restaurant_id,
@@ -209,15 +233,31 @@ async def ingest_orders(
             if guest.last_visit is None or ordered_at > guest.last_visit:
                 guest.last_visit = ordered_at
 
-            # Update tier based on order count
-            result = await db.execute(
-                select(Order).where(Order.guest_id == guest.id)
+            # ── Tier Calculation Logic ──
+            # Re-fetch guest metrics to ensure accuracy
+            metrics_result = await db.execute(
+                select(
+                    func.count(Review.id).label("review_count"),
+                    func.count(Order.id).label("order_count")
+                ).where(Review.guest_id == guest.id, Review.restaurant_id == restaurant_id)
             )
-            order_count = len(result.scalars().all())
-            if order_count >= 10:
+            metrics = metrics_result.one()
+            review_count = metrics.review_count
+            order_count = metrics.order_count
+
+            # 1. VIP: > 3 reviews (per user request)
+            if review_count >= 3:
                 guest.tier = "vip"
-            elif order_count >= 3:
+            # 2. Regular: 3+ orders or 2+ reviews
+            elif order_count >= 3 or review_count >= 2:
                 guest.tier = "regular"
+            # 3. New: First visit was within the last 30 days
+            else:
+                now = datetime.utcnow()
+                if guest.first_visit and (now - guest.first_visit).days <= 30:
+                    guest.tier = "new"
+                else:
+                    guest.tier = "regular" # Default to regular if they've been around longer but don't hit VIP/New criteria
 
             order = Order(
                 restaurant_id=restaurant_id,

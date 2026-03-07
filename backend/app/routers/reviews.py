@@ -125,7 +125,7 @@ async def list_all_reviews(
     days: int | None = Query(None, ge=1),
     date: str | None = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(100, ge=1, le=5000),
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -175,7 +175,7 @@ async def list_guest_reviews(
     guest_id: str,
     platform: str | None = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=5000),
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):

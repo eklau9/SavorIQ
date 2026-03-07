@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -36,7 +36,7 @@ class Guest(Base):
     email: Mapped[Optional[str]] = mapped_column(String(254), nullable=True) # Removed unique constraint across tenants
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     tier: Mapped[str] = mapped_column(
-        Enum("new", "regular", "vip", name="guest_tier"), default="new"
+        Enum("new", "regular", "vip", "slipping", name="guest_tier"), default="new"
     )
     first_visit: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_visit: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -135,3 +135,21 @@ class SyncLog(Base):
     last_synced_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     reviews_fetched: Mapped[int] = mapped_column(Integer, default=0)
     new_reviews: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class MenuItem(Base):
+    """A menu item belonging to a specific restaurant, with keyword aliases for review matching."""
+    __tablename__ = "menu_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(
+        Enum("food", "drink", name="menu_category", create_constraint=False), nullable=False
+    )
+    keywords: Mapped[str] = mapped_column(Text, nullable=False)  # Comma-separated aliases, e.g. "matcha latte,matcha"
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    restaurant: Mapped["Restaurant"] = relationship()
+

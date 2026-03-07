@@ -6,7 +6,7 @@ import GuestPulseCard from "../components/GuestPulseCard";
 import ManagerBriefing from "../components/ManagerBriefing";
 import ProductPulse from "../components/ProductPulse";
 import GuestPriorityCard from "../components/GuestPriorityCard";
-import { fetchDeepAnalytics, fetchGuestPriorities } from "../lib/api";
+import { fetchDeepAnalytics, fetchGuestPriorities, fetchGuests } from "../lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -37,11 +37,8 @@ export default function DashboardPage() {
       // Fetch guests and priorities independently to avoid total UI block on single failure
       let guestsData = [];
       try {
-        const guestsRes = await fetch(`${API_BASE}/api/guests?limit=50`);
-        if (guestsRes.ok) {
-          guestsData = await guestsRes.json();
-          setGuests(guestsData);
-        }
+        const guestsData = await fetchGuests({ limit: 50 });
+        setGuests(guestsData);
       } catch (gErr) {
         console.error("Guests fetch failed:", gErr);
       }
@@ -106,6 +103,18 @@ export default function DashboardPage() {
               title="At-Risk Items"
               type="danger"
             />
+            {deepAnalytics.unmatched_mentions && deepAnalytics.unmatched_mentions.length > 0 && (
+              <ProductPulse
+                items={deepAnalytics.unmatched_mentions.map(m => ({
+                  item_name: m.term,
+                  category: "unknown",
+                  review_count: m.mention_count,
+                  avg_rating: m.avg_rating,
+                }))}
+                title="Customer Mentions (Not on Menu)"
+                type="info"
+              />
+            )}
           </div>
         </>
       )}

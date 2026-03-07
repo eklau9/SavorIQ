@@ -38,18 +38,60 @@ async def list_restaurants(db: AsyncSession = Depends(get_db)):
 @router.get("/guests", response_model=list[GuestRead])
 async def list_guests(
     tier: str | None = None,
+    sort_by: str = Query("recent", enum=["recent", "rating", "reviews"]),
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(1000, ge=1, le=5000),
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all guests with optional tier filter and pagination, scoped to restaurant."""
-    query = select(Guest).where(Guest.restaurant_id == x_restaurant_id)
+    """List all guests with advanced sorting and expanded limits, scoped to restaurant."""
+    
+    # Subquery for guest metrics (avg rating, review count)
+    subq = (
+        select(
+            Review.guest_id,
+            func.max(Review.reviewed_at).label("latest_review"),
+            func.avg(Review.rating).label("avg_rating"),
+            func.count(Review.id).label("review_count")
+        )
+        .where(Review.restaurant_id == x_restaurant_id)
+        .group_by(Review.guest_id)
+        .subquery()
+    )
+
+    # Main query selecting Guest and metrics
+    query = (
+        select(Guest, subq.c.avg_rating, subq.c.review_count)
+        .where(Guest.restaurant_id == x_restaurant_id)
+        .outerjoin(subq, Guest.id == subq.c.guest_id)
+    )
+    
     if tier:
         query = query.where(Guest.tier == tier)
-    query = query.offset(skip).limit(limit).order_by(Guest.last_visit.desc())
+
+    # Apply sorting
+    if sort_by == "recent":
+        # Sort by latest review date, or guest last visit, or guest creation
+        query = query.order_by(func.coalesce(subq.c.latest_review, Guest.last_visit, Guest.created_at).desc())
+    elif sort_by == "rating":
+        query = query.order_by(func.coalesce(subq.c.avg_rating, 0).desc())
+    elif sort_by == "reviews":
+        query = query.order_by(func.coalesce(subq.c.review_count, 0).desc())
+
+    # Apply pagination
+    query = query.offset(skip).limit(limit)
+    
     result = await db.execute(query)
-    return result.scalars().all()
+    rows = result.all() # Each row is (Guest, avg_rating, review_count)
+    
+    out = []
+    for g, avg, count in rows:
+        gr = GuestRead.model_validate(g)
+        gr.avg_rating = round(float(avg), 1) if avg is not None else 0.0
+        gr.visit_count = count or 0
+        out.append(gr)
+        
+    return out
 
 
 @router.get("/guests/priorities", response_model=list[GuestPrioritized])

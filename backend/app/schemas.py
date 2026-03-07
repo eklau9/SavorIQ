@@ -14,6 +14,7 @@ class GuestTier(str, Enum):
     new = "new"
     regular = "regular"
     vip = "vip"
+    slipping = "slipping"
 
 
 class OrderCategory(str, Enum):
@@ -64,6 +65,8 @@ class GuestRead(GuestBase):
     id: str
     first_visit: datetime | None = None
     last_visit: datetime | None = None
+    avg_rating: float | None = None
+    visit_count: int | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -257,6 +260,22 @@ class InterceptActionRead(InterceptActionBase):
     model_config = {"from_attributes": True}
 
 
+# ── Menu Items ─────────────────────────────────────────────────────────────
+
+class MenuItemCreate(BaseModel):
+    name: str
+    category: OrderCategory
+    keywords: str  # Comma-separated aliases
+
+
+class MenuItemRead(MenuItemCreate):
+    id: str
+    is_active: bool = True
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Analytics ──────────────────────────────────────────────────────────────
 
 class OverviewStats(BaseModel):
@@ -287,10 +306,18 @@ class ManagerBriefing(BaseModel):
     insights: list[ManagerInsight]
 
 
+class UnmatchedMention(BaseModel):
+    """A food/drink term found in reviews but not matching any menu item."""
+    term: str
+    mention_count: int
+    avg_rating: float | None = None
+
+
 class DeepAnalytics(BaseModel):
     overview: OverviewStats
     top_performers: list[ItemPerformance]
     risks: list[ItemPerformance]
+    unmatched_mentions: list[UnmatchedMention] = []
     briefing: ManagerBriefing
 
 

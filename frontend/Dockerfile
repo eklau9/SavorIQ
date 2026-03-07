@@ -1,18 +1,21 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /app
-COPY package*.json ./
+
+# Copy the mobile Expo source
+COPY ../mobile/package.json ../mobile/package-lock.json* ./
 RUN npm ci
-COPY . .
-ENV NEXT_PUBLIC_API_URL=http://savoriq-backend:8000
-RUN npm run build
+
+COPY ../mobile/ .
+
+# Set Railway API URL at build time
+ENV EXPO_PUBLIC_API_URL=https://savoriq-api-production.up.railway.app
+
+RUN npx expo export --platform web
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-
+RUN npm install -g serve
+COPY --from=builder /app/dist ./dist
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["serve", "dist", "-l", "3000", "--single"]

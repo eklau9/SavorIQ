@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { fetchGuestPulse, fetchGuestOrders, fetchGuestReviews } from "@/lib/api";
 import OrderTimeline from "../../../components/OrderTimeline";
 import ReviewFeed from "../../../components/ReviewFeed";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function getInitials(name) {
     return name
@@ -36,15 +35,15 @@ export default function GuestDetailPage() {
 
     async function loadGuestData(guestId) {
         try {
-            const [pulseRes, ordersRes, reviewsRes] = await Promise.all([
-                fetch(`${API_BASE}/api/guests/${guestId}/pulse`),
-                fetch(`${API_BASE}/api/guests/${guestId}/orders`),
-                fetch(`${API_BASE}/api/guests/${guestId}/reviews`),
+            const [pulseData, ordersData, reviewsData] = await Promise.all([
+                fetchGuestPulse(guestId),
+                fetchGuestOrders(guestId),
+                fetchGuestReviews(guestId),
             ]);
 
-            if (pulseRes.ok) setPulse(await pulseRes.json());
-            if (ordersRes.ok) setOrders(await ordersRes.json());
-            if (reviewsRes.ok) setReviews(await reviewsRes.json());
+            setPulse(pulseData);
+            setOrders(ordersData);
+            setReviews(reviewsData);
         } catch (err) {
             console.error("Failed to load guest data:", err);
         } finally {

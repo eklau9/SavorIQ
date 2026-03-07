@@ -93,7 +93,7 @@ async def generate_manager_briefing(
         model = genai.GenerativeModel(settings.GEMINI_MODEL)
 
         prompt = BRIEFING_PROMPT + json.dumps(data_context, indent=2)
-        response = model.generate_content(prompt)
+        response = await model.generate_content_async(prompt)
         text = response.text.strip()
 
         # Extract JSON

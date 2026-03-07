@@ -1304,7 +1304,7 @@ body::before {
 
 .intelligence-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 24px;
   margin-bottom: 48px;
 }
@@ -1403,6 +1403,14 @@ body::before {
 
 .sentiment-indicator.none .val {
   color: var(--text-muted);
+}
+
+.sentiment-indicator.info .val {
+  color: var(--accent-indigo);
+}
+
+.product-pulse-section.info .name {
+  color: var(--accent-indigo);
 }
 
 .empty-mini {
@@ -3058,6 +3066,7 @@ body::before {
 .guest-visits div:last-child {
   margin-bottom: 0;
 }
+
 /* ─── Restaurant Switcher ──────────────────────────────────── */
 
 .restaurant-switcher {

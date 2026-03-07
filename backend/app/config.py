@@ -10,6 +10,10 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "SavorIQ"
     DEBUG: bool = True
+    ACCESS_KEY: str = "SavorIQ"
+
+    # Server port (Railway assigns via PORT env var)
+    PORT: int = 8000
 
     # Database — defaults to async SQLite for local dev
     DATABASE_URL: str = "sqlite+aiosqlite:///./savoriq.db"
@@ -27,8 +31,17 @@ class Settings(BaseSettings):
     # Apify (review scraping for Google Maps + Yelp)
     APIFY_API_TOKEN: str = ""
 
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
+    # CORS — accepts comma-separated origins or "*" for all
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000", 
+        "http://localhost:3001",
+        "http://localhost:8081",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:8081",
+        "http://192.168.68.56:8081",
+        "https://savoriq-web-production.up.railway.app"
+    ]
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

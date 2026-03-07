@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 /**
  * Helper to get the active restaurant ID from localStorage.
@@ -15,6 +15,7 @@ async function apiFetch(endpoint, options = {}) {
     const restaurantId = getActiveRestaurantId();
     const headers = {
         ...options.headers,
+        "X-Access-Key": "SavorIQ", // Required by backend
     };
 
     if (restaurantId) {
@@ -28,7 +29,10 @@ async function apiFetch(endpoint, options = {}) {
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `API Error: ${res.status}`);
+        const msg = typeof errorData.detail === 'string'
+            ? errorData.detail
+            : JSON.stringify(errorData.detail || errorData) || `API Error: ${res.status}`;
+        throw new Error(msg);
     }
 
     return res.json();
@@ -38,9 +42,12 @@ export async function fetchRestaurants() {
     return apiFetch("/api/restaurants", { cache: "no-store" });
 }
 
-export async function fetchGuests(tier = null) {
+export async function fetchGuests({ tier = null, sort_by = "recent", limit = 1000, skip = 0 } = {}) {
     const params = new URLSearchParams();
     if (tier) params.set("tier", tier);
+    if (sort_by) params.set("sort_by", sort_by);
+    if (limit) params.set("limit", limit);
+    if (skip) params.set("skip", skip);
     return apiFetch(`/api/guests?${params}`, { cache: "no-store" });
 }
 
