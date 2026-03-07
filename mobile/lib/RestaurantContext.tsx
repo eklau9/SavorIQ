@@ -39,7 +39,9 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
                 await setActiveRestaurantId(list[0].id);
             }
         } catch (e) {
-            console.error('Failed to load restaurants:', e);
+            console.warn('Failed to load restaurants:', e);
+            // Don't leave it in a loading state if it fails
+            setRestaurants([]);
         } finally {
             setLoading(false);
         }

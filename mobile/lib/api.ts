@@ -1,18 +1,28 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-// Use env var if set (deployed builds), otherwise: web=localhost, device=Railway
 // Use env var if set (deployed builds), otherwise: local for simulator/web, Railway for production
 const getInitialApiBase = () => {
     if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
 
     if (__DEV__) {
+        // Automatically detect the dev machine IP from Expo's bundler
+        const hostUri = Constants.expoConfig?.hostUri;
+        const host = hostUri ? hostUri.split(':')[0] : '127.0.0.1';
+
         // If in web browser and not on localhost (e.g. accessing via IP on phone),
         // default to that same IP for the backend.
         if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
             return `http://${window.location.hostname}:8000`;
         }
-        return Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://127.0.0.1:8000';
+
+        if (Platform.OS === 'android' && host === '127.0.0.1') {
+            return 'http://10.0.2.2:8000';
+        }
+
+        console.log(`DEBUG: API Base detected as http://${host}:8000`);
+        return `http://${host}:8000`;
     }
 
     return 'https://savoriq-api-production.up.railway.app';
@@ -22,7 +32,7 @@ const DEFAULT_API_BASE = getInitialApiBase();
 
 const FETCH_TIMEOUT = 20000; // 20s timeout
 
-async function getApiBase(): Promise<string> {
+export async function getApiBase(): Promise<string> {
     const custom = await AsyncStorage.getItem('apiBase');
     return custom || DEFAULT_API_BASE;
 }

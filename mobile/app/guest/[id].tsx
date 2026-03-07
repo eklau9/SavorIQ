@@ -48,7 +48,7 @@ export default function GuestDetailScreen() {
         vip: colors.accent.gold,
         regular: colors.accent.blue,
         new: colors.accent.green,
-        churning: colors.accent.red,
+        slipping: colors.accent.red,
     };
 
     const renderStars = (rating: number) => {

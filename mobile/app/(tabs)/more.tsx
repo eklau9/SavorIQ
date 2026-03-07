@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setApiBase } from '@/lib/api';
+import { setApiBase, getApiBase } from '@/lib/api';
 import { useState, useEffect } from 'react';
+import Constants from 'expo-constants';
 
 export default function MoreScreen() {
     const router = useRouter();
@@ -18,8 +19,8 @@ export default function MoreScreen() {
 
     useEffect(() => {
         (async () => {
-            const api = await AsyncStorage.getItem('apiBase');
-            setCurrentApi(api || 'Default (Auto)');
+            const api = await getApiBase();
+            setCurrentApi(api);
         })();
     }, []);
 
@@ -40,8 +41,13 @@ export default function MoreScreen() {
 
     const handleSwitchApi = async (url: string | null, label: string) => {
         await setApiBase(url);
-        setCurrentApi(url || 'Default (Auto)');
-        Alert.alert('API Switched', `Now using ${label}. Please reload the app for changes to take full effect.`, [
+        const newApi = await getApiBase();
+        setCurrentApi(newApi);
+
+        // Re-fetch restaurants immediately to update the list
+        await loadRestaurants();
+
+        Alert.alert('API Switched', `Now using ${label}: ${newApi}.`, [
             { text: 'OK' }
         ]);
     };
@@ -132,14 +138,18 @@ export default function MoreScreen() {
 
             {/* App Info */}
             <View style={s.section}>
-                <Text style={s.sectionTitle}>About</Text>
+                <Text style={s.sectionTitle}>Connectivity Debug</Text>
                 <View style={s.infoRow}>
-                    <Text style={s.infoLabel}>Version</Text>
-                    <Text style={s.infoValue}>1.0.0</Text>
+                    <Text style={s.infoLabel}>Host URI</Text>
+                    <Text style={s.infoValue}>{Constants.expoConfig?.hostUri || 'None'}</Text>
                 </View>
                 <View style={s.infoRow}>
-                    <Text style={s.infoLabel}>API Server</Text>
-                    <Text style={s.infoValue}>127.0.0.1:8000</Text>
+                    <Text style={s.infoLabel}>Active API URL</Text>
+                    <Text style={s.infoValue}>{currentApi}</Text>
+                </View>
+                <View style={s.infoRow}>
+                    <Text style={s.infoLabel}>App Version</Text>
+                    <Text style={s.infoValue}>1.0.0</Text>
                 </View>
             </View>
         </ScrollView>
