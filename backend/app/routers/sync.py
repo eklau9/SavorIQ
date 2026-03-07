@@ -121,6 +121,7 @@ async def sync_apify_reviews(
     # ── Daily sync guard ──
     # For sync logs, we use the business URL as ID for Apify syncs
     business_id = business_url
+    target_restaurant_id = restaurant_id # Initialize target_restaurant_id
     if not force:
         existing = await db.execute(
             select(SyncLog).where(
@@ -159,6 +160,7 @@ async def sync_apify_reviews(
                 }
     else:
         # Even if forcing, we need to find the target_restaurant_id if it exists
+        # The initial assignment `target_restaurant_id = restaurant_id` handles the fallback
         existing = await db.execute(
             select(SyncLog).where(
                 SyncLog.platform == platform,
@@ -166,7 +168,8 @@ async def sync_apify_reviews(
             )
         )
         log = existing.scalar_one_or_none()
-        target_restaurant_id = log.restaurant_id if log else restaurant_id
+        if log:
+            target_restaurant_id = log.restaurant_id
 
     # ── Provision new Restaurant if no mapping exists ──
     if not target_restaurant_id:
