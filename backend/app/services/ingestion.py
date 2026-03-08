@@ -112,6 +112,7 @@ async def ingest_reviews(
     restaurant_id: str,
     platform: ReviewPlatform,
     reviews_data: list[dict],
+    full_sync: bool = False,
 ) -> IngestionReport:
     """
     Optimized ingestion pipeline with batch lookups and minimal queries.
@@ -135,12 +136,12 @@ async def ingest_reviews(
     )
     guest_cache = {g.name: g for g in existing_guests_result.scalars().all()}
 
-    # 2. Check for duplicates in bulk
+    # 2. Bulk check for existing reviews to handle updates (upserts)
     review_ids = [r.get("review_id") for r in reviews_data if r.get("review_id")]
-    duplicates_result = await db.execute(
-        select(Review.platform_review_id).where(Review.platform_review_id.in_(review_ids))
+    existing_reviews_result = await db.execute(
+        select(Review).where(Review.restaurant_id == restaurant_id, Review.platform_review_id.in_(review_ids))
     )
-    duplicate_ids = set(duplicates_result.scalars().all())
+    review_cache = {r.platform_review_id: r for r in existing_reviews_result.scalars().all()}
 
     for i, raw_data in enumerate(reviews_data):
         try:
@@ -151,15 +152,34 @@ async def ingest_reviews(
 
             normalized = normalize_review(parsed, platform)
 
-            if normalized["platform_review_id"] in duplicate_ids:
-                report.duplicates_skipped += 1
+            existing_review = review_cache.get(normalized["platform_review_id"])
+
+            if existing_review:
+                # Upsert check: update if content/rating changed
+                has_changed = (
+                    existing_review.rating != normalized["rating"] or 
+                    existing_review.content != normalized["content"]
+                )
+                if has_changed:
+                    existing_review.rating = normalized["rating"]
+                    existing_review.content = normalized["content"]
+                    # Mark as NOT deleted if it resurfaced
+                    existing_review.is_deleted_on_platform = False
+                    report.ingested += 1
+                else:
+                    report.duplicates_skipped += 1
                 continue
 
             # Get guest from cache or create
             name = normalized["guest_name"]
-            if name in guest_cache:
-                guest = guest_cache[name]
-            else:
+            name_key = name.strip().lower()
+            guest = None
+            for cached_name, cached_guest in guest_cache.items():
+                if cached_name.strip().lower() == name_key:
+                    guest = cached_guest
+                    break
+
+            if not guest:
                 guest = Guest(
                     restaurant_id=restaurant_id, 
                     name=name, 
@@ -167,6 +187,7 @@ async def ingest_reviews(
                     tier="new"
                 )
                 db.add(guest)
+                await db.flush()
                 guest_cache[name] = guest
 
             # Update guest visit timestamps
@@ -176,21 +197,7 @@ async def ingest_reviews(
             if guest.last_visit is None or reviewed_at > guest.last_visit:
                 guest.last_visit = reviewed_at
 
-            # Simplified Tier Logic (avoiding per-review COUNT query)
-            # We'll rely on periodic full-recalc or just approximate for the sync
-            # To keep it fast, we only move to 'slipping' or 'vip' based on simple data
-            # A background task can do the heavy aggregation.
-            now = datetime.utcnow()
-            days_since_last = (now - guest.last_visit).days if guest.last_visit else 0
-            
-            # Simple heuristic for now: if we're adding a review, they are at least regular 
-            # unless it's their first time and within 30 days.
-            if guest.tier == "new" and days_since_last > 30:
-                guest.tier = "regular"
-            elif days_since_last > 30:
-                guest.tier = "slipping"
-
-            # Create review
+            # Create new review
             review = Review(
                 restaurant_id=restaurant_id,
                 guest_id=guest.id,
@@ -200,6 +207,7 @@ async def ingest_reviews(
                 content=normalized["content"],
                 reviewed_at=normalized["reviewed_at"],
                 ingested_at=datetime.utcnow(),
+                is_deleted_on_platform=False,
             )
             db.add(review)
             report.ingested += 1
@@ -208,6 +216,25 @@ async def ingest_reviews(
             logger.warning(f"Error ingesting review #{i}: {e}")
             report.errors += 1
             report.error_details.append(f"Review #{i}: {str(e)}")
+
+    # 3. Handle Pruning (Full Sync ONLY)
+    if full_sync:
+        incoming_ids = set(review_ids)
+        stmt = (
+            select(Review)
+            .where(Review.restaurant_id == restaurant_id)
+            .where(Review.platform == platform.value)
+            .where(Review.is_deleted_on_platform == False)
+            .where(Review.platform_review_id.notin_(incoming_ids))
+        )
+        to_prune_result = await db.execute(stmt)
+        to_prune = to_prune_result.scalars().all()
+        for r in to_prune:
+            r.is_deleted_on_platform = True
+            report.ingested += 1 # Count pruning as an update/change in the report
+        
+        if to_prune:
+            logger.info(f"Pruned {len(to_prune)} deleted reviews for {restaurant_id} on {platform.value}")
 
     await db.flush()
     return report

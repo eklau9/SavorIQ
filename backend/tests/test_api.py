@@ -23,21 +23,16 @@ class TestGuestsEndpoints:
         assert resp.json() == []
 
     @pytest.mark.asyncio
-    async def test_create_and_get_guest(self, client):
-        # Create
-        resp = await client.post(
-            "/api/guests",
-            json={"name": "Test Guest", "email": "test@api.com", "tier": "new"},
-        )
-        assert resp.status_code == 201
-        guest = resp.json()
-        assert guest["name"] == "Test Guest"
-        guest_id = guest["id"]
-
-        # Get
-        resp = await client.get(f"/api/guests/{guest_id}")
+    async def test_guest_creation_via_ingestion(self, client):
+        # Ingest a review for a new guest
+        resp = await client.post("/api/reviews/ingest", json=SAMPLE_YELP_REVIEWS)
         assert resp.status_code == 200
-        assert resp.json()["name"] == "Test Guest"
+        
+        # Verify guest was created in the list
+        resp = await client.get("/api/guests")
+        assert resp.status_code == 200
+        guests = resp.json()
+        assert any(g["name"] == "Test User" for g in guests)
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_guest(self, client):
@@ -105,6 +100,38 @@ class TestAnalytics:
         data = resp.json()
         assert data["total_guests"] > 0
         assert data["total_reviews"] > 0
+
+
+class TestReviewFiltersOptimized:
+    @pytest.mark.asyncio
+    async def test_review_filtering_sql(self, client):
+        """Test the new SQL-level filtering for reviews."""
+        # Seed reviews
+        await client.post("/api/reviews/ingest", json=SAMPLE_YELP_REVIEWS)
+        
+        # Test search filter
+        resp = await client.get("/api/reviews?search=great")
+        assert resp.status_code == 200
+        reviews = resp.json()
+        assert all("great" in r["content"].lower() for r in reviews)
+
+        # Test platform filter
+        resp = await client.get("/api/reviews?platform=yelp")
+        assert resp.status_code == 200
+        assert all(r["platform"] == "yelp" for r in resp.json())
+
+    @pytest.mark.asyncio
+    async def test_review_stats_sql(self, client):
+        """Test the new SQL-level stats aggregation."""
+        await client.post("/api/reviews/ingest", json=SAMPLE_YELP_REVIEWS)
+        
+        resp = await client.get("/api/reviews/stats")
+        assert resp.status_code == 200
+        stats = resp.json()
+        assert "total" in stats
+        assert "avg_rating" in stats
+        assert "rating_distribution" in stats
+        assert stats["total"] > 0
 
 
 class TestGuestPulseIntegration:

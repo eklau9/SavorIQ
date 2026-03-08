@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, FlatList, StyleSheet, RefreshControl,
     ActivityIndicator, TouchableOpacity,
@@ -28,26 +28,42 @@ export default function GuestsScreen() {
     const [filterTier, setFilterTier] = useState<string | undefined>();
     const [sortBy, setSortBy] = useState<'recent' | 'rating' | 'reviews'>('recent');
 
-    const loadData = useCallback(async () => {
+    // 1. Local Filtering Logic (Instant Feedback)
+    useEffect(() => {
+        if (!activeId || globalGuests.length === 0) return;
+
+        const filtered = globalGuests.filter(g => {
+            const matchesTier = !filterTier || g.tier === filterTier;
+            return matchesTier;
+        });
+
+        // Apply local sorting
+        const sorted = [...filtered].sort((a, b) => {
+            if (sortBy === 'rating') return (b.avg_rating || 0) - (a.avg_rating || 0);
+            if (sortBy === 'reviews') return (b.visit_count || 0) - (a.visit_count || 0);
+            return new Date(b.last_visit || b.created_at).getTime() - new Date(a.last_visit || a.created_at).getTime();
+        });
+
+        setGuests(sorted);
+    }, [activeId, globalGuests, filterTier, sortBy]);
+
+    // 2. Background Refresh Logic
+    const loadData = useCallback(async (isSilent = false) => {
         if (!activeId) {
             setLoading(false);
             setRefreshing(false);
             return;
         }
 
-        // If no filter, use global data instantly
-        if (!filterTier) {
-            setGuests(globalGuests);
-            setLoading(false);
-            setRefreshing(false);
-            return;
-        }
+        // Only show spinner if we have no data at all
+        const shouldShowLoading = !isSilent && guests.length === 0;
+        if (shouldShowLoading) setLoading(true);
 
-        setLoading(true);
         try {
             const data = await fetchGuests({
                 tier: filterTier,
-                sort_by: sortBy
+                sort_by: sortBy,
+                limit: 5000
             });
             setGuests(data);
         } catch (e) {
@@ -56,18 +72,35 @@ export default function GuestsScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [activeId, filterTier, sortBy, globalGuests]);
+    }, [activeId, filterTier, sortBy, guests.length]);
+
+    // Use a ref to track if we've already done an initial refresh for this focus session
+    const isInitialMount = React.useRef(true);
 
     useFocusEffect(
         useCallback(() => {
-            if (activeId) {
-                if (!filterTier && sortBy === 'recent') {
-                    refreshAll();
-                } else {
-                    loadData();
-                }
+            if (!activeId || contextLoading) {
+                return;
             }
-        }, [activeId, filterTier, sortBy, refreshAll, loadData])
+
+            // Only trigger a private load if filters are active during focus.
+            // Global data is handled by the DataContext on restaurant switch.
+            // For GuestsScreen, filters are `filterTier` and `sortBy`.
+            if (filterTier || sortBy !== 'recent') {
+                loadData();
+            } else if (isInitialMount.current && !dataLoading) {
+                // If no filters are active, and it's the initial mount for this focus session,
+                // and global data is not already loading, then refresh all global data.
+                refreshAll();
+                isInitialMount.current = false;
+            }
+
+            return () => {
+                // Optional: reset if we want to refresh every single time it regains focus
+                // but for 1000+ items, it's better to be conservative.
+                isInitialMount.current = true;
+            };
+        }, [activeId, contextLoading, filterTier, sortBy, dataLoading]) // Removed refreshAll and loadData to be safe
     );
 
     const onRefresh = async () => {

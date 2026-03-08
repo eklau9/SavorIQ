@@ -128,152 +128,130 @@ def analyze_sentiment_heuristic(review_text: str) -> List[Dict[str, Any]]:
     return results
 
 
-# ── Gemini Integration ────────────────────────────────────────────────────
+from abc import ABC, abstractmethod
 
-# ── Gemini Batch Prompt ──────────────────────────────────────────────────
+# ── Service Interface ─────────────────────────────────────────────────────
 
-BATCH_PROMPT = """You are a restaurant review analyst. Analyze the following list of reviews and for EACH review, categorize sentiment into exactly three buckets: "food", "drink", and "ambiance".
+class SentimentAnalyzer(ABC):
+    @abstractmethod
+    async def analyze_batch(self, reviews: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
+        """Analyze a batch of reviews."""
+        pass
 
-For each bucket, provide:
-- score: a float from -1.0 (very negative) to 1.0 (very positive). Use 0.0 if not mentioned.
-- summary: a brief 1-sentence explanation.
-
-EXTREMELY IMPORTANT:
-1. You must return a JSON object with a key "results" that is a list of objects.
-2. Each object in the "results" list MUST include the "id" provided in the input list so we can map it back correctly.
-3. Return ONLY valid JSON.
-
-Format:
-{
-  "results": [
-    {
-      "id": "review_id_1",
-      "sentiment": [
-        {"bucket": "food", "score": 0.8, "summary": "..."},
-        {"bucket": "drink", "score": 0.0, "summary": "..."},
-        {"bucket": "ambiance", "score": 0.5, "summary": "..."}
-      ]
-    },
-    ...
-  ]
-}
-
-Reviews to analyze:
-"""
+    @abstractmethod
+    async def analyze_single(self, text: str) -> List[Dict[str, Any]]:
+        """Analyze a single review."""
+        pass
 
 
-async def analyze_sentiment_batch(reviews: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
-    """
-    Use Gemini to analyze a batch of reviews in a single call.
-    'reviews' should be a list of {'id': id, 'text': text}.
-    Returns a dict mapping review_id -> list of sentiment results.
+# ── Heuristic Implementation ─────────────────────────────────────────────
 
-    Uses a temporary ID mapping (idx_0, idx_1...) to prevent Gemini from 
-    truncating long UUID strings in the JSON response.
-    """
-    if not reviews:
-        return {}
+class HeuristicAnalyzer(SentimentAnalyzer):
+    async def analyze_batch(self, reviews: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
+        return {r["id"]: await self.analyze_single(r["text"]) for r in reviews}
 
-    # 1. Create mapping to protect IDs from LLM truncation
-    id_map = {f"idx_{i}": r["id"] for i, r in enumerate(reviews)}
-    gemini_reviews = [{"id": f"idx_{i}", "text": r["text"]} for i, r in enumerate(reviews)]
-
-    try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-
-        # Prepare batch context
-        batch_input = json.dumps(gemini_reviews)
-        response = await model.generate_content_async(BATCH_PROMPT + batch_input)
-        text = response.text.strip()
-
-        # Clean JSON
-        if "```" in text:
-            json_match = re.search(r'```(?:json)?\s*(.*?)```', text, re.DOTALL)
-            if json_match:
-                text = json_match.group(1).strip()
-
-        data = json.loads(text)
-        
-        # Mapping results back to original IDs
-        mapping = {}
-        for res in data.get("results", []):
-            temp_id = res["id"]
-            original_id = id_map.get(temp_id)
-            if original_id:
-                mapping[original_id] = res["sentiment"]
-            else:
-                logger.warning(f"Gemini returned unknown temp ID: {temp_id}")
-        
-        return mapping
-
-    except Exception as e:
-        logger.warning(f"Batch Gemini analysis failed: {e}. Falling back to individual heuristics.")
-        # Fallback: process each individually with heuristic
-        return {r["id"]: analyze_sentiment_heuristic(r["text"]) for r in reviews}
-
-
-async def analyze_sentiment_gemini(review_text: str) -> List[Dict[str, Any]]:
-    """Use Gemini to analyze review sentiment into buckets."""
-    try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-
-        response = await model.generate_content_async(GEMINI_PROMPT + review_text)
-        text = response.text.strip()
-
-        # Extract JSON from response (handle markdown code blocks)
-        if "```" in text:
-            json_match = re.search(r'```(?:json)?\s*(.*?)```', text, re.DOTALL)
-            if json_match:
-                text = json_match.group(1).strip()
-
-        results = json.loads(text)
-
-        # Validate structure
-        validated: List[Dict[str, Any]] = []
-        for item in results:
-            if "bucket" in item and "score" in item:
-                validated.append({
-                    "bucket": item["bucket"],
-                    "score": max(-1.0, min(1.0, float(item["score"]))),
-                    "summary": item.get("summary", ""),
+    async def analyze_single(self, text: str) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        for bucket_name, keywords in [
+            ("food", FOOD_KEYWORDS),
+            ("drink", DRINK_KEYWORDS),
+            ("ambiance", AMBIANCE_KEYWORDS),
+        ]:
+            score, has_content = _keyword_sentiment(text, keywords)
+            if has_content:
+                results.append({
+                    "bucket": bucket_name,
+                    "score": score,
+                    "summary": _generate_summary(text, bucket_name, score),
                 })
-        return validated if validated else analyze_sentiment_heuristic(review_text)
+        if not results:
+            results.append({
+                "bucket": "food",
+                "score": 0.0,
+                "summary": "No specific category detected in review.",
+            })
+        return results
 
-    except Exception as e:
-        logger.warning(f"Gemini analysis failed, falling back to heuristic: {e}")
-        return analyze_sentiment_heuristic(review_text)
+
+# ── Gemini Implementation ────────────────────────────────────────────────
+
+class GeminiAnalyzer(SentimentAnalyzer):
+    def __init__(self, api_key: str, model_name: str):
+        self.api_key = api_key
+        self.model_name = model_name
+        self.heuristic = HeuristicAnalyzer()
+
+    async def analyze_batch(self, reviews: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
+        if not reviews:
+            return {}
+
+        id_map = {f"idx_{i}": r["id"] for i, r in enumerate(reviews)}
+        gemini_reviews = [{"id": f"idx_{i}", "text": r["text"]} for i, r in enumerate(reviews)]
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=self.api_key)
+            model = genai.GenerativeModel(self.model_name)
+
+            batch_input = json.dumps(gemini_reviews)
+            response = await model.generate_content_async(BATCH_PROMPT + batch_input)
+            text = response.text.strip()
+
+            if "```" in text:
+                json_match = re.search(r'```(?:json)?\s*(.*?)```', text, re.DOTALL)
+                if json_match:
+                    text = json_match.group(1).strip()
+
+            data = json.loads(text)
+            mapping = {}
+            for res in data.get("results", []):
+                temp_id = res["id"]
+                original_id = id_map.get(temp_id)
+                if original_id:
+                    mapping[original_id] = res["sentiment"]
+            
+            return mapping
+
+        except Exception as e:
+            logger.warning(f"Batch Gemini analyzer failed: {e}")
+            return await self.heuristic.analyze_batch(reviews)
+
+    async def analyze_single(self, text: str) -> List[Dict[str, Any]]:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=self.api_key)
+            model = genai.GenerativeModel(self.model_name)
+
+            response = await model.generate_content_async(BATCH_PROMPT + json.dumps([{"id": "single", "text": text}]))
+            # (Simplifying for now by reusing batch logic or keeping individual prompt)
+            # For brevity, let's just use the batch logic with 1 item
+            results = await self.analyze_batch([{"id": "single", "text": text}])
+            return results.get("single", await self.heuristic.analyze_single(text))
+
+        except Exception as e:
+            logger.warning(f"Gemini analyzer failed: {e}")
+            return await self.heuristic.analyze_single(text)
 
 
-# ── Main Entry Point ─────────────────────────────────────────────────────
+# ── Factory ──────────────────────────────────────────────────────────────
+
+def get_analyzer() -> SentimentAnalyzer:
+    """Returns the configured sentiment analyzer."""
+    if settings.GEMINI_API_KEY:
+        return GeminiAnalyzer(settings.GEMINI_API_KEY, settings.GEMINI_MODEL)
+    return HeuristicAnalyzer()
+
+
+# ── Main Entry Points (Legacy Compatibility) ──────────────────────────────
 
 async def analyze_review(review_text: str) -> List[Dict[str, Any]]:
-    """
-    Analyze a review's sentiment. Uses Gemini if API key is configured,
-    otherwise falls back to keyword heuristic.
-    """
-    if settings.GEMINI_API_KEY:
-        return await analyze_sentiment_gemini(review_text)
-    return analyze_sentiment_heuristic(review_text)
+    return await get_analyzer().analyze_single(review_text)
 
-
-async def analyze_and_store_batch(
-    db: AsyncSession, reviews: List[Dict[str, str]]
-) -> int:
-    """
-    Analyze a batch of reviews and store sentiment scores.
-    Returns the count of successfully analyzed reviews.
-    """
+async def analyze_and_store_batch(db: AsyncSession, reviews: List[Dict[str, str]]) -> int:
     if not reviews:
         return 0
-
-    # 1. Get batch sentiment mapping
-    mapping = await analyze_sentiment_batch(reviews)
+    analyzer = get_analyzer()
+    mapping = await analyzer.analyze_batch(reviews)
     
     count = 0
     for r_id, results in mapping.items():

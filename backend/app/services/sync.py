@@ -34,7 +34,11 @@ async def yelp_search(
         raise ValueError("YELP_API_KEY is not configured.")
 
     headers = {"Authorization": f"Bearer {settings.YELP_API_KEY}"}
-    params: dict[str, Any] = {"term": name, "limit": 5}
+    params: dict[str, Any] = {
+        "term": name, 
+        "limit": 5,
+        "radius": 40000 # Max allowed by Yelp (approx 25 miles)
+    }
 
     if location:
         params["location"] = location
@@ -65,6 +69,8 @@ async def yelp_search(
             "rating": b.get("rating", 0),
             "review_count": b.get("review_count", 0),
             "url": b.get("url"),
+            "latitude": b.get("coordinates", {}).get("latitude"),
+            "longitude": b.get("coordinates", {}).get("longitude"),
         }
         for b in data.get("businesses", [])
     ]
@@ -88,7 +94,7 @@ async def google_search(
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": settings.GOOGLE_PLACES_API_KEY,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.location",
     }
 
     # Construct query
@@ -100,11 +106,11 @@ async def google_search(
 
     # Add location bias if coordinates are provided
     if lat is not None and lng is not None:
-        # 2000 meter radius circle bias around the point (slightly larger for better discovery)
+        # 50000 meter radius is the max for circle bias in Google Places API (~31 miles)
         body["locationBias"] = {
             "circle": {
                 "center": {"latitude": lat, "longitude": lng},
-                "radius": 2000.0,
+                "radius": 50000.0,
             }
         }
 
@@ -125,6 +131,8 @@ async def google_search(
             "rating": p.get("rating", 0),
             "review_count": p.get("userRatingCount", 0),
             "place_url": p.get("googleMapsUri"),
+            "latitude": p.get("location", {}).get("latitude"),
+            "longitude": p.get("location", {}).get("longitude"),
         }
         for p in data.get("places", [])
     ]

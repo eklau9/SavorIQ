@@ -12,15 +12,15 @@ import { fetchAllReviews, fetchReviewStats, Review, ReviewStats } from '@/lib/ap
 import NoRestaurantSelected from '@/components/NoRestaurantSelected';
 
 export default function ReviewsScreen() {
-    const { search: incomingSearch } = useLocalSearchParams<{ search?: string }>();
+    const { search: incomingSearch, sentiment: incomingSentiment } = useLocalSearchParams<{ search?: string; sentiment?: string }>();
     const { activeId, loading: contextLoading } = useRestaurant();
     const { reviews: globalReviews, reviewStats: globalStats, refreshAll } = useData();
 
     const [reviews, setReviews] = useState<Review[]>([]);
     const [stats, setStats] = useState<ReviewStats | null>(null);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState(incomingSearch || '');
+    const [sentiment, setSentiment] = useState<string | undefined>(incomingSentiment);
     const [platform, setPlatform] = useState<string | undefined>();
 
     // Sync search state with incoming route parameters
@@ -28,59 +28,76 @@ export default function ReviewsScreen() {
         if (incomingSearch !== undefined) {
             setSearch(incomingSearch || '');
         }
-    }, [incomingSearch]);
-
-    const loadData = useCallback(async () => {
-        if (!activeId) {
-            setLoading(false);
-            setRefreshing(false);
-            return;
+        if (incomingSentiment !== undefined) {
+            setSentiment(incomingSentiment);
         }
+    }, [incomingSearch, incomingSentiment]);
 
-        // If no filters, use global data instantly
-        if (!search && !platform) {
-            setReviews(globalReviews);
+    // 1. Local Filtering Logic (Instant Feedback)
+    useEffect(() => {
+        if (!activeId || globalReviews.length === 0) return;
+
+        const finalSearch = search.trim().toLowerCase();
+
+        const filtered = globalReviews.filter(r => {
+            const matchesPlatform = !platform || r.platform === platform;
+            const matchesSentiment = !sentiment || (
+                sentiment === 'positive' ? r.rating >= 4 :
+                    sentiment === 'negative' ? r.rating <= 2 :
+                        true
+            );
+            const matchesSearch = !finalSearch || (
+                (r.author_name?.toLowerCase().includes(finalSearch)) ||
+                (r.content?.toLowerCase().includes(finalSearch))
+            );
+            return matchesPlatform && matchesSentiment && matchesSearch;
+        });
+
+        setReviews(filtered);
+
+        // Calculate basic stats locally for instant update
+        if (filtered.length > 0) {
+            const sum = filtered.reduce((acc, r) => acc + r.rating, 0);
+            setStats(prev => ({
+                ...(prev || {
+                    total: 0, avg_rating: 0, positive: 0, negative: 0, neutral: 0,
+                    top_strength: null, top_friction: null, bucket_averages: {}, rating_distribution: {}
+                }),
+                total: filtered.length,
+                avg_rating: sum / filtered.length
+            }));
+        } else if (!finalSearch && !platform && !sentiment) {
             setStats(globalStats);
-            setLoading(false);
-            setRefreshing(false);
-            return;
         }
+    }, [activeId, globalReviews, search, platform, sentiment, globalStats]);
 
-        try {
-            const finalSearch = incomingSearch !== undefined ? incomingSearch : search;
-            const filters = { search: finalSearch || undefined, platform };
-            const [r, s] = await Promise.all([
-                fetchAllReviews(filters),
-                fetchReviewStats(filters),
-            ]);
-            setReviews(r);
-            setStats(s);
-        } catch (e) {
-            console.error('Reviews load error:', e);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [activeId, search, platform, globalReviews, globalStats, incomingSearch]);
-
-    useFocusEffect(
-        useCallback(() => {
-            if (!activeId && !contextLoading) {
-                setLoading(false);
-                return;
-            }
-            loadData();
-        }, [activeId, contextLoading, loadData])
-    );
+    const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
 
     const onRefresh = async () => {
         setRefreshing(true);
-        if (!search && !platform) {
-            await refreshAll();
-        } else {
-            await loadData();
-        }
+        await refreshAll();
         setRefreshing(false);
+    };
+
+    const toggleExpand = (id: string) => {
+        setExpandedReviews(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const highlightSearch = (text: string, query: string) => {
+        if (!query.trim()) return <Text>{text}</Text>;
+
+        const parts = text.split(new RegExp(`(${query})`, 'gi'));
+        return (
+            <Text>
+                {parts.map((part, i) =>
+                    part.toLowerCase() === query.toLowerCase() ? (
+                        <Text key={i} style={s.highlight}>{part}</Text>
+                    ) : (
+                        <Text key={i}>{part}</Text>
+                    )
+                )}
+            </Text>
+        );
     };
 
     const renderStars = (rating: number) => {
@@ -91,26 +108,36 @@ export default function ReviewsScreen() {
     const platformColor = (p: string) =>
         p === 'yelp' ? colors.platform.yelp : colors.platform.google;
 
-    const renderReview = ({ item }: { item: Review }) => (
-        <View style={s.reviewCard}>
-            <View style={s.reviewHeader}>
-                <View style={[s.platformDot, { backgroundColor: platformColor(item.platform) }]} />
-                <Text style={s.authorName}>{item.author_name || 'Guest'}</Text>
-                <Text style={s.reviewDate}>
-                    {new Date(item.reviewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+    const renderReview = ({ item }: { item: Review }) => {
+        const isExpanded = expandedReviews[item.id];
+        return (
+            <TouchableOpacity
+                style={s.reviewCard}
+                activeOpacity={0.8}
+                onPress={() => toggleExpand(item.id)}
+            >
+                <View style={s.reviewHeader}>
+                    <View style={[s.platformDot, { backgroundColor: platformColor(item.platform) }]} />
+                    <Text style={s.authorName}>{item.guest_name || item.author_name || 'Guest'}</Text>
+                    <Text style={s.reviewDate}>
+                        {new Date(item.reviewed_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })}
+                    </Text>
+                </View>
+                <Text style={[s.stars, {
+                    color: item.rating >= 4 ? colors.accent.gold :
+                        item.rating >= 3 ? colors.text.secondary : colors.accent.red,
+                }]}>
+                    {renderStars(item.rating)}
                 </Text>
-            </View>
-            <Text style={[s.stars, {
-                color: item.rating >= 4 ? colors.accent.gold :
-                    item.rating >= 3 ? colors.text.secondary : colors.accent.red,
-            }]}>
-                {renderStars(item.rating)}
-            </Text>
-            <Text style={s.reviewContent} numberOfLines={4}>
-                {item.content}
-            </Text>
-        </View>
-    );
+                <Text style={s.reviewContent} numberOfLines={isExpanded ? undefined : 4}>
+                    {highlightSearch(item.content, search)}
+                </Text>
+                {!isExpanded && item.content.length > 200 && (
+                    <Text style={s.readMore}>Tap to read more...</Text>
+                )}
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={s.container}>
@@ -128,11 +155,10 @@ export default function ReviewsScreen() {
                                 placeholderTextColor={colors.text.muted}
                                 value={search}
                                 onChangeText={setSearch}
-                                onSubmitEditing={loadData}
                                 returnKeyType="search"
                             />
                             {search ? (
-                                <TouchableOpacity onPress={() => { setSearch(''); }}>
+                                <TouchableOpacity onPress={() => setSearch('')}>
                                     <Ionicons name="close-circle" size={18} color={colors.text.muted} />
                                 </TouchableOpacity>
                             ) : null}
@@ -154,6 +180,18 @@ export default function ReviewsScreen() {
                         </View>
                     </View>
 
+                    {/* Active Filter Indicator */}
+                    {sentiment && (
+                        <View style={s.activeFilterBar}>
+                            <Text style={s.activeFilterText}>
+                                Showing <Text style={s.bold}>{sentiment}</Text> reviews
+                            </Text>
+                            <TouchableOpacity onPress={() => setSentiment(undefined)}>
+                                <Ionicons name="close-circle" size={16} color={colors.accent.gold} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     {/* Stats Bar */}
                     {stats && (
                         <View style={s.statsBar}>
@@ -166,7 +204,7 @@ export default function ReviewsScreen() {
                     )}
 
                     {/* Reviews List */}
-                    {loading ? (
+                    {contextLoading && reviews.length === 0 ? (
                         <View style={s.center}>
                             <ActivityIndicator size="large" color={colors.accent.gold} />
                         </View>
@@ -238,5 +276,14 @@ const s = StyleSheet.create({
     reviewDate: { color: colors.text.muted, fontSize: fonts.sizes.xs },
     stars: { fontSize: fonts.sizes.md, marginBottom: 6 },
     reviewContent: { color: colors.text.secondary, fontSize: fonts.sizes.sm, lineHeight: 20 },
+    highlight: { backgroundColor: colors.accent.gold + '40', color: colors.text.primary, fontWeight: '700' },
+    readMore: { color: colors.accent.gold, fontSize: fonts.sizes.xs, marginTop: 8, fontWeight: '600' },
     emptyText: { color: colors.text.muted, fontSize: fonts.sizes.md },
+
+    activeFilterBar: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingHorizontal: spacing.md, paddingBottom: spacing.sm,
+    },
+    activeFilterText: { color: colors.text.secondary, fontSize: fonts.sizes.xs },
+    bold: { fontWeight: '700', textTransform: 'uppercase', color: colors.accent.gold },
 });

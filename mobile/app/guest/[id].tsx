@@ -7,10 +7,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { fetchGuestPulse, GuestPulse, Review } from '@/lib/api';
 
+import { useData } from '@/lib/DataContext';
+
 export default function GuestDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
+    const { guests: globalGuests } = useData();
+
+    // Find basic guest info from cache for instant display
+    const cachedGuest = globalGuests.find(g => g.id === id);
+
     const [pulse, setPulse] = useState<GuestPulse | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!cachedGuest); // Only show full loading if not in cache
 
     useEffect(() => {
         if (!id) return;
@@ -26,7 +33,10 @@ export default function GuestDetailScreen() {
         })();
     }, [id]);
 
-    if (loading) {
+    // Use cached guest for basic info while pulse loads
+    const guest = pulse?.guest || cachedGuest;
+
+    if (loading && !guest) {
         return (
             <View style={s.center}>
                 <ActivityIndicator size="large" color={colors.accent.gold} />
@@ -34,15 +44,16 @@ export default function GuestDetailScreen() {
         );
     }
 
-    if (!pulse) {
+    if (!guest) {
         return (
             <View style={s.center}>
-                <Text style={s.errorText}>Guest pulse data not found</Text>
+                <Text style={s.errorText}>Guest not found</Text>
             </View>
         );
     }
 
-    const { guest } = pulse;
+    // Show loading state for pulse data if needed
+    const pulseLoading = !pulse && loading;
 
     const tierColor: Record<string, string> = {
         vip: colors.accent.gold,
@@ -75,16 +86,20 @@ export default function GuestDetailScreen() {
 
             {/* Stats Grid */}
             <View style={s.statsGrid}>
-                <StatBox label="Visits" value={String(pulse.visit_count)} icon="calendar" />
+                <StatBox
+                    label="Reviews"
+                    value={pulse ? String(pulse.visit_count) : String(guest.visit_count || '...')}
+                    icon="chatbubbles-outline"
+                />
                 <StatBox
                     label="Avg Rating"
                     value={guest.avg_rating ? guest.avg_rating.toFixed(1) : 'N/A'}
                     icon="star"
                 />
                 <StatBox
-                    label="Total Spend"
-                    value={`$${pulse.total_spend}`}
-                    icon="cash"
+                    label="Engagement"
+                    value={pulse ? (pulse.review_engagement_score * 100).toFixed(0) + '%' : '...%'}
+                    icon="flash"
                 />
                 <StatBox
                     label="Status"
@@ -96,29 +111,37 @@ export default function GuestDetailScreen() {
             {/* Sentiment Pulse */}
             <View style={s.card}>
                 <Text style={s.cardTitle}>Sentiment Pulse</Text>
-                <View style={s.sentimentRow}>
-                    {pulse.sentiment_summary.map((s_item) => (
-                        <View key={s_item.bucket} style={s.sentimentItem}>
-                            <Text style={s.sentimentLabel}>{s_item.bucket === 'ambiance' ? 'Vibe' : s_item.bucket.charAt(0).toUpperCase() + s_item.bucket.slice(1)}</Text>
-                            <Text style={[s.sentimentScore, { color: s_item.avg_score >= 0.5 ? colors.accent.green : s_item.avg_score <= -0.5 ? colors.accent.red : colors.text.secondary }]}>
-                                {s_item.avg_score > 0 ? '+' : ''}{s_item.avg_score.toFixed(1)}
-                            </Text>
-                        </View>
-                    ))}
-                </View>
+                {pulseLoading ? (
+                    <ActivityIndicator size="small" color={colors.accent.gold} style={{ marginVertical: 10 }} />
+                ) : pulse ? (
+                    <View style={s.sentimentRow}>
+                        {pulse.sentiment_summary.map((s_item) => (
+                            <View key={s_item.bucket} style={s.sentimentItem}>
+                                <Text style={s.sentimentLabel}>{s_item.bucket === 'ambiance' ? 'Vibe' : s_item.bucket.charAt(0).toUpperCase() + s_item.bucket.slice(1)}</Text>
+                                <Text style={[s.sentimentScore, { color: s_item.avg_score >= 0.5 ? colors.accent.green : s_item.avg_score <= -0.5 ? colors.accent.red : colors.text.secondary }]}>
+                                    {s_item.avg_score > 0 ? '+' : ''}{s_item.avg_score.toFixed(1)}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                ) : (
+                    <Text style={s.emptyText}>No sentiment data available</Text>
+                )}
             </View>
 
             {/* Recent Reviews */}
             <View style={s.reviewsSection}>
                 <Text style={s.sectionHeader}>Recent Reviews</Text>
-                {pulse.recent_reviews.length === 0 ? (
+                {pulseLoading ? (
+                    <ActivityIndicator size="small" color={colors.accent.gold} style={{ marginTop: 20 }} />
+                ) : (pulse?.recent_reviews?.length || 0) === 0 ? (
                     <Text style={s.emptyText}>No reviews left yet.</Text>
                 ) : (
-                    pulse.recent_reviews.map((r) => (
+                    pulse?.recent_reviews.map((r) => (
                         <View key={r.id} style={s.reviewItem}>
                             <View style={s.reviewMeta}>
                                 <Text style={s.reviewStars}>{renderStars(r.rating)}</Text>
-                                <Text style={s.reviewDate}>{new Date(r.reviewed_at).toLocaleDateString()}</Text>
+                                <Text style={s.reviewDate}>{new Date(r.reviewed_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</Text>
                             </View>
                             <Text style={s.reviewContent} numberOfLines={3}>{r.content}</Text>
                         </View>

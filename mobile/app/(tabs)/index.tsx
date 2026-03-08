@@ -114,15 +114,33 @@ export default function DashboardScreen() {
         </View>
       ) : (
         <>
+          {/* Header Action */}
+          <View style={s.headerRow}>
+            <View>
+              <Text style={s.welcomeText}>Intelligence Hub</Text>
+              <Text style={s.activeLocText}>{activeName}</Text>
+            </View>
+          </View>
           {/* KPI Row */}
           <View style={s.kpiRow}>
-            <KPICard label="Guests" value={data.overview.total_guests} icon="people" />
-            <KPICard label="Reviews" value={data.overview.total_reviews} icon="chatbubbles" />
+            <KPICard
+              label="Guests"
+              value={data.overview.total_guests}
+              icon="people"
+              onPress={() => router.push('/guests')}
+            />
+            <KPICard
+              label="Reviews"
+              value={data.overview.total_reviews}
+              icon="chatbubbles"
+              onPress={() => router.push('/reviews')}
+            />
             <KPICard
               label="Avg Rating"
               value={data.overview.avg_rating.toFixed(1)}
               icon="star"
               accent={colors.accent.gold}
+              onPress={() => router.push('/rating-breakdown')}
             />
           </View>
 
@@ -224,15 +242,20 @@ export default function DashboardScreen() {
   );
 }
 
-function KPICard({ label, value, icon, accent }: {
-  label: string; value: string | number; icon: string; accent?: string;
+function KPICard({ label, value, icon, accent, onPress }: {
+  label: string; value: string | number; icon: string; accent?: string; onPress?: () => void;
 }) {
   return (
-    <View style={s.kpiCard}>
+    <TouchableOpacity
+      style={s.kpiCard}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
       <Ionicons name={icon as any} size={16} color={accent || colors.text.secondary} />
       <Text style={[s.kpiValue, accent ? { color: accent } : null]}>{value}</Text>
       <Text style={s.kpiLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -267,6 +290,19 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.primary },
   content: { padding: spacing.md, paddingBottom: 40 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg.primary },
+
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  welcomeText: { color: colors.text.muted, fontSize: fonts.sizes.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  activeLocText: { color: colors.text.primary, fontSize: fonts.sizes.xl, fontWeight: '800', marginTop: 2 },
+  syncBtn: {
+    display: 'none',
+  },
+  syncBtnText: { color: colors.accent.gold, fontSize: fonts.sizes.xs, fontWeight: '700' },
 
   locationBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

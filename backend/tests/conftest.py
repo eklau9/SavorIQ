@@ -58,7 +58,11 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_db] = override_get_db
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    headers = {
+        "X-Restaurant-ID": "test-resto-123",
+        "X-Access-Key": "SavorIQ"
+    }
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as ac:
         yield ac
 
     app.dependency_overrides.clear()

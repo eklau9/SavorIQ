@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api", tags=["reviews"])
 def _apply_common_filters(query, restaurant_id, platform, search, days, date_str=None, bucket=None):
     """Apply shared filters to a review query, including tenant isolation."""
     query = query.where(Review.restaurant_id == restaurant_id)
+    query = query.where(Review.is_deleted_on_platform == False)
     if platform:
         query = query.where(Review.platform == platform)
     if search:
@@ -38,6 +39,7 @@ def _apply_common_filters(query, restaurant_id, platform, search, days, date_str
         except ValueError:
             pass
     if bucket:
+        # Join sentiment scores only if filtering by bucket
         query = query.join(SentimentScore).where(SentimentScore.bucket == bucket)
     return query
 
@@ -52,66 +54,91 @@ async def review_stats(
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return aggregate stats for reviews matching the current filters, scoped to restaurant."""
-    base = select(Review).options(selectinload(Review.sentiment_scores))
-    base = _apply_common_filters(base, x_restaurant_id, platform, search, days, date, bucket)
-    result = await db.execute(base)
-    reviews = result.scalars().all()
+    """Return aggregate stats for reviews matching the current filters using fast SQL aggregation."""
+    # Base query for counting and averaging ratings
+    stmt = select(
+        func.count(Review.id).label("total"),
+        func.avg(Review.rating).label("avg_rating")
+    )
+    stmt = _apply_common_filters(stmt, x_restaurant_id, platform, search, days, date, bucket)
+    
+    result = await db.execute(stmt)
+    total, avg_rating = result.fetchone() or (0, 0)
 
-    total = len(reviews)
-    avg_rating = round(sum(r.rating for r in reviews) / total, 1) if total else 0
+    # Subquery for overall sentiment breakdown (positive/negative/neutral)
+    # This averages all scores for a review first
+    sentiment_subq = (
+        select(
+            Review.id,
+            func.avg(SentimentScore.score).label("avg_score")
+        )
+        .join(SentimentScore, Review.id == SentimentScore.review_id)
+        .where(Review.restaurant_id == x_restaurant_id)
+        .group_by(Review.id)
+        .subquery()
+    )
 
-    positive = 0
-    negative = 0
-    neutral = 0
-    bucket_scores = {}  # {bucket: [scores]}
-    rating_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    sentiment_stmt = (
+        select(
+            func.count(Review.id).filter(sentiment_subq.c.avg_score >= 0.3).label("positive"),
+            func.count(Review.id).filter(sentiment_subq.c.avg_score <= -0.3).label("negative"),
+            func.count(Review.id).filter((sentiment_subq.c.avg_score < 0.3) & (sentiment_subq.c.avg_score > -0.3)).label("neutral")
+        )
+        .outerjoin(sentiment_subq, Review.id == sentiment_subq.c.id)
+    )
+    sentiment_stmt = _apply_common_filters(sentiment_stmt, x_restaurant_id, platform, search, days, date, bucket)
+    
+    sent_res = await db.execute(sentiment_stmt)
+    positive, negative, neutral = sent_res.fetchone() or (0, 0, 0)
 
-    for r in reviews:
-        if not r.sentiment_scores:
-            neutral += 1
-            continue
+    # Bucket averages for diagnostics
+    bucket_avg_stmt = (
+        select(
+            SentimentScore.bucket,
+            func.avg(SentimentScore.score).label("avg_score")
+        )
+        .join(Review, Review.id == SentimentScore.review_id)
+        .where(Review.restaurant_id == x_restaurant_id)
+    )
+    if platform or search or days or date:
+        # Re-apply filters to bucket stats if needed
+        bucket_avg_stmt = _apply_common_filters(bucket_avg_stmt, x_restaurant_id, platform, search, days, date, bucket)
         
-        # Track for overall sentiment
-        review_avg = sum(s.score for s in r.sentiment_scores) / len(r.sentiment_scores)
-        if review_avg >= 0.3:
-            positive += 1
-        elif review_avg <= -0.3:
-            negative += 1
-        else:
-            neutral += 1
-        
-        # Track rating distribution
-        r_int = int(round(r.rating))
-        if 1 <= r_int <= 5:
-            rating_distribution[r_int] += 1
-        
-        # Track for bucket-specific diagnostics
-        for s in r.sentiment_scores:
-            if s.bucket not in bucket_scores:
-                bucket_scores[s.bucket] = []
-            bucket_scores[s.bucket].append(s.score)
-
-    # Calculate bucket averages
-    bucket_averages = {
-        b: sum(scores) / len(scores) 
-        for b, scores in bucket_scores.items()
-    }
+    bucket_avg_stmt = bucket_avg_stmt.group_by(SentimentScore.bucket)
+    
+    bucket_res = await db.execute(bucket_avg_stmt)
+    bucket_averages = {row[0]: round(float(row[1]), 2) for row in bucket_res.all()}
 
     # Identify top strength and friction
     sorted_buckets = sorted(bucket_averages.items(), key=lambda x: x[1], reverse=True)
     top_strength = sorted_buckets[0][0] if sorted_buckets else None
     top_friction = sorted_buckets[-1][0] if len(sorted_buckets) > 1 else None
 
+    # Rating distribution
+    dist_stmt = (
+        select(
+            func.round(Review.rating).label("r_int"),
+            func.count(Review.id)
+        )
+    )
+    dist_stmt = _apply_common_filters(dist_stmt, x_restaurant_id, platform, search, days, date, bucket)
+    dist_stmt = dist_stmt.group_by(func.round(Review.rating))
+    
+    dist_res = await db.execute(dist_stmt)
+    rating_distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for r_int, count in dist_res.all():
+        if 1 <= r_int <= 5:
+            rating_distribution[int(r_int)] = count
+
     return {
         "total": total,
-        "avg_rating": avg_rating,
+        "avg_rating": round(float(avg_rating or 0), 1),
         "positive": positive,
         "negative": negative,
         "neutral": neutral,
         "top_strength": top_strength,
         "top_friction": top_friction,
-        "bucket_averages": {b: round(s, 2) for b, s in bucket_averages.items()},
+        "bucket_averages": bucket_averages,
         "rating_distribution": rating_distribution
     }
 
@@ -129,38 +156,38 @@ async def list_all_reviews(
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all reviews with filters, scoped to restaurant."""
+    """List all reviews with filters, entirely in SQL."""
+    # Subquery for avg score if we need sentiment filtering
+    sentiment_subq = (
+        select(
+            SentimentScore.review_id,
+            func.avg(SentimentScore.score).label("avg_score")
+        )
+        .group_by(SentimentScore.review_id)
+        .subquery()
+    )
+
     query = (
         select(Review)
         .options(selectinload(Review.sentiment_scores), selectinload(Review.guest))
+        .outerjoin(sentiment_subq, Review.id == sentiment_subq.c.review_id)
         .order_by(Review.reviewed_at.desc())
     )
     query = _apply_common_filters(query, x_restaurant_id, platform, search, days, date, bucket)
 
-    # Execute and filter by sentiment/bucket in Python (requires loaded scores)
+    if sentiment:
+        if sentiment == "positive":
+            query = query.where(sentiment_subq.c.avg_score >= 0.3)
+        elif sentiment == "negative":
+            query = query.where(sentiment_subq.c.avg_score <= -0.3)
+        elif sentiment == "neutral":
+            query = query.where((sentiment_subq.c.avg_score < 0.3) & (sentiment_subq.c.avg_score > -0.3))
+
+    # Pagination in SQL
+    query = query.offset(skip).limit(limit)
+
     result = await db.execute(query)
-    all_matching = result.scalars().all()
-
-    filtered = []
-    for r in all_matching:
-        # Sentiment filter
-        avg_score = 0
-        if r.sentiment_scores:
-            avg_score = sum(s.score for s in r.sentiment_scores) / len(r.sentiment_scores)
-        
-        match_sentiment = True
-        if sentiment == "positive" and avg_score < 0.3:
-            match_sentiment = False
-        elif sentiment == "negative" and avg_score > -0.3:
-            match_sentiment = False
-        elif sentiment == "neutral" and (avg_score >= 0.3 or avg_score <= -0.3):
-            match_sentiment = False
-        
-        if match_sentiment:
-            filtered.append(r)
-
-    # Apply pagination after filtering
-    reviews = filtered[skip : skip + limit]
+    reviews = result.scalars().all()
 
     out = []
     for r in reviews:
@@ -183,6 +210,7 @@ async def list_guest_reviews(
     query = (
         select(Review)
         .where(Review.guest_id == guest_id, Review.restaurant_id == x_restaurant_id)
+        .where(Review.is_deleted_on_platform == False)
         .options(selectinload(Review.sentiment_scores))
         .order_by(Review.reviewed_at.desc())
         .offset(skip)

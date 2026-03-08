@@ -4,16 +4,19 @@ import Constants from 'expo-constants';
 
 // Use env var if set (deployed builds), otherwise: local for simulator/web, Railway for production
 const getInitialApiBase = () => {
-    // If we're on a deployed build (like a preview or production), use the env var
+    // 1. Explicit env var (highest priority)
     if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
 
-    // By default, we now point to the "Always-On" Railway production server.
-    // This ensures the app works even if your local Mac server is turned off.
-    const PRODUCTION_API = 'https://savoriq-api-production.up.railway.app';
+    // 2. Localhost for development (web/simulator)
+    // We check __DEV__ (global in Expo/React Native)
+    if (__DEV__) {
+        // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues (::1) 
+        // which can cause "Failed to fetch" if the server is only listening on IPv4.
+        return 'http://127.0.0.1:8000';
+    }
 
-    // To develop locally, you can still specify an environment variable or 
-    // we could add a developer toggle, but for "Always-On" we default to cloud.
-    return PRODUCTION_API;
+    // 3. Fallback to Railway Production
+    return 'https://savoriq-api-production.up.railway.app';
 };
 
 const DEFAULT_API_BASE = getInitialApiBase();
@@ -51,7 +54,7 @@ export async function setApiBase(url: string | null): Promise<void> {
 
 // ── Core Fetch Wrapper ──────────────────────────────────────────────
 
-async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, signal?: AbortSignal): Promise<T> {
     const [apiBase, restaurantId, accessKey] = await Promise.all([
         getApiBase(),
         getActiveRestaurantId(),
@@ -68,20 +71,24 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): P
 
     headers['X-Access-Key'] = accessKey || 'SavorIQ';
 
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    const localController = new AbortController();
+    const id = setTimeout(() => localController.abort(), FETCH_TIMEOUT);
 
     try {
         const res = await fetch(`${apiBase}${endpoint}`, {
             ...options,
             headers,
-            signal: controller.signal,
+            signal: signal || localController.signal,
         });
         clearTimeout(id);
 
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
-            throw new Error(errorData.detail || `API Error: ${res.status}`);
+            let errorMsg = errorData.detail || `API Error: ${res.status}`;
+            if (typeof errorMsg === 'object') {
+                errorMsg = JSON.stringify(errorMsg);
+            }
+            throw new Error(errorMsg);
         }
 
         return res.json();
@@ -99,12 +106,14 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): P
 export interface Restaurant {
     id: string;
     name: string;
+    address?: string; // Optional physical address
     platform_url: string;
 }
 
-export function fetchRestaurants(): Promise<Restaurant[]> {
-    return apiFetch('/api/restaurants');
+export function fetchRestaurants(signal?: AbortSignal): Promise<Restaurant[]> {
+    return apiFetch('/api/restaurants', {}, signal);
 }
+
 
 // ── Analytics ───────────────────────────────────────────────────────
 
@@ -116,7 +125,6 @@ export interface BucketSentiment {
 
 export interface Overview {
     total_guests: number;
-    total_orders: number;
     total_reviews: number;
     avg_rating: number;
     sentiment_by_bucket: BucketSentiment[];
@@ -125,7 +133,6 @@ export interface Overview {
 export interface ItemPerformance {
     item_name: string;
     category: string;
-    order_count: number;
     avg_sentiment: number | null;
     review_count: number;
 }
@@ -155,12 +162,12 @@ export interface DeepAnalytics {
     briefing: ManagerBriefing;
 }
 
-export function fetchOverview(): Promise<Overview> {
-    return apiFetch('/api/analytics/overview');
+export function fetchOverview(signal?: AbortSignal): Promise<Overview> {
+    return apiFetch('/api/analytics/overview', {}, signal);
 }
 
-export function fetchDeepAnalytics(): Promise<DeepAnalytics> {
-    return apiFetch('/api/analytics/deep');
+export function fetchDeepAnalytics(signal?: AbortSignal): Promise<DeepAnalytics> {
+    return apiFetch('/api/analytics/deep', {}, signal);
 }
 
 // ── Guests ──────────────────────────────────────────────────────────
@@ -175,14 +182,14 @@ export interface Guest {
     visit_count?: number;
     avg_rating?: number;
     intercept_status?: string;
+    created_at: string;
 }
 
 export interface GuestPulse {
     guest: Guest;
-    total_orders: number;
-    total_spend: number;
     favorite_items: string[];
     visit_count: number;
+    review_engagement_score: number;
     sentiment_summary: { bucket: string; avg_score: number; review_count: number }[];
     recent_reviews: Review[];
 }
@@ -193,9 +200,9 @@ export interface GuestPrioritized {
     priority_score: number;
     reason: string;
     recommended_action: string;
-    total_spend: number;
     last_visit_days_ago: number;
     review_count: number;
+    review_engagement_score: number;
     current_status: string;
     current_action: any | null;
 }
@@ -206,18 +213,18 @@ export interface FetchGuestsFilters {
     limit?: number;
 }
 
-export function fetchGuests(filters: FetchGuestsFilters = {}): Promise<Guest[]> {
+export function fetchGuests(filters: FetchGuestsFilters = {}, signal?: AbortSignal): Promise<Guest[]> {
     const params = new URLSearchParams();
     if (filters.tier) params.append('tier', filters.tier);
     if (filters.sort_by) params.append('sort_by', filters.sort_by);
     if (filters.limit) params.append('limit', String(filters.limit));
 
     const url = `/api/guests${params.toString() ? '?' + params.toString() : ''}`;
-    return apiFetch(url);
+    return apiFetch(url, {}, signal);
 }
 
-export function fetchGuestPriorities(): Promise<GuestPrioritized[]> {
-    return apiFetch('/api/guests/priorities');
+export function fetchGuestPriorities(signal?: AbortSignal): Promise<GuestPrioritized[]> {
+    return apiFetch('/api/guests/priorities', {}, signal);
 }
 
 export function fetchGuest(id: string): Promise<Guest> {
@@ -238,62 +245,123 @@ export interface Review {
     content: string;
     reviewed_at: string;
     author_name: string | null;
+    guest_name?: string; // High-level guest name from join
     platform_review_id: string | null;
 }
 
 export function fetchAllReviews(filters?: {
     platform?: string;
     search?: string;
+    sentiment?: string;
     days?: number;
-}): Promise<Review[]> {
+    limit?: number;
+}, signal?: AbortSignal): Promise<Review[]> {
     const params = new URLSearchParams();
     if (filters?.platform) params.set('platform', filters.platform);
     if (filters?.search) params.set('search', filters.search);
+    if (filters?.sentiment) params.set('sentiment', filters.sentiment);
     if (filters?.days) params.set('days', String(filters.days));
-    return apiFetch(`/api/reviews?${params}`);
+    if (filters?.limit) params.set('limit', String(filters.limit));
+    return apiFetch(`/api/reviews?${params}`, {}, signal);
 }
 
 export interface ReviewStats {
     total: number;
     avg_rating: number;
+    positive: number;
+    negative: number;
+    neutral: number;
+    top_strength: string | null;
+    top_friction: string | null;
+    bucket_averages: Record<string, number>;
     rating_distribution: Record<string, number>;
-    platform_breakdown: Record<string, number>;
+}
+
+export interface OperationsAnalytics {
+    review_velocity: number;
+    sentiment_momentum: number;
+    tier_distribution: { tier: string; count: number }[];
+    total_guests: number;
+    platform_split: Record<string, number>;
 }
 
 export function fetchReviewStats(filters?: {
     platform?: string;
     search?: string;
+    sentiment?: string;
     days?: number;
-}): Promise<ReviewStats> {
+}, signal?: AbortSignal): Promise<ReviewStats> {
     const params = new URLSearchParams();
     if (filters?.platform) params.set('platform', filters.platform);
     if (filters?.search) params.set('search', filters.search);
+    if (filters?.sentiment) params.set('sentiment', filters.sentiment);
     if (filters?.days) params.set('days', String(filters.days));
-    return apiFetch(`/api/reviews/stats?${params}`);
+    return apiFetch(`/api/reviews/stats?${params}`, {}, signal);
+}
+
+export function fetchOperationsAnalytics(signal?: AbortSignal): Promise<OperationsAnalytics> {
+    return apiFetch('/api/analytics/operations', {}, signal);
 }
 
 // ── Sync ────────────────────────────────────────────────────────────
+
+export interface SyncStatus {
+    last_synced_at: string;
+    ago: string;
+    on_cooldown: boolean;
+    reviews_fetched: number;
+    new_reviews: number;
+}
+
+export interface PlatformBusiness {
+    id: string;
+    name: string;
+    address?: string;
+    rating: number;
+    review_count: number;
+    url?: string;
+    latitude?: number;
+    longitude?: number;
+    last_sync?: SyncStatus;
+}
+
+export interface UnifiedBusiness {
+    id: string;
+    name: string;
+    address?: string;
+    total_reviews: number;
+    avg_rating: number;
+    google?: PlatformBusiness;
+    yelp?: PlatformBusiness;
+    distance?: number;
+}
 
 export function fetchSyncStatus(): Promise<any> {
     return apiFetch('/api/sync/status');
 }
 
-export function syncApifyReviews(platform: string, url: string, businessName: string): Promise<any> {
+export function syncApifyReviews(platform: string, url: string, name: string, address?: string): Promise<any> {
     const params = new URLSearchParams({
         platform,
         business_url: url,
-        business_name: businessName,
-        max_reviews: '100',
+        business_name: name,
     });
-    return apiFetch(`/api/sync/apify-reviews?${params}`, { method: 'POST' });
+    if (address) params.append('business_address', address);
+    return apiFetch(`/api/sync/apify-reviews?${params.toString()}`, { method: 'POST' });
 }
 
-export function searchBusiness(name: string, location?: string, lat?: number | null, lng?: number | null): Promise<any> {
+export function searchBusiness(name: string, location?: string, lat?: number | null, lng?: number | null): Promise<UnifiedBusiness[]> {
     const params = new URLSearchParams({ name });
     if (location) params.set('location', location);
     if (lat) params.set('lat', String(lat));
     if (lng) params.set('lng', String(lng));
     return apiFetch(`/api/sync/search?${params}`);
+}
+
+export function resetAndSync(restaurantId: string): Promise<any> {
+    return apiFetch(`/api/sync/reset-and-sync?restaurant_id=${restaurantId}`, {
+        method: 'POST',
+    });
 }
 
 

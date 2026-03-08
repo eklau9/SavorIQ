@@ -12,12 +12,12 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Guest, InterceptAction, Order, Restaurant, Review
-from app.schemas import GuestPulse, GuestRead, GuestPrioritized, ReviewRead
+from app.schemas import GuestPulse, GuestRead, GuestPrioritized, ReviewRead, RestaurantRead
 
 router = APIRouter(prefix="/api", tags=["guests"])
 
 
-@router.get("/restaurants")
+@router.get("/restaurants", response_model=list[RestaurantRead])
 async def list_restaurants(db: AsyncSession = Depends(get_db)):
     """List all restaurants for the tenant switcher."""
     result = await db.execute(select(Restaurant).order_by(Restaurant.name))
@@ -29,7 +29,7 @@ async def list_guests(
     tier: str | None = None,
     sort_by: str = Query("recent", enum=["recent", "rating", "reviews"]),
     skip: int = Query(0, ge=0),
-    limit: int = Query(1000, ge=1, le=5000),
+    limit: int = Query(10000, ge=1),
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -44,16 +44,20 @@ async def list_guests(
             func.avg(Review.rating).label("avg_rating"),
             func.count(Review.id).label("review_count")
         )
-        .where(Review.restaurant_id == x_restaurant_id)
+        .where(
+            Review.restaurant_id == x_restaurant_id,
+            Review.is_deleted_on_platform == False
+        )
         .group_by(Review.guest_id)
         .subquery()
     )
 
     # Main query selecting Guest and metrics
+    # Using INNER JOIN to ensure we only show guests who HAVE reviews
     query = (
         select(Guest, subq.c.avg_rating, subq.c.review_count)
         .where(Guest.restaurant_id == x_restaurant_id)
-        .outerjoin(subq, Guest.id == subq.c.guest_id)
+        .join(subq, Guest.id == subq.c.guest_id)
     )
     
     if tier:
@@ -128,20 +132,24 @@ async def list_guest_priorities(
     prioritized = []
 
     for g in guests:
-        # 1. Review Frequency calculation
-        review_count = len(g.reviews)
-        avg_rating = sum(r.rating for r in g.reviews) / review_count if review_count > 0 else 0
+        # Filter out deleted reviews before calculating metrics
+        active_reviews = [r for r in g.reviews if not r.is_deleted_on_platform]
+        review_count = len(active_reviews)
+        avg_rating = sum(r.rating for r in active_reviews) / review_count if review_count > 0 else 0
         
-        # 2. Spend / Loyalty
-        total_spend = sum(o.price * o.quantity for o in g.orders)
+        # 2. Review Engagement Score
+        # Simple score based on review count and content length
+        engagement_score = min(1.0, (review_count * 0.2) + (sum(len(r.content) for r in active_reviews) / 2000))
         
         # 3. Recency
-        last_visit_days_ago = (now - g.last_visit).days if g.last_visit else 365
+        # Use active reviews for last visit if available
+        last_visit_at = max((r.reviewed_at for r in active_reviews), default=g.last_visit)
+        last_visit_days_ago = (now - last_visit_at).days if last_visit_at else 365
         
         # 4. Sentiment Analysis (buckets)
         bad_food_mentions = 0
         bad_service_mentions = 0
-        for r in g.reviews:
+        for r in active_reviews:
             for s in r.sentiment_scores:
                 if s.score < -0.3:
                     if s.bucket == "food": bad_food_mentions += 1
@@ -153,21 +161,21 @@ async def list_guest_priorities(
         reason = ""
         action = ""
 
-        if g.tier == "vip" and avg_rating < 3.5:
+        if review_count >= 5 and avg_rating >= 4.5:
+            segment = "PROMOTER"
+            score = 90
+            reason = "Frequent high-rating reviewer"
+            action = "Publicly thank and feature review"
+        elif avg_rating < 2.5:
             segment = "VIP_AT_RISK"
             score = 95
-            reason = "VIP Guest with declining rating"
-            action = "Personal manager outreach recommended"
-        elif g.tier == "regular" and last_visit_days_ago > 30:
+            reason = "Consistently negative feedback"
+            action = "Immediate owner response required"
+        elif review_count >= 3 and last_visit_days_ago > 30:
             segment = "LOST_REGULAR"
             score = 75
-            reason = "Regular guest hasn't visited in 30+ days"
-            action = "Send 'We Miss You' offer"
-        elif g.tier == "new" and total_spend > 50:
-            segment = "NEW_BIG_SPENDER"
-            score = 85
-            reason = "High first-visit spend"
-            action = "Welcome gift on next visit"
+            reason = "Frequent reviewer hasn't posted in 30+ days"
+            action = "Send personalized 'We Miss You' note"
 
         if segment:
             # Check if we already have an action recorded
@@ -181,9 +189,9 @@ async def list_guest_priorities(
                 priority_score=score,
                 reason=reason,
                 recommended_action=action,
-                total_spend=total_spend,
                 last_visit_days_ago=last_visit_days_ago,
                 review_count=review_count,
+                review_engagement_score=engagement_score,
                 current_status=status,
                 current_action=current_action # Will be mapped by Pydantic
             ))
@@ -255,6 +263,9 @@ async def get_guest(
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
     
+    # Filter deleted reviews manually before returning
+    guest.reviews = [r for r in guest.reviews if not r.is_deleted_on_platform]
+    
     return guest
 
 
@@ -282,18 +293,33 @@ async def get_guest_pulse(
         raise HTTPException(status_code=404, detail="Guest not found")
 
     # Metrics
-    total_orders = len(guest.orders)
-    total_spend = sum(o.price * o.quantity for o in guest.orders)
+    active_reviews = [r for r in guest.reviews if not r.is_deleted_on_platform]
+    visit_count = len(active_reviews)
     
-    # Favorite Items (Top 3)
-    item_counts: dict[str, int] = {}
-    for o in guest.orders:
-        item_counts[o.item_name] = item_counts.get(o.item_name, 0) + o.quantity
-    favorite_items = sorted(item_counts.keys(), key=lambda x: item_counts[x], reverse=True)[:3]
+    # Calculate Engagement Score
+    avg_length = sum(len(r.content) for r in active_reviews) / max(visit_count, 1)
+    engagement_score = min(1.0, (visit_count * 0.15) + (avg_length / 500))
+
+    # Favorite Items (Top 3 Mentions)
+    # 1. Fetch menu items for keyword matching
+    menu_result = await db.execute(
+        select(MenuItem).where(MenuItem.restaurant_id == x_restaurant_id)
+    )
+    menu_items = menu_result.scalars().all()
+    
+    item_mentions: dict[str, int] = {}
+    for r in active_reviews:
+        content_lower = r.content.lower()
+        for mi in menu_items:
+            keywords = [k.strip().lower() for k in mi.keywords.split(",") if k.strip()]
+            if any(kw in content_lower for kw in keywords):
+                item_mentions[mi.name] = item_mentions.get(mi.name, 0) + 1
+    
+    favorite_items = sorted(item_mentions.keys(), key=lambda x: item_mentions[x], reverse=True)[:3]
     
     # Sentiment Summary By Bucket
     bucket_data: dict[str, list[float]] = {}
-    for r in guest.reviews:
+    for r in active_reviews:
         for s in r.sentiment_scores:
             bucket_data.setdefault(s.bucket, []).append(s.score)
     
@@ -308,10 +334,9 @@ async def get_guest_pulse(
 
     return GuestPulse(
         guest=GuestRead.model_validate(guest),
-        total_orders=total_orders,
-        total_spend=total_spend,
         favorite_items=favorite_items,
-        visit_count=len(guest.reviews), # Using reviews as a visit proxy for now
+        visit_count=visit_count,
+        review_engagement_score=round(engagement_score, 2),
         sentiment_summary=sentiment_summary,
-        recent_reviews=guest.reviews[:5]
+        recent_reviews=active_reviews[:5]
     )

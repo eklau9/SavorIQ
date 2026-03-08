@@ -9,7 +9,9 @@ import {
     Review,
     ReviewStats,
     fetchGuestPriorities,
-    GuestPrioritized
+    GuestPrioritized,
+    fetchOperationsAnalytics,
+    OperationsAnalytics
 } from './api';
 import { useRestaurant } from './RestaurantContext';
 
@@ -18,6 +20,7 @@ interface DataContextType {
     guests: Guest[];
     reviews: Review[];
     reviewStats: ReviewStats | null;
+    operations: OperationsAnalytics | null;
     priorities: GuestPrioritized[];
     loading: boolean;
     refreshAll: () => Promise<void>;
@@ -28,6 +31,7 @@ const DataContext = createContext<DataContextType>({
     guests: [],
     reviews: [],
     reviewStats: null,
+    operations: null,
     priorities: [],
     loading: false,
     refreshAll: async () => { },
@@ -39,30 +43,45 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [guests, setGuests] = useState<Guest[]>([]);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
+    const [operations, setOperations] = useState<OperationsAnalytics | null>(null);
     const [priorities, setPriorities] = useState<GuestPrioritized[]>([]);
     const [loading, setLoading] = useState(false);
 
+    const abortControllerRef = React.useRef<AbortController | null>(null);
+
     const refreshAll = useCallback(async () => {
         if (!activeId) return;
+
+        // Cancel any existing request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setLoading(true);
         try {
-            const [deep, gs, rs, stats, inc] = await Promise.all([
-                fetchDeepAnalytics(),
-                fetchGuests(),
-                fetchAllReviews(),
-                fetchReviewStats(),
-                fetchGuestPriorities(),
+            const [deep, gs, rs, stats, inc, ops] = await Promise.all([
+                fetchDeepAnalytics(controller.signal),
+                fetchGuests({ limit: 5000 }, controller.signal),
+                fetchAllReviews({ limit: 1000 }, controller.signal),
+                fetchReviewStats(undefined, controller.signal),
+                fetchGuestPriorities(controller.signal),
+                fetchOperationsAnalytics(controller.signal),
             ]);
             setDashboardData(deep);
             setGuests(gs);
             setReviews(rs);
             setReviewStats(stats);
             setPriorities(inc);
+            setOperations(ops);
         } catch (e: any) {
+            if (e.name === 'AbortError') return;
             console.error('Failed to refresh data:', e);
-            // Optionally set error in context if we want global error handling
         } finally {
-            setLoading(false);
+            if (abortControllerRef.current === controller) {
+                setLoading(false);
+            }
         }
     }, [activeId]);
 
@@ -75,6 +94,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setGuests([]);
             setReviews([]);
             setReviewStats(null);
+            setOperations(null);
             setPriorities([]);
         }
     }, [activeId, refreshAll]);
@@ -85,6 +105,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             guests,
             reviews,
             reviewStats,
+            operations,
             priorities,
             loading,
             refreshAll

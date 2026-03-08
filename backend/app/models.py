@@ -19,6 +19,7 @@ class Restaurant(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -70,16 +71,17 @@ class Review(Base):
     __tablename__ = "reviews"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
-    guest_id: Mapped[str] = mapped_column(String(36), ForeignKey("guests.id"), nullable=False)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False, index=True)
+    guest_id: Mapped[str] = mapped_column(String(36), ForeignKey("guests.id"), nullable=False, index=True)
     platform: Mapped[str] = mapped_column(
-        Enum("yelp", "google", name="review_platform"), nullable=False
+        Enum("yelp", "google", name="review_platform"), nullable=False, index=True
     )
     platform_review_id: Mapped[Optional[str]] = mapped_column(String(100), unique=True, nullable=True)
     rating: Mapped[float] = mapped_column(Float, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     ingested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_deleted_on_platform: Mapped[bool] = mapped_column(Boolean, default=False)
 
     restaurant: Mapped["Restaurant"] = relationship(back_populates="reviews")
     guest: Mapped["Guest"] = relationship(back_populates="reviews")

@@ -181,6 +181,37 @@ class IngestionReport(BaseModel):
     error_details: list[str] = []
 
 
+# ── Unified Search ─────────────────────────────────────────────────────────
+
+class SyncStatus(BaseModel):
+    last_synced_at: str
+    ago: str
+    on_cooldown: bool
+    reviews_fetched: int
+    new_reviews: int
+
+class PlatformBusiness(BaseModel):
+    id: str
+    name: str
+    address: str | None = None
+    rating: float
+    review_count: int
+    url: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    last_sync: SyncStatus | None = None
+
+class UnifiedBusiness(BaseModel):
+    id: str # UUID generated for the group
+    name: str # Primary name (usually Google)
+    address: str | None = None
+    total_reviews: int
+    avg_rating: float
+    google: PlatformBusiness | None = None
+    yelp: PlatformBusiness | None = None
+    distance: float | None = None
+
+
 # ── Order Ingestion ───────────────────────────────────────────────────────
 
 class OrderIngestItem(BaseModel):
@@ -213,12 +244,11 @@ class BucketSentiment(BaseModel):
 
 
 class GuestPulse(BaseModel):
-    """Aggregate view: guest profile + purchase stats + sentiment overview."""
+    """Aggregate view: guest profile + review engagement + sentiment overview."""
     guest: GuestRead
-    total_orders: int
-    total_spend: float
     favorite_items: list[str]
-    visit_count: int
+    visit_count: int  # Derived from reviews
+    review_engagement_score: float # 0.0 to 1.0 based on frequency/length
     sentiment_summary: list[BucketSentiment]
     recent_reviews: list[ReviewRead]
 
@@ -230,9 +260,9 @@ class GuestPrioritized(BaseModel):
     priority_score: float  # 0.0 to 1.0 (1.0 is highest priority)
     reason: str
     recommended_action: str
-    total_spend: float
     last_visit_days_ago: int
     review_count: int = 0
+    review_engagement_score: float = 0.0
     current_status: InterceptStatus = InterceptStatus.open
     current_action: InterceptActionRead | None = None
 
@@ -276,6 +306,15 @@ class MenuItemRead(MenuItemCreate):
     model_config = {"from_attributes": True}
 
 
+class RestaurantRead(BaseModel):
+    id: str
+    name: str
+    address: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Analytics ──────────────────────────────────────────────────────────────
 
 class OverviewStats(BaseModel):
@@ -289,7 +328,6 @@ class OverviewStats(BaseModel):
 class ItemPerformance(BaseModel):
     item_name: str
     category: OrderCategory
-    order_count: int
     avg_sentiment: float | None = None
     review_count: int
 
@@ -358,12 +396,8 @@ class GuestTierCount(BaseModel):
 
 
 class OperationsAnalytics(BaseModel):
-    total_revenue: float
-    avg_order_value: float
-    orders_per_guest: float
-    category_breakdown: list[CategoryRevenue]
+    review_velocity: float  # Reviews per week
+    sentiment_momentum: float # Change in avg sentiment vs last period
     tier_distribution: list[GuestTierCount]
-    data_completeness: float  # 0.0 to 1.0
     total_guests: int
-    guests_with_both: int
     platform_split: dict[str, int]  # {"google": 10, "yelp": 6}

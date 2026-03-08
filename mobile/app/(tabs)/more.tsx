@@ -1,21 +1,23 @@
-import React from 'react';
 import {
-    View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert,
+    View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
+import { useData } from '@/lib/DataContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setApiBase, getApiBase } from '@/lib/api';
+import { setApiBase, getApiBase, resetAndSync } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import Constants from 'expo-constants';
 
 export default function MoreScreen() {
     const router = useRouter();
     const { restaurants, activeId, activeName, switchRestaurant, loadRestaurants } = useRestaurant();
+    const { refreshAll } = useData();
 
     const [currentApi, setCurrentApi] = useState<string>('Loading...');
+    const [syncing, setSyncing] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -37,6 +39,43 @@ export default function MoreScreen() {
                 }
             }
         ]);
+    };
+
+    const handleSyncNow = async () => {
+        if (!activeId) return;
+
+        Alert.alert(
+            'Smart Sync',
+            'This will fetch the latest reviews and check for deletions to keep your counts accurate. Continue?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Sync Now',
+                    onPress: async () => {
+                        setSyncing(true);
+                        try {
+                            const res = await resetAndSync(activeId);
+                            if (res.status === 'success') {
+                                // Extract info from results if available
+                                const details = res.results?.map((r: any) =>
+                                    `${r.platform}: ${r.new_ingested} new, ${r.mode === 'full' ? 'audited for deletions' : 'delta sync'}`
+                                ).join('\n');
+
+                                Alert.alert('Sync Complete', details || 'Data has been updated.');
+                                await refreshAll();
+                                await loadRestaurants();
+                            } else {
+                                Alert.alert('Sync Error', res.message || 'Failed to start sync.');
+                            }
+                        } catch (e: any) {
+                            Alert.alert('Sync Limited', e.message || 'Please wait before syncing again.');
+                        } finally {
+                            setSyncing(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleSwitchApi = async (url: string | null, label: string) => {
@@ -80,11 +119,29 @@ export default function MoreScreen() {
                                 <Text style={[s.locationName, r.id === activeId && { color: colors.accent.gold }]}>
                                     {r.name}
                                 </Text>
-                                <Text style={s.locationUrl} numberOfLines={1}>{r.platform_url}</Text>
+                                <Text style={s.locationUrl} numberOfLines={1}>
+                                    {r.address || r.platform_url || 'No address provided'}
+                                </Text>
                             </View>
                             {r.id === activeId && (
-                                <View style={s.activeBadge}>
-                                    <Text style={s.activeText}>Active</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <TouchableOpacity
+                                        style={[s.syncBtnInline, syncing && { opacity: 0.7 }]}
+                                        onPress={handleSyncNow}
+                                        disabled={syncing}
+                                    >
+                                        {syncing ? (
+                                            <ActivityIndicator size="small" color={colors.accent.gold} />
+                                        ) : (
+                                            <>
+                                                <Ionicons name="sync" size={14} color={colors.accent.gold} />
+                                                <Text style={s.syncBtnText}>Sync Now</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                    <View style={s.activeBadge}>
+                                        <Text style={s.activeText}>Active</Text>
+                                    </View>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -105,6 +162,24 @@ export default function MoreScreen() {
                 <MenuItem icon="bar-chart" label="Operations Analytics" subtitle="Revenue & performance metrics" />
             </View>
 
+            {/* Data Sources Explanation */}
+            <View style={s.section}>
+                <Text style={s.sectionTitle}>Data Sources</Text>
+                <View style={s.dataSourcesCard}>
+                    <View style={s.sourceItem}>
+                        <Ionicons name="logo-google" size={16} color="#4285F4" />
+                        <Text style={s.sourceText}>Google Maps Reviews (Scraped via Apify)</Text>
+                    </View>
+                    <View style={s.sourceItem}>
+                        <Ionicons name="star-outline" size={16} color="#FF1A1A" />
+                        <Text style={s.sourceText}>Yelp Fusion & Scraper (Apify)</Text>
+                    </View>
+                    <Text style={s.sourceDisclaimer}>
+                        Reviews are synced periodically to ensure sentiment scores reflect the latest customer feedback.
+                    </Text>
+                </View>
+            </View>
+
 
             {/* App Info */}
             <View style={s.section}>
@@ -120,6 +195,28 @@ export default function MoreScreen() {
                 <View style={s.infoRow}>
                     <Text style={s.infoLabel}>App Version</Text>
                     <Text style={s.infoValue}>1.0.0</Text>
+                </View>
+
+                {/* API Switcher */}
+                <View style={s.apiCard}>
+                    <Text style={s.apiCurrentLabel}>Switch Environment:</Text>
+                    <View style={s.apiBtnRow}>
+                        <TouchableOpacity
+                            style={s.apiBtn}
+                            onPress={() => handleSwitchApi(null, 'Production')}
+                        >
+                            <Text style={s.apiBtnText}>Cloud (Public)</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={s.apiBtn}
+                            onPress={() => handleSwitchApi('http://localhost:8000', 'Local')}
+                        >
+                            <Text style={s.apiBtnText}>Local (Dev)</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={s.apiDesc}>
+                        Switch to "Local" to see changes I'm making to your local database/code.
+                    </Text>
                 </View>
             </View>
         </ScrollView>
@@ -169,6 +266,19 @@ const s = StyleSheet.create({
     },
     activeText: { color: colors.accent.gold, fontSize: fonts.sizes.xs, fontWeight: '700' },
 
+    syncBtnInline: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: colors.bg.secondary,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: radius.sm,
+        borderWidth: 1,
+        borderColor: colors.accent.gold + '40',
+    },
+    syncBtnText: { color: colors.accent.gold, fontSize: 10, fontWeight: '700' },
+
     menuItem: {
         flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
         backgroundColor: colors.bg.card, borderRadius: radius.md,
@@ -213,4 +323,12 @@ const s = StyleSheet.create({
     },
     apiBtnText: { color: colors.text.primary, fontSize: fonts.sizes.xs, fontWeight: '600' },
     apiDesc: { color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: 4, lineHeight: 16 },
+
+    dataSourcesCard: {
+        backgroundColor: colors.bg.card, borderRadius: radius.md,
+        padding: spacing.md, borderWidth: 1, borderColor: colors.border.subtle,
+    },
+    sourceItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+    sourceText: { color: colors.text.secondary, fontSize: fonts.sizes.sm },
+    sourceDisclaimer: { color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: spacing.sm, fontStyle: 'italic' },
 });

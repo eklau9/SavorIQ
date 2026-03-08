@@ -35,11 +35,14 @@ async def get_overview(
     db: AsyncSession = Depends(get_db)
 ):
     """Aggregate statistics across all guests, orders, and reviews, scoped to restaurant."""
-    # Totals
-    guests_count = (await db.execute(select(func.count(Guest.id)).where(Guest.restaurant_id == x_restaurant_id))).scalar() or 0
-    orders_count = (await db.execute(select(func.count(Order.id)).where(Order.restaurant_id == x_restaurant_id))).scalar() or 0
-    reviews_count = (await db.execute(select(func.count(Review.id)).where(Review.restaurant_id == x_restaurant_id))).scalar() or 0
-    avg_rating = (await db.execute(select(func.avg(Review.rating)).where(Review.restaurant_id == x_restaurant_id))).scalar() or 0.0
+    # 1. Active Guests (Guests with at least one non-deleted review)
+    active_guests_stmt = (
+        select(func.count(func.distinct(Review.guest_id)))
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+    )
+    guests_count = (await db.execute(active_guests_stmt)).scalar() or 0
+    reviews_count = (await db.execute(select(func.count(Review.id)).where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False))).scalar() or 0
+    avg_rating = (await db.execute(select(func.avg(Review.rating)).where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False))).scalar() or 0.0
 
     print(f"DEBUG OVERVIEW: restaurant={x_restaurant_id}, guests={guests_count}, reviews={reviews_count}")
 
@@ -52,7 +55,7 @@ async def get_overview(
                 func.count(SentimentScore.id).label("review_count"),
             )
             .join(Review, SentimentScore.review_id == Review.id)
-            .where(Review.restaurant_id == x_restaurant_id)
+            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
             .group_by(SentimentScore.bucket)
         )
     ).all()
@@ -68,7 +71,7 @@ async def get_overview(
 
     return OverviewStats(
         total_guests=guests_count,
-        total_orders=orders_count,
+        total_orders=0, # Deprecated
         total_reviews=reviews_count,
         avg_rating=round(float(avg_rating), 2),
         sentiment_by_bucket=sentiment_by_bucket,
@@ -87,7 +90,7 @@ async def get_deep_analytics(
     reviews = (
         await db.execute(
             select(Review)
-            .where(Review.restaurant_id == x_restaurant_id)
+            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
             .options(
                 sqlalchemy.orm.selectinload(Review.sentiment_scores)
             )
@@ -139,7 +142,6 @@ async def get_deep_analytics(
                     ItemPerformance(
                         item_name=item["name"],
                         category=item["category"],
-                        order_count=mention_count,
                         avg_sentiment=None,
                         review_count=mention_count,
                     )
@@ -223,7 +225,7 @@ async def get_sentiment_analytics(
                 func.count(SentimentScore.id).label("review_count"),
             )
             .join(Review, SentimentScore.review_id == Review.id)
-            .where(Review.restaurant_id == x_restaurant_id)
+            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
             .group_by(SentimentScore.bucket)
         )
     ).all()
@@ -246,7 +248,7 @@ async def get_sentiment_analytics(
                 func.avg(SentimentScore.score).label("avg_score"),
             )
             .join(Review, SentimentScore.review_id == Review.id)
-            .where(Review.restaurant_id == x_restaurant_id)
+            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
             .group_by("month", SentimentScore.bucket)
             .order_by("month")
         )
@@ -267,7 +269,7 @@ async def get_sentiment_analytics(
         await db.execute(
             select(SentimentScore, Review.content)
             .join(Review, SentimentScore.review_id == Review.id)
-            .where(Review.restaurant_id == x_restaurant_id)
+            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
         )
     ).all()
 
@@ -298,50 +300,39 @@ async def get_operations_analytics(
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Operational KPIs: revenue, segments, data health, platform split, scoped to restaurant."""
+    """Review KPIs: velocity, momentum, platform split, scoped to restaurant."""
+    from datetime import datetime, timedelta
 
-    # 1. Revenue
-    rev_row = (
-        await db.execute(
-            select(
-                func.sum(Order.price * Order.quantity).label("total_revenue"),
-                func.count(Order.id).label("total_orders"),
-            )
-            .where(Order.restaurant_id == x_restaurant_id)
-        )
-    ).first()
+    now = datetime.utcnow()
+    last_30_days = now - timedelta(days=30)
+    prev_30_days = now - timedelta(days=60)
+
+    # 1. Review Velocity (Reviews per week in last 30 days)
+    recent_reviews_count = (await db.execute(
+        select(func.count(Review.id))
+        .where(Review.restaurant_id == x_restaurant_id, Review.reviewed_at >= last_30_days, Review.is_deleted_on_platform == False)
+    )).scalar() or 0
+    review_velocity = round(recent_reviews_count / 4.2, 1) # ~4.2 weeks in 30 days
+
+    # 2. Sentiment Momentum
+    curr_avg = (await db.execute(
+        select(func.avg(Review.rating))
+        .where(Review.restaurant_id == x_restaurant_id, Review.reviewed_at >= last_30_days, Review.is_deleted_on_platform == False)
+    )).scalar() or 0.0
     
-    total_revenue = float(rev_row.total_revenue or 0)
-    total_orders = rev_row.total_orders or 0
-
-    guests_count = (await db.execute(select(func.count(Guest.id)).where(Guest.restaurant_id == x_restaurant_id))).scalar() or 1
+    prev_avg = (await db.execute(
+        select(func.avg(Review.rating))
+        .where(Review.restaurant_id == x_restaurant_id, Review.reviewed_at >= prev_30_days, Review.reviewed_at < last_30_days, Review.is_deleted_on_platform == False)
+    )).scalar() or 0.0
     
-    # Calculate metrics, handling zero-order states gracefully
-    avg_order_value = round(total_revenue / max(total_orders, 1), 2) if total_orders > 0 else 0.0
-    orders_per_guest = round(total_orders / max(guests_count, 1), 1) if total_orders > 0 else 0.0
-
-    # 2. Category breakdown
-    cat_rows = (
-        await db.execute(
-            select(
-                Order.category,
-                func.sum(Order.price * Order.quantity).label("revenue"),
-                func.count(Order.id).label("count"),
-            )
-            .where(Order.restaurant_id == x_restaurant_id)
-            .group_by(Order.category)
-        )
-    ).all()
-
-    category_breakdown = [
-        CategoryRevenue(
-            category=row.category,
-            revenue=round(float(row.revenue), 2),
-            order_count=row.count,
-        )
-        for row in cat_rows
-    ]
-
+    sentiment_momentum = round(float(curr_avg) - float(prev_avg), 2) if prev_avg else 0.0
+    
+    active_guests_stmt = (
+        select(func.count(func.distinct(Review.guest_id)))
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+    )
+    guests_count = (await db.execute(active_guests_stmt)).scalar() or 0
+    
     # 3. Tier distribution
     tier_rows = (
         await db.execute(
@@ -356,43 +347,11 @@ async def get_operations_analytics(
         for row in tier_rows
     ]
 
-    # 4. Data completeness — guests with BOTH orders AND reviews
-    guests_with_orders = (
-        await db.execute(
-            select(func.count(func.distinct(Order.guest_id)))
-            .where(Order.restaurant_id == x_restaurant_id)
-        )
-    ).scalar() or 0
-
-    guests_with_reviews = (
-        await db.execute(
-            select(func.count(func.distinct(Review.guest_id)))
-            .where(Review.restaurant_id == x_restaurant_id)
-        )
-    ).scalar() or 0
-
-    # Guests that appear in BOTH tables within this restaurant
-    guests_with_both = (
-        await db.execute(
-            select(func.count()).select_from(
-                select(Order.guest_id)
-                .where(Order.restaurant_id == x_restaurant_id)
-                .intersect(
-                    select(Review.guest_id)
-                    .where(Review.restaurant_id == x_restaurant_id)
-                )
-                .subquery()
-            )
-        )
-    ).scalar() or 0
-
-    data_completeness = round(guests_with_both / max(guests_count, 1), 2)
-
-    # 5. Platform split
+    # 4. Platform split
     platform_rows = (
         await db.execute(
             select(Review.platform, func.count(Review.id).label("count"))
-            .where(Review.restaurant_id == x_restaurant_id)
+            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
             .group_by(Review.platform)
         )
     ).all()
@@ -400,13 +359,9 @@ async def get_operations_analytics(
     platform_split = {row.platform: row.count for row in platform_rows}
 
     return OperationsAnalytics(
-        total_revenue=round(total_revenue, 2),
-        avg_order_value=avg_order_value,
-        orders_per_guest=orders_per_guest,
-        category_breakdown=category_breakdown,
+        review_velocity=review_velocity,
+        sentiment_momentum=sentiment_momentum,
         tier_distribution=tier_distribution,
-        data_completeness=data_completeness,
         total_guests=guests_count,
-        guests_with_both=guests_with_both,
         platform_split=platform_split,
     )
