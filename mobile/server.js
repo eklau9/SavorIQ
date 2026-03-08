@@ -7,8 +7,15 @@ const PORT = process.env.PORT || 3000;
 // Enable Gzip compression
 app.use(compression());
 
-// Serve static files from the 'dist' directory
-app.use(express.static(path.join(__dirname, 'dist')));
+// Serve static files from the 'dist' directory with cache-busting headers
+app.use(express.static(path.join(__dirname, 'dist'), {
+    setHeaders: (res, path) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('Surrogate-Control', 'no-store');
+    }
+}));
 
 // Handle SPA routing: send 'index.html' for any request that doesn't match a file
 app.get('*', (req, res) => {
