@@ -10,7 +10,7 @@ COPY . .
 # Bake in the Railway backend API URL at build time
 ENV EXPO_PUBLIC_API_URL=https://savoriq-api-production.up.railway.app
 
-RUN npx expo export --platform web
+RUN npx expo export --platform web --clear
 
 # Serve static files with compression
 FROM node:20-alpine AS runner
