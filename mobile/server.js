@@ -7,6 +7,12 @@ const PORT = process.env.PORT || 3000;
 // Enable Gzip compression
 app.use(compression());
 
+// Request logging middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 // Serve static files from the 'dist' directory with cache-busting headers
 app.use(express.static(path.join(__dirname, 'dist'), {
     setHeaders: (res, path) => {
