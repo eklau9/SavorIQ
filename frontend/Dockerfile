@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy the mobile Expo source
 COPY ../mobile/package.json ../mobile/package-lock.json* ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY ../mobile/ .
 
