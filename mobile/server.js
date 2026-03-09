@@ -28,6 +28,6 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`Mobile Web Server listening on port ${PORT} with Gzip compression`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Mobile Web Server listening on port ${PORT} with Gzip compression on IPv4 0.0.0.0`);
 });
