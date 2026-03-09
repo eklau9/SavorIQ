@@ -13,6 +13,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// Explicit health check endpoints for Railway
+app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/api/health', (req, res) => res.status(200).send('OK'));
+app.get('/ping', (req, res) => res.status(200).send('pong'));
+
 // Serve static files from the 'dist' directory with cache-busting headers
 app.use(express.static(path.join(__dirname, 'dist'), {
     setHeaders: (res, path) => {
