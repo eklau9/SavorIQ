@@ -44,6 +44,12 @@ To optimize API costs and performance, the system follows a split architecture:
     - 24-hour cooldown per store.
     - Proactive frontend blocking if `SyncLog` shows recent activity.
 - **Cost**: Consumes Apify compute credits.
+- **Token Fallback**: Uses a waterfall strategy to maximize free-tier usage:
+    - **Primary + N Fallbacks**: Tokens are configured in `backend/.env` as `APIFY_API_TOKEN` (primary) and `APIFY_FALLBACK_TOKEN_1` through `_N` (backup free-tier accounts).
+    - **Retry Logic**: `_run_apify_actor()` tries each token in order. On HTTP 402 (quota exceeded) or 429 (rate limit), it immediately retries with the next token.
+    - **Non-quota errors** (500, network failures, actor FAILED status) are **not** retried across tokens.
+    - **Token Loading**: `_get_apify_tokens()` reads from both Pydantic Settings (tokens 1-15) and `os.environ` directly (tokens 16+), supporting unlimited keys.
+    - **Monthly Reset**: Each free Apify account resets on its billing anniversary. Since the waterfall always starts at token #1, refreshed tokens are used automatically.
 
 ---
 
@@ -78,6 +84,7 @@ Once reviews are ingested, they pass through the Intelligence Layer:
 - **Scraper:** Apify (Yelp & Google Maps)
 - **Frontend (Web):** Next.js (App Router)
 - **Frontend (Mobile):** Expo / React Native (5-tab navigation, shared API)
+- **Admin Dashboard:** React (Vite) — Operator monitoring at `http://localhost:5174`
 
 ### Multi-Tenancy & Data Isolation
 SavorIQ uses a **Hard Isolation** strategy at the database level:

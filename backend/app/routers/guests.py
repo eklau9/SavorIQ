@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models import Guest, InterceptAction, Order, Restaurant, Review
 from app.schemas import GuestPulse, GuestRead, GuestPrioritized, ReviewRead, RestaurantRead
+from app.services.cache import api_cache
 
 router = APIRouter(prefix="/api", tags=["guests"])
 
@@ -34,6 +35,11 @@ async def list_guests(
     db: AsyncSession = Depends(get_db),
 ):
     """List all guests with advanced sorting and expanded limits, scoped to restaurant."""
+    cache_suffix = f"{tier}:{sort_by}:{skip}:{limit}"
+    cached = api_cache.get(x_restaurant_id, "guests", suffix=cache_suffix)
+    if cached is not None:
+        return cached
+
     print(f"DEBUG: list_guests called with limit={limit}, restaurant_id={x_restaurant_id}")
     
     # Subquery for guest metrics (avg rating, review count)
@@ -97,6 +103,7 @@ async def list_guests(
         }
         out.append(res)
         
+    api_cache.set(x_restaurant_id, "guests", out, suffix=cache_suffix)
     return out
 
 
@@ -108,6 +115,10 @@ async def list_guest_priorities(
     """
     Returns a prioritized list of guests needing manager action for the current restaurant.
     """
+    cached = api_cache.get(x_restaurant_id, "priorities")
+    if cached is not None:
+        return cached
+
     # Load guests for this restaurant with related data
     query = (
         select(Guest)
@@ -150,10 +161,15 @@ async def list_guest_priorities(
         bad_food_mentions = 0
         bad_service_mentions = 0
         for r in active_reviews:
-            for s in r.sentiment_scores:
+            # Direct attribute access is faster than repeated lookups
+            scores = r.sentiment_scores
+            for s in scores:
                 if s.score < -0.3:
-                    if s.bucket == "food": bad_food_mentions += 1
-                    elif s.bucket in ["ambiance", "service"]: bad_service_mentions += 1
+                    bucket = s.bucket
+                    if bucket == "food": 
+                        bad_food_mentions += 1
+                    elif bucket in ("ambiance", "service"): 
+                        bad_service_mentions += 1
 
         # ── Segments ──
         score = 0
@@ -198,6 +214,7 @@ async def list_guest_priorities(
 
     # Sort by priority score DESC
     prioritized.sort(key=lambda x: x.priority_score, reverse=True)
+    api_cache.set(x_restaurant_id, "priorities", prioritized)
     return prioritized
 
 

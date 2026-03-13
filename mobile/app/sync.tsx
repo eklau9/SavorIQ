@@ -102,19 +102,30 @@ export default function SyncScreen() {
         const key = item.id;
         setSyncing(prev => ({ ...prev, [key]: true }));
         try {
-            const syncs = [];
+            const syncTasks = [];
             if (item.google) {
-                syncs.push(syncApifyReviews('google', item.google.url || item.google.id, item.google.name, item.google.address));
+                syncTasks.push(syncApifyReviews('google', item.google.url || item.google.id, item.google.name, item.google.address));
             }
             if (item.yelp) {
-                syncs.push(syncApifyReviews('yelp', item.yelp.url || item.yelp.id, item.yelp.name, item.yelp.address));
+                syncTasks.push(syncApifyReviews('yelp', item.yelp.url || item.yelp.id, item.yelp.name, item.yelp.address));
             }
 
-            await Promise.all(syncs);
+            const results = await Promise.all(syncTasks);
+
+            // Calculate total new reviews across platforms
+            const newReviews = results.reduce((acc, res) => acc + (res.new_ingested || 0), 0);
+            const totalFetched = results.reduce((acc, res) => acc + (res.total_fetched || 0), 0);
+
             loadStatus();
-            alert(`Sync started for ${item.name}. Data will appear in a few moments.`);
+
+            if (newReviews > 0) {
+                alert(`✅ Sync Complete for ${item.name}!\n\nFetched ${totalFetched} reviews and added ${newReviews} new entries to your dashboard.`);
+            } else {
+                alert(`✅ Sync Complete for ${item.name}!\n\nYour data is already up to date. No new reviews found.`);
+            }
         } catch (e: any) {
-            alert(`Sync error: ${e.message}`);
+            console.error('[Sync] Error during sync:', e);
+            alert(`❌ Sync failed: ${e.message}`);
         } finally {
             setSyncing(prev => ({ ...prev, [key]: false }));
         }

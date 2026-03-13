@@ -44,38 +44,48 @@ export default function MoreScreen() {
     const handleSyncNow = async () => {
         if (!activeId) return;
 
-        Alert.alert(
-            'Smart Sync',
-            'This will fetch the latest reviews and check for deletions to keep your counts accurate. Continue?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Sync Now',
-                    onPress: async () => {
-                        setSyncing(true);
-                        try {
-                            const res = await resetAndSync(activeId);
-                            if (res.status === 'success') {
-                                // Extract info from results if available
-                                const details = res.results?.map((r: any) =>
-                                    `${r.platform}: ${r.new_ingested} new, ${r.mode === 'full' ? 'audited for deletions' : 'delta sync'}`
-                                ).join('\n');
+        // Use window.confirm for web compatibility (Alert.alert is a no-op on web)
+        const confirmed = typeof window !== 'undefined'
+            ? window.confirm('Smart Sync\n\nThis will fetch the latest reviews and check for deletions to keep your counts accurate. Continue?')
+            : true;
 
-                                Alert.alert('Sync Complete', details || 'Data has been updated.');
-                                await refreshAll();
-                                await loadRestaurants();
-                            } else {
-                                Alert.alert('Sync Error', res.message || 'Failed to start sync.');
-                            }
-                        } catch (e: any) {
-                            Alert.alert('Sync Limited', e.message || 'Please wait before syncing again.');
-                        } finally {
-                            setSyncing(false);
-                        }
-                    }
+        if (!confirmed) return;
+
+        setSyncing(true);
+        try {
+            const res = await resetAndSync(activeId);
+            if (res.status === 'success') {
+                // Extract info from results if available
+                const details = res.results?.map((r: any) =>
+                    `${r.platform}: ${r.new_ingested} new, ${r.mode === 'full' ? 'audited for deletions' : 'delta sync'}`
+                ).join('\n') || 'Data has been updated.';
+
+                // Use window.alert for web compatibility
+                if (typeof window !== 'undefined') {
+                    window.alert(`✅ Sync Complete!\n\n${details}`);
+                } else {
+                    Alert.alert('Sync Complete', details);
                 }
-            ]
-        );
+                await refreshAll();
+                await loadRestaurants();
+            } else {
+                const msg = res.message || 'Failed to start sync.';
+                if (typeof window !== 'undefined') {
+                    window.alert(`❌ Sync Error\n\n${msg}`);
+                } else {
+                    Alert.alert('Sync Error', msg);
+                }
+            }
+        } catch (e: any) {
+            const msg = e.message || 'Please wait before syncing again.';
+            if (typeof window !== 'undefined') {
+                window.alert(`⚠️ Sync Limited\n\n${msg}`);
+            } else {
+                Alert.alert('Sync Limited', msg);
+            }
+        } finally {
+            setSyncing(false);
+        }
     };
 
     const handleSwitchApi = async (url: string | null, label: string) => {

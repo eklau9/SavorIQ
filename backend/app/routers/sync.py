@@ -20,6 +20,7 @@ from app.services.apify_sync import apify_google_reviews, apify_yelp_reviews
 from app.services.ingestion import ingest_reviews
 from sqlalchemy import func
 from app.services.sentiment import analyze_and_store_batch
+from app.services.cache import api_cache
 from app.services.sync import (
     google_search,
     yelp_search,
@@ -38,41 +39,45 @@ async def reset_and_sync(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Clear all reviews for a restaurant and re-initiate sync using existing logs.
+    Smart Sync for a restaurant: re-syncs the most recent Google and Yelp logs only.
+    Runs platforms concurrently to avoid timeouts.
     """
     # 1. Get sync logs for this restaurant
-    stmt = select(SyncLog).where(SyncLog.restaurant_id == restaurant_id)
+    stmt = select(SyncLog).where(SyncLog.restaurant_id == restaurant_id).order_by(SyncLog.last_synced_at.desc())
     result = await db.execute(stmt)
     logs = result.scalars().all()
 
     if not logs:
         raise HTTPException(status_code=404, detail="No sync logs found for this restaurant")
 
-    # 2. No more hard-deletes! We now use Adaptive Sync.
-    # sync_apify_reviews will automatically choose between Delta and Full sync
-    # based on live vs local counts.
-    await db.flush() 
-
-    # 3. Trigger resync for each log
-    sync_results = []
+    # 2. Pick only the most recent log PER PLATFORM
+    latest_per_platform: dict[str, SyncLog] = {}
     for log in logs:
-        # We call the existing sync_apify_reviews logic internally or just returnurls
-        # For simplicity, we'll return a success message and then the frontend can trigger them 
-        # OR we trigger them here sequentially
-        try:
-            res = await sync_apify_reviews(
-                platform=log.platform,
-                business_url=log.business_id,
-                business_name=log.business_name,
-                force=True,
-                restaurant_id=restaurant_id,
-                db=db
-            )
-            sync_results.append(res)
-        except Exception as e:
-            sync_results.append({"platform": log.platform, "status": "error", "message": str(e)})
+        if log.platform not in latest_per_platform:
+            latest_per_platform[log.platform] = log
 
-    await db.commit()
+    # ── Trigger resync concurrently ──
+    from app.database import async_session
+    
+    async def run_single_sync(platform, log):
+        async with async_session() as session:
+            try:
+                # Need to use the session as 'db'
+                return await sync_apify_reviews(
+                    platform=log.platform,
+                    business_url=log.business_id,
+                    business_name=log.business_name,
+                    force=True,
+                    restaurant_id=restaurant_id,
+                    db=session
+                )
+            except Exception as e:
+                logger.error(f"Background sync failed for {platform}: {e}")
+                return {"platform": platform, "status": "error", "message": str(e)}
+
+    tasks = [run_single_sync(p, l) for p, l in latest_per_platform.items()]
+    sync_results = await asyncio.gather(*tasks)
+    
     return {"status": "success", "results": sync_results}
 
 
@@ -273,6 +278,22 @@ async def sync_apify_reviews(
     # Priority: 1. Explicit param, 2. Header
     target_restaurant_id = restaurant_id or x_restaurant_id
     
+    # SAFETY CHECK: If we have an incoming target_restaurant_id, verify it's the SAME BRAND.
+    # If the user is on "Heytea" but syncs "Shu Shia", we MUST NOT merge them.
+    if target_restaurant_id:
+        res_stmt = await db.execute(select(Restaurant).where(Restaurant.id == target_restaurant_id))
+        target_res = res_stmt.scalar_one_or_none()
+        if target_res:
+            # Simple brand check: Does the search name contain the existing restaurant name or vice-versa?
+            # We use a broad check to allow for "Heytea" vs "Heytea Milpitas" but block "Heytea" vs "Shu Shia"
+            t_name = target_res.name.lower()
+            b_name = business_name.lower()
+            
+            # If they are completely different (no common brand name), we force provisioning of a NEW tenant
+            if t_name not in b_name and b_name not in t_name:
+                logger.info(f"Brand mismatch detected: Current={t_name}, New={b_name}. Forcing new tenant.")
+                target_restaurant_id = None
+
     # ── Daily sync guard ──
     # For sync logs, we use the business URL as ID for Apify syncs
     business_id = business_url
@@ -362,12 +383,19 @@ async def sync_apify_reviews(
             await db.flush() # Get the generated ID
             target_restaurant_id = new_restaurant.id
     else:
-        # If target restaurant already existed, update its address if provided and different
+        # If target restaurant already existed, update its name and address if provided and different
         res_stmt = await db.execute(select(Restaurant).where(Restaurant.id == target_restaurant_id))
         existing_res = res_stmt.scalar_one_or_none()
-        if existing_res and business_address and existing_res.address != business_address:
-            logger.info(f"Updating address for restaurant {target_restaurant_id} to {business_address}")
-            existing_res.address = business_address
+        if existing_res:
+            # Only update name if the new one is LONGER (more descriptive)
+            # This prevents overwriting manually corrected names like "Heytea (Milpitas)"
+            if business_name and len(business_name) > len(existing_res.name):
+                logger.info(f"Updating name for restaurant {target_restaurant_id} to '{business_name}'")
+                existing_res.name = business_name
+            # Update address if provided and currently empty
+            if business_address and (not existing_res.address or existing_res.address != business_address):
+                logger.info(f"Updating address for restaurant {target_restaurant_id} to '{business_address}'")
+                existing_res.address = business_address
     
     # Ensure restaurant_id is set for downstream services
     restaurant_id = target_restaurant_id
@@ -476,12 +504,17 @@ async def sync_apify_reviews(
             batch = reviews_to_analyze[i : i + batch_size]
             batch_num = (i // batch_size) + 1
             logger.info(f"Analyzing batch {batch_num}/{total_batches}...")
-            try:
-                await analyze_and_store_batch(db, batch)
-            except Exception as e:
-                logger.error(f"Sentiment analysis failed for batch starting at {i}: {e}")
-                # Continue with next batch so we don't crash the whole sync
-                continue
+            
+            # Use a savepoint so that if Gemini fails or DB fails for this batch, 
+            # the transaction as a whole isn't aborted.
+            async with db.begin_nested():
+                try:
+                    await analyze_and_store_batch(db, batch)
+                except Exception as e:
+                    # Rolling back the savepoint is handled by the context manager automatically on exception
+                    logger.error(f"Sentiment analysis failed for batch {batch_num}: {e}")
+                    # We continue to the next batch
+                    continue
 
     # ── Update sync log ──
     existing = await db.execute(
@@ -510,6 +543,10 @@ async def sync_apify_reviews(
         db.add(log)
 
     await db.commit()
+
+    # Bust the cache so the dashboard shows fresh data
+    api_cache.invalidate(restaurant_id)
+    logger.info(f"Cache invalidated for restaurant {restaurant_id} after sync")
 
     return {
         "status": "synced",

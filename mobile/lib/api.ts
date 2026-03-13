@@ -21,7 +21,7 @@ const getInitialApiBase = () => {
 
 const DEFAULT_API_BASE = getInitialApiBase();
 
-const FETCH_TIMEOUT = 20000; // 20s timeout
+const FETCH_TIMEOUT = 30000; // 30s timeout (allow for heavy analytics)
 
 export async function getApiBase(): Promise<string> {
     const custom = await AsyncStorage.getItem('apiBase');
@@ -72,13 +72,24 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, si
     headers['X-Access-Key'] = accessKey || 'SavorIQ';
 
     const localController = new AbortController();
-    const id = setTimeout(() => localController.abort(), FETCH_TIMEOUT);
+    const id = setTimeout(() => {
+        localController.abort();
+    }, FETCH_TIMEOUT);
+
+    // If an external signal is provided, we need to abort if EITHER the timeout 
+    // OR the external signal triggers.
+    if (signal) {
+        signal.addEventListener('abort', () => {
+            localController.abort();
+            clearTimeout(id);
+        });
+    }
 
     try {
         const res = await fetch(`${apiBase}${endpoint}`, {
             ...options,
             headers,
-            signal: signal || localController.signal,
+            signal: localController.signal,
         });
         clearTimeout(id);
 
@@ -94,8 +105,19 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, si
         return res.json();
     } catch (e: any) {
         clearTimeout(id);
+
+        // If it's an AbortError, check if it was due to OUR timeout
         if (e.name === 'AbortError') {
-            throw new Error('Request timed out. Please check your connection.');
+            // We can't easily check 'Reason' in all environments, so we check if the timeout triggered
+            // However, a better way is to see if its the localController that aborted
+            if (localController.signal.aborted && (!signal || !signal.aborted)) {
+                const timeoutErr = new Error('Request timed out. Please check your connection.');
+                timeoutErr.name = 'TimeoutError';
+                throw timeoutErr;
+            }
+            // Otherwise, it was a manual abort from the caller's signal
+            // Re-throw it as an AbortError so caller (like refreshAll) can ignore it
+            throw e;
         }
         throw e;
     }

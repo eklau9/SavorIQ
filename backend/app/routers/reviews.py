@@ -15,6 +15,7 @@ from app.models import Guest, Review, SentimentScore
 from app.schemas import IngestionReport, ReviewPlatform, ReviewRead, ReviewWithGuest
 from app.services.ingestion import ingest_reviews
 from app.services.sentiment import analyze_and_store_batch
+from app.services.cache import api_cache
 
 router = APIRouter(prefix="/api", tags=["reviews"])
 
@@ -55,6 +56,11 @@ async def review_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Return aggregate stats for reviews matching the current filters using fast SQL aggregation."""
+    cache_suffix = f"{platform}:{search}:{days}:{date}:{bucket}"
+    cached = api_cache.get(x_restaurant_id, "review_stats", suffix=cache_suffix)
+    if cached is not None:
+        return cached
+
     # Base query for counting and averaging ratings
     stmt = select(
         func.count(Review.id).label("total"),
@@ -130,7 +136,7 @@ async def review_stats(
         if 1 <= r_int <= 5:
             rating_distribution[int(r_int)] = count
 
-    return {
+    result_data = {
         "total": total,
         "avg_rating": round(float(avg_rating or 0), 1),
         "positive": positive,
@@ -141,6 +147,8 @@ async def review_stats(
         "bucket_averages": bucket_averages,
         "rating_distribution": rating_distribution
     }
+    api_cache.set(x_restaurant_id, "review_stats", result_data, suffix=cache_suffix)
+    return result_data
 
 
 @router.get("/reviews", response_model=list[ReviewWithGuest])
@@ -157,6 +165,11 @@ async def list_all_reviews(
     db: AsyncSession = Depends(get_db),
 ):
     """List all reviews with filters, entirely in SQL."""
+    cache_suffix = f"{platform}:{search}:{sentiment}:{bucket}:{days}:{date}:{skip}:{limit}"
+    cached = api_cache.get(x_restaurant_id, "reviews", suffix=cache_suffix)
+    if cached is not None:
+        return cached
+
     # Subquery for avg score if we need sentiment filtering
     sentiment_subq = (
         select(
@@ -194,6 +207,7 @@ async def list_all_reviews(
         data = ReviewWithGuest.model_validate(r)
         data.guest_name = r.guest.name if r.guest else "Unknown"
         out.append(data)
+    api_cache.set(x_restaurant_id, "reviews", out, suffix=cache_suffix)
     return out
 
 

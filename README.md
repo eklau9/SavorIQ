@@ -5,6 +5,7 @@ SavorIQ is an AI-powered guest intelligence platform for high-end hospitality. I
 ## Project Structure
 
 - **`backend/`**: FastAPI server handling database (PostgreSQL/Supabase), background sync via Apify, and sentiment processing.
+- **`admin/`**: React admin dashboard ("Command Center") for monitoring API quotas, token health, and system status.
 - **`mobile/`**: React Native / Expo application for restaurant managers to view insights, manage guest intercept priorities, and track team performance.
 - **`frontend/`**: Next.js web application for broader executive analytics and administrative controls.
 - **`k8s/`**: Kubernetes deployment configurations for production environments.
@@ -15,6 +16,7 @@ SavorIQ is an AI-powered guest intelligence platform for high-end hospitality. I
 Refer to the README in each subdirectory for specific setup and development instructions.
 
 - [Backend Setup](backend/README.md)
+- [Admin Dashboard](admin/README.md)
 - [Mobile App Setup](mobile/README.md)
 - [Web Frontend Setup](frontend/README.md)
 
@@ -30,6 +32,27 @@ Detailed testing instructions are available in each sub-directory, but here is t
 
 - **Backend**: `cd backend && source venv/bin/activate && PYTHONPATH=$(pwd) pytest`
 - **Mobile**: `cd mobile && npm test`
+
+## Apify Token Fallback
+
+SavorIQ uses an automatic **waterfall fallback** system for Apify API tokens. When the primary token's monthly $5.00 free credit is exhausted, the system automatically retries with backup tokens.
+
+- **Configuration**: Add tokens to `backend/.env` using numbered keys:
+  ```
+  APIFY_API_TOKEN=apify_api_PRIMARY
+  APIFY_FALLBACK_TOKEN_1=apify_api_BACKUP1
+  APIFY_FALLBACK_TOKEN_2=apify_api_BACKUP2
+  ```
+- **Behavior**: Every sync always tries the primary first. On HTTP 402/429, it falls to the next token. Tokens auto-reset monthly on their billing anniversary.
+- **No limit**: Add as many backup tokens as needed (sequential numbering).
+
+## Monitoring
+
+Check live API quotas across all services:
+```bash
+cd backend && ./venv/bin/python3 scripts/check_quotas.py
+```
+This reports Apify token balances, Yelp daily limits, Supabase storage, and Google API info.
 
 ## Maintenance & Documentation
 

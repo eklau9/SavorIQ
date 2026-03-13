@@ -19,51 +19,107 @@ logger = logging.getLogger(__name__)
 APIFY_BASE = "https://api.apify.com/v2"
 
 
+def _get_apify_tokens() -> list[str]:
+    """Build ordered list of Apify tokens: primary first, then fallbacks 1-N from env."""
+    import os
+    tokens = []
+    if settings.APIFY_API_TOKEN:
+        tokens.append(settings.APIFY_API_TOKEN)
+    
+    # Check fallback tokens 1 to N until we don't find any more
+    i = 1
+    while True:
+        # Check both Settings and os.environ directly to handle unlimited tokens
+        t = getattr(settings, f"APIFY_FALLBACK_TOKEN_{i}", None)
+        if not t:
+            t = os.environ.get(f"APIFY_FALLBACK_TOKEN_{i}")
+            
+        if t:
+            t = t.strip()
+            if t and t not in tokens:
+                tokens.append(t)
+            i += 1
+        else:
+            # If token N is missing, try one more just in case of a gap
+            if not os.environ.get(f"APIFY_FALLBACK_TOKEN_{i+1}"):
+                break
+            i += 1
+            
+    return tokens
+
+
 async def _run_apify_actor(actor_id: str, run_input: dict, timeout: int = 180) -> list[dict]:
     """
     Run an Apify actor synchronously and return dataset items.
 
-    1. POST to start the actor run (waits up to `timeout` seconds for completion)
-    2. GET the dataset items from the run's defaultDatasetId
+    Tries each configured token in order (primary → fallbacks).
+    Falls through to the next token on 402 (Payment Required) or
+    429 (Too Many Requests) quota errors.
     """
-    if not settings.APIFY_API_TOKEN:
-        raise ValueError("APIFY_API_TOKEN is not configured.")
+    tokens = _get_apify_tokens()
+    if not tokens:
+        raise ValueError("No Apify tokens configured. Set APIFY_API_TOKEN or APIFY_FALLBACK_TOKENS.")
 
-    headers = {
-        "Authorization": f"Bearer {settings.APIFY_API_TOKEN}",
-        "Content-Type": "application/json",
-    }
+    last_error: Exception | None = None
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout + 30)) as client:
-        # Start the actor run and wait for it to finish
-        run_resp = await client.post(
-            f"{APIFY_BASE}/acts/{actor_id}/runs",
-            headers=headers,
-            json=run_input,
-            params={"waitForFinish": timeout},
-        )
-        run_resp.raise_for_status()
-        run_data = run_resp.json().get("data", {})
+    for i, token in enumerate(tokens, 1):
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        label = f"token #{i}/{len(tokens)} (...{token[-6:]})"
 
-        status = run_data.get("status")
-        if status not in ("SUCCEEDED",):
-            raise RuntimeError(
-                f"Apify actor {actor_id} finished with status: {status}. "
-                f"Status message: {run_data.get('statusMessage', 'N/A')}"
+        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout + 30)) as client:
+            # Start the actor run and wait for it to finish
+            try:
+                run_resp = await client.post(
+                    f"{APIFY_BASE}/acts/{actor_id}/runs",
+                    headers=headers,
+                    json=run_input,
+                    params={"waitForFinish": timeout},
+                )
+            except httpx.HTTPError as exc:
+                last_error = exc
+                logger.warning(f"Apify {label}: network error — {exc}")
+                continue
+
+            # Quota exhausted → try next token
+            if run_resp.status_code in (402, 429):
+                last_error = RuntimeError(
+                    f"Apify {label}: quota exceeded (HTTP {run_resp.status_code})"
+                )
+                logger.warning(str(last_error))
+                continue
+
+            run_resp.raise_for_status()
+            run_data = run_resp.json().get("data", {})
+
+            status = run_data.get("status")
+            if status not in ("SUCCEEDED",):
+                raise RuntimeError(
+                    f"Apify actor {actor_id} finished with status: {status}. "
+                    f"Status message: {run_data.get('statusMessage', 'N/A')}"
+                )
+
+            dataset_id = run_data.get("defaultDatasetId")
+            if not dataset_id:
+                raise RuntimeError("No dataset ID in Apify run response.")
+
+            logger.info(f"Apify {label}: actor run succeeded, fetching dataset {dataset_id}")
+
+            # Fetch the dataset items (same token that started the run)
+            items_resp = await client.get(
+                f"{APIFY_BASE}/datasets/{dataset_id}/items",
+                headers=headers,
+                params={"format": "json"},
             )
+            items_resp.raise_for_status()
+            return items_resp.json()
 
-        dataset_id = run_data.get("defaultDatasetId")
-        if not dataset_id:
-            raise RuntimeError("No dataset ID in Apify run response.")
-
-        # Fetch the dataset items
-        items_resp = await client.get(
-            f"{APIFY_BASE}/datasets/{dataset_id}/items",
-            headers=headers,
-            params={"format": "json"},
-        )
-        items_resp.raise_for_status()
-        return items_resp.json()
+    # All tokens exhausted
+    raise RuntimeError(
+        f"All {len(tokens)} Apify token(s) exhausted or failed. Last error: {last_error}"
+    )
 
 
 async def apify_google_reviews(place_id_or_url: str, max_reviews: int = 100000) -> list[dict]:

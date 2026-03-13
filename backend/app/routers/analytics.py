@@ -25,6 +25,7 @@ from app.schemas import (
     UnmatchedMention,
 )
 from app.services.insights import generate_manager_briefing
+from app.services.cache import api_cache
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -35,6 +36,10 @@ async def get_overview(
     db: AsyncSession = Depends(get_db)
 ):
     """Aggregate statistics across all guests, orders, and reviews, scoped to restaurant."""
+    cached = api_cache.get(x_restaurant_id, "overview")
+    if cached is not None:
+        return cached
+
     # 1. Active Guests (Guests with at least one non-deleted review)
     active_guests_stmt = (
         select(func.count(func.distinct(Review.guest_id)))
@@ -69,13 +74,15 @@ async def get_overview(
         for row in bucket_rows
     ]
 
-    return OverviewStats(
+    result = OverviewStats(
         total_guests=guests_count,
         total_orders=0, # Deprecated
         total_reviews=reviews_count,
         avg_rating=round(float(avg_rating), 2),
         sentiment_by_bucket=sentiment_by_bucket,
     )
+    api_cache.set(x_restaurant_id, "overview", result)
+    return result
 
 
 @router.get("/deep", response_model=DeepAnalytics)
@@ -84,6 +91,10 @@ async def get_deep_analytics(
     db: AsyncSession = Depends(get_db)
 ):
     """Provide deep insights scoped to restaurant, using review mentions as performance proxy if orders are missing."""
+    cached = api_cache.get(x_restaurant_id, "deep_analytics")
+    if cached is not None:
+        return cached
+
     overview = await get_overview(x_restaurant_id, db)
 
     # 1. Fetch all reviews for this restaurant with sentiment
@@ -115,29 +126,26 @@ async def get_deep_analytics(
         for mi in menu_items_rows
     ]
 
-    # 3. Star-segmented mention analysis
-    positive_reviews = [r for r in reviews if r.rating >= 4]
-    negative_reviews = [r for r in reviews if r.rating <= 3]
+    # Pre-compute lowercased content for all reviews to avoid redundant .lower() calls
+    review_data = [
+        {"original": r, "content_lower": r.content.lower()} 
+        for r in reviews
+    ]
 
-    all_feedback_texts = [r.content for r in reviews]
-
-    # Flatten all menu keywords for the unmatched scan
-    all_menu_keywords = set()
-    for item in menu_items:
-        for kw in item["keywords"]:
-            all_menu_keywords.add(kw)
-
-    def scan_mentions(review_pool, items):
-        """Count how many reviews in a pool mention each menu item (via keyword aliases)."""
+    def scan_mentions(items, pool_filter=None):
+        """Count how many reviews mention each menu item (via keyword aliases)."""
         results = []
+        # Filter the pre-computed review pool once
+        pool = [rd for rd in review_data if pool_filter(rd["original"])] if pool_filter else review_data
+        
         for item in items:
             mention_count = 0
-            for r in review_pool:
-                content_lower = r.content.lower()
-                if any(kw in content_lower for kw in item["keywords"]):
+            keywords = item["keywords"]
+            for rd in pool:
+                if any(kw in rd["content_lower"] for kw in keywords):
                     mention_count += 1
 
-            if mention_count >= 2:
+            if mention_count >= 1: # Lower threshold to 1 for better visibility on smaller datasets
                 results.append(
                     ItemPerformance(
                         item_name=item["name"],
@@ -150,10 +158,10 @@ async def get_deep_analytics(
         return results[:5]
 
     # Top Performers: most mentioned in 4-5★ reviews
-    top_performers = scan_mentions(positive_reviews, menu_items)
+    top_performers = scan_mentions(menu_items, lambda r: r.rating >= 4)
 
     # At-Risk: most mentioned in 1-3★ reviews
-    risks = scan_mentions(negative_reviews, menu_items)
+    risks = scan_mentions(menu_items, lambda r: r.rating <= 3)
 
     # 4. Extract unmatched mentions — food/drink terms NOT on the menu
     # Common food/drink terms to look for in reviews
@@ -167,19 +175,30 @@ async def get_deep_analytics(
         "taro", "ube", "mango", "strawberry", "peach", "lychee",
         "tapioca", "pudding", "cream puff", "macaron",
     ]
+    
+    # Flatten all menu keywords for the unmatched scan
+    all_menu_keywords = set()
+    for item in menu_items:
+        for kw in item["keywords"]:
+            all_menu_keywords.add(kw)
+
     unmatched_counts: dict[str, int] = {}
     unmatched_ratings: dict[str, list[float]] = {}
-    # Pre-compile word-boundary patterns so e.g. "rice" won't match "price"
-    term_patterns = {term: re.compile(r'\b' + re.escape(term) + r'\b', re.IGNORECASE) for term in FOOD_DRINK_TERMS}
-    for r in reviews:
-        content_lower = r.content.lower()
-        for term in FOOD_DRINK_TERMS:
-            if term_patterns[term].search(content_lower) and term not in all_menu_keywords:
-                # Make sure this term isn't a substring of a known keyword
-                is_part_of_menu = any(term in kw for kw in all_menu_keywords)
-                if not is_part_of_menu:
-                    unmatched_counts[term] = unmatched_counts.get(term, 0) + 1
-                    unmatched_ratings.setdefault(term, []).append(float(r.rating))
+    
+    # Pre-compile word-boundary patterns
+    # We only scan terms NOT already on the menu
+    active_terms = [t for t in FOOD_DRINK_TERMS if t not in all_menu_keywords]
+    term_patterns = {term: re.compile(r'\b' + re.escape(term) + r'\b', re.IGNORECASE) for term in active_terms}
+    
+    for rd in review_data:
+        content_lower = rd["content_lower"]
+        r = rd["original"]
+        for term, pattern in term_patterns.items():
+            if pattern.search(content_lower):
+                unmatched_counts[term] = unmatched_counts.get(term, 0) + 1
+                unmatched_ratings.setdefault(term, []).append(float(r.rating))
+
+    all_feedback_texts = [rd["content_lower"] for rd in review_data]
 
     # Only show terms mentioned 2+ times, sorted by count
     unmatched_mentions = [
@@ -200,13 +219,15 @@ async def get_deep_analytics(
         all_feedback_texts
     )
 
-    return DeepAnalytics(
+    result = DeepAnalytics(
         overview=overview,
         top_performers=top_performers,
         risks=risks,
         unmatched_mentions=unmatched_mentions,
         briefing=briefing
     )
+    api_cache.set(x_restaurant_id, "deep_analytics", result)
+    return result
 
 
 @router.get("/sentiment", response_model=SentimentAnalytics)
@@ -301,6 +322,10 @@ async def get_operations_analytics(
     db: AsyncSession = Depends(get_db)
 ):
     """Review KPIs: velocity, momentum, platform split, scoped to restaurant."""
+    cached = api_cache.get(x_restaurant_id, "operations")
+    if cached is not None:
+        return cached
+
     from datetime import datetime, timedelta
 
     now = datetime.utcnow()
@@ -358,10 +383,12 @@ async def get_operations_analytics(
 
     platform_split = {row.platform: row.count for row in platform_rows}
 
-    return OperationsAnalytics(
+    result = OperationsAnalytics(
         review_velocity=review_velocity,
         sentiment_momentum=sentiment_momentum,
         tier_distribution=tier_distribution,
         total_guests=guests_count,
         platform_split=platform_split,
     )
+    api_cache.set(x_restaurant_id, "operations", result)
+    return result
