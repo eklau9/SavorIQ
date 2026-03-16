@@ -4,13 +4,13 @@ from __future__ import annotations
 import re
 
 import sqlalchemy
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Guest, MenuItem, Order, Review, SentimentScore
+from app.models import Guest, MenuItem, Order, Review, SentimentScore, SyncLog
 from app.schemas import (
     BucketSentiment,
     BucketHighlight,
@@ -23,6 +23,7 @@ from app.schemas import (
     SentimentAnalytics,
     SentimentTrendPoint,
     UnmatchedMention,
+    ManagerBriefing,
 )
 from app.services.insights import generate_manager_briefing
 from app.services.cache import api_cache
@@ -32,38 +33,75 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 @router.get("/overview", response_model=OverviewStats)
 async def get_overview(
+    days: Optional[int] = Query(None),
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
     """Aggregate statistics across all guests, orders, and reviews, scoped to restaurant."""
-    cached = api_cache.get(x_restaurant_id, "overview")
+    suffix = f"days_{days}" if days else ""
+    cached = api_cache.get(x_restaurant_id, "overview", suffix=suffix)
     if cached is not None:
         return cached
+
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=days) if days else None
 
     # 1. Active Guests (Guests with at least one non-deleted review)
     active_guests_stmt = (
         select(func.count(func.distinct(Review.guest_id)))
         .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
     )
+    if cutoff:
+        active_guests_stmt = active_guests_stmt.where(Review.reviewed_at >= cutoff)
+    
     guests_count = (await db.execute(active_guests_stmt)).scalar() or 0
-    reviews_count = (await db.execute(select(func.count(Review.id)).where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False))).scalar() or 0
-    avg_rating = (await db.execute(select(func.avg(Review.rating)).where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False))).scalar() or 0.0
-
-    print(f"DEBUG OVERVIEW: restaurant={x_restaurant_id}, guests={guests_count}, reviews={reviews_count}")
+    
+    # 2. Review Counts (Local Processed vs. Platform Ground Truth)
+    processed_reviews_stmt = (
+        select(func.count(Review.id))
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+    )
+    if cutoff:
+        processed_reviews_stmt = processed_reviews_stmt.where(Review.reviewed_at >= cutoff)
+        
+    processed_reviews_count = (await db.execute(processed_reviews_stmt)).scalar() or 0
+    
+    # Fetch Ground Truth from SyncLogs
+    sync_logs_result = await db.execute(
+        select(func.sum(SyncLog.platform_total_count))
+        .where(SyncLog.restaurant_id == x_restaurant_id)
+    )
+    external_reviews_count = sync_logs_result.scalar()
+    
+    # Use EXTERNAL count as the primary headline if we have it and it's NOT a filtered view
+    if days:
+        reviews_count = processed_reviews_count
+    else:
+        reviews_count = external_reviews_count if external_reviews_count is not None else processed_reviews_count
+    
+    avg_rating_stmt = select(func.avg(Review.rating)).where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+    if cutoff:
+        avg_rating_stmt = avg_rating_stmt.where(Review.reviewed_at >= cutoff)
+        
+    avg_rating = (await db.execute(avg_rating_stmt)).scalar() or 0.0
+    
+    print(f"DEBUG OVERVIEW: restaurant={x_restaurant_id}, guests={guests_count}, reviews={reviews_count} (processed={processed_reviews_count})")
 
     # Sentiment by bucket
-    bucket_rows = (
-        await db.execute(
-            select(
-                SentimentScore.bucket,
-                func.avg(SentimentScore.score).label("avg_score"),
-                func.count(SentimentScore.id).label("review_count"),
-            )
-            .join(Review, SentimentScore.review_id == Review.id)
-            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
-            .group_by(SentimentScore.bucket)
+    bucket_stmt = (
+        select(
+            SentimentScore.bucket,
+            func.avg(SentimentScore.score).label("avg_score"),
+            func.count(SentimentScore.id).label("review_count"),
         )
-    ).all()
+        .join(Review, SentimentScore.review_id == Review.id)
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+        .group_by(SentimentScore.bucket)
+    )
+    if cutoff:
+        bucket_stmt = bucket_stmt.where(Review.reviewed_at >= cutoff)
+        
+    bucket_rows = (await db.execute(bucket_stmt)).all()
 
     sentiment_by_bucket = [
         BucketSentiment(
@@ -81,32 +119,39 @@ async def get_overview(
         avg_rating=round(float(avg_rating), 2),
         sentiment_by_bucket=sentiment_by_bucket,
     )
-    api_cache.set(x_restaurant_id, "overview", result)
+    api_cache.set(x_restaurant_id, "overview", result, suffix=suffix)
     return result
 
 
 @router.get("/deep", response_model=DeepAnalytics)
 async def get_deep_analytics(
+    days: Optional[int] = Query(None),
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
     """Provide deep insights scoped to restaurant, using review mentions as performance proxy if orders are missing."""
-    cached = api_cache.get(x_restaurant_id, "deep_analytics")
+    suffix = f"days_{days}" if days else ""
+    cached = api_cache.get(x_restaurant_id, "deep_analytics", suffix=suffix)
     if cached is not None:
         return cached
 
-    overview = await get_overview(x_restaurant_id, db)
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=days) if days else None
 
-    # 1. Fetch all reviews for this restaurant with sentiment
-    reviews = (
-        await db.execute(
-            select(Review)
-            .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
-            .options(
-                sqlalchemy.orm.selectinload(Review.sentiment_scores)
-            )
+    overview = await get_overview(days, x_restaurant_id, db)
+
+    # 1. Fetch reviews for this restaurant with sentiment
+    reviews_stmt = (
+        select(Review)
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+        .options(
+            sqlalchemy.orm.selectinload(Review.sentiment_scores)
         )
-    ).scalars().all()
+    )
+    if cutoff:
+        reviews_stmt = reviews_stmt.where(Review.reviewed_at >= cutoff)
+        
+    reviews = (await db.execute(reviews_stmt)).scalars().all()
 
     # 2. Load active menu items from DB (replaces hardcoded list)
     menu_items_rows = (
@@ -209,24 +254,52 @@ async def get_deep_analytics(
         )
         for term, count in sorted(unmatched_counts.items(), key=lambda x: x[1], reverse=True)
         if count >= 2
-    ][:5]
+    ][:10] # Take more for possible promotion
 
-    # 5. Generate AI briefing
-    briefing = await generate_manager_briefing(
-        overview.sentiment_by_bucket,
-        top_performers,
-        risks,
-        all_feedback_texts
-    )
+    # 5. Self-Healing Promotion: If menu is empty, show unmatched terms as "suggested" performers
+    if not top_performers and unmatched_mentions:
+        # Sort unmatched by rating DESC for top performers
+        top_from_unmatched = sorted(unmatched_mentions, key=lambda x: x.avg_rating or 0, reverse=True)
+        top_performers = [
+            ItemPerformance(
+                item_name=m.term,
+                category="food", # Default assumption
+                avg_sentiment=None,
+                review_count=m.mention_count,
+                is_suggested=True
+            )
+            for m in top_from_unmatched[:5]
+            if (m.avg_rating or 0) >= 4.0
+        ]
+
+    if not risks and unmatched_mentions:
+        # Sort unmatched by rating ASC for risks
+        risks_from_unmatched = sorted(unmatched_mentions, key=lambda x: x.avg_rating or 5, reverse=False)
+        risks = [
+            ItemPerformance(
+                item_name=m.term,
+                category="food",
+                avg_sentiment=None,
+                review_count=m.mention_count,
+                is_suggested=True
+            )
+            for m in risks_from_unmatched[:5]
+            if (m.avg_rating or 5) <= 3.5
+        ]
+
+    # 6. Try to get AI briefing from cache only (don't block for generation)
+    # We use a non-blocking check or just return None and let the separate endpoint handle it
+    briefing = None
+    # For now, we'll let the separate /briefing endpoint handle this to keep the main dashboard fast
 
     result = DeepAnalytics(
         overview=overview,
         top_performers=top_performers,
         risks=risks,
-        unmatched_mentions=unmatched_mentions,
-        briefing=briefing
+        unmatched_mentions=unmatched_mentions[:5], # Return only top 5 back to client
+        briefing=None # Always fetch separately for speed
     )
-    api_cache.set(x_restaurant_id, "deep_analytics", result)
+    api_cache.set(x_restaurant_id, "deep_analytics", result, suffix=suffix)
     return result
 
 
@@ -264,7 +337,7 @@ async def get_sentiment_analytics(
     trend_query = (
         await db.execute(
             select(
-                func.strftime("%Y-%m", SentimentScore.analyzed_at).label("month"),
+                func.to_char(SentimentScore.analyzed_at, "YYYY-MM").label("month"),
                 SentimentScore.bucket,
                 func.avg(SentimentScore.score).label("avg_score"),
             )
@@ -314,6 +387,48 @@ async def get_sentiment_analytics(
     highlights = [BucketHighlight(**data) for data in bucket_highlights.values()]
 
     return SentimentAnalytics(buckets=buckets, trend=trend, highlights=highlights)
+
+
+@router.get("/briefing", response_model=ManagerBriefing)
+async def get_manager_briefing_handler(
+    days: Optional[int] = Query(None),
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Generate a strategic AI briefing for the manager."""
+    suffix = f"days_{days}" if days else ""
+    cached = api_cache.get(x_restaurant_id, "manager_briefing", suffix=suffix)
+    if cached is not None:
+        return cached
+
+    # Fetch fresh deep analytics
+    deep = await get_deep_analytics(days, x_restaurant_id, db)
+    
+    # Also fetch recent review texts for context
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=days) if days else None
+    
+    recent_reviews_stmt = (
+        select(Review.content)
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+        .order_by(Review.reviewed_at.desc())
+        .limit(20)
+    )
+    if cutoff:
+        recent_reviews_stmt = recent_reviews_stmt.where(Review.reviewed_at >= cutoff)
+        
+    recent_reviews = (await db.execute(recent_reviews_stmt)).scalars().all()
+
+    from app.services.insights import generate_manager_briefing
+    briefing = await generate_manager_briefing(
+        bucket_sentiment=deep.overview.sentiment_by_bucket,
+        top_performers=deep.top_performers,
+        risks=deep.risks,
+        recent_reviews=recent_reviews
+    )
+
+    api_cache.set(x_restaurant_id, "manager_briefing", briefing, suffix=suffix, ttl=7200)
+    return briefing
 
 
 @router.get("/operations", response_model=OperationsAnalytics)

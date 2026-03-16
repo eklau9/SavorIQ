@@ -15,6 +15,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
+from app.services.yelp_tracker import record_yelp_request
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ async def yelp_search(
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.get(f"{YELP_BASE}/businesses/search", headers=headers, params=params)
+        record_yelp_request()
         try:
             resp.raise_for_status()
         except httpx.HTTPStatusError as e:

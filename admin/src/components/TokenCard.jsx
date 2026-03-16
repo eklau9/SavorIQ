@@ -6,6 +6,7 @@
  *  - isNextUp: boolean — whether this is the next token to be used
  */
 export default function TokenCard({ token, isNextUp }) {
+  if (!token) return null
   const { label, is_active, max_usd, used_usd, remaining_usd, resets_at, token_hint, error } = token
 
   // Calculate percent used

@@ -54,7 +54,7 @@ export async function setApiBase(url: string | null): Promise<void> {
 
 // ── Core Fetch Wrapper ──────────────────────────────────────────────
 
-async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, signal?: AbortSignal): Promise<T> {
+async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, signal?: AbortSignal, externalTimeout?: number): Promise<T> {
     const [apiBase, restaurantId, accessKey] = await Promise.all([
         getApiBase(),
         getActiveRestaurantId(),
@@ -72,16 +72,21 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, si
     headers['X-Access-Key'] = accessKey || 'SavorIQ';
 
     const localController = new AbortController();
-    const id = setTimeout(() => {
-        localController.abort();
-    }, FETCH_TIMEOUT);
-
-    // If an external signal is provided, we need to abort if EITHER the timeout 
-    // OR the external signal triggers.
-    if (signal) {
-        signal.addEventListener('abort', () => {
+    
+    // If externalTimeout is 0, we treat it as infinite
+    let timeoutId: any = null;
+    if (externalTimeout !== 0) {
+        timeoutId = setTimeout(() => {
             localController.abort();
-            clearTimeout(id);
+        }, externalTimeout || FETCH_TIMEOUT);
+    }
+
+    // Link external signal to our local controller
+    if (signal) {
+        if (signal.aborted) localController.abort();
+        signal.addEventListener('abort', () => {
+             localController.abort();
+             if (timeoutId) clearTimeout(timeoutId);
         });
     }
 
@@ -91,7 +96,7 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, si
             headers,
             signal: localController.signal,
         });
-        clearTimeout(id);
+        if (timeoutId) clearTimeout(timeoutId);
 
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
@@ -104,23 +109,26 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, si
 
         return res.json();
     } catch (e: any) {
-        clearTimeout(id);
+        if (timeoutId) clearTimeout(timeoutId);
 
-        // If it's an AbortError, check if it was due to OUR timeout
         if (e.name === 'AbortError') {
-            // We can't easily check 'Reason' in all environments, so we check if the timeout triggered
-            // However, a better way is to see if its the localController that aborted
             if (localController.signal.aborted && (!signal || !signal.aborted)) {
                 const timeoutErr = new Error('Request timed out. Please check your connection.');
                 timeoutErr.name = 'TimeoutError';
                 throw timeoutErr;
             }
-            // Otherwise, it was a manual abort from the caller's signal
-            // Re-throw it as an AbortError so caller (like refreshAll) can ignore it
             throw e;
         }
         throw e;
     }
+}
+
+export function fetchSyncProgress(restaurantId: string): Promise<any> {
+    return apiFetch(`/api/sync/progress/${restaurantId}`);
+}
+
+export function cancelSync(restaurantId: string): Promise<any> {
+    return apiFetch(`/api/sync/progress/${restaurantId}`, { method: 'DELETE' });
 }
 
 // ── Restaurant ──────────────────────────────────────────────────────
@@ -157,6 +165,7 @@ export interface ItemPerformance {
     category: string;
     avg_sentiment: number | null;
     review_count: number;
+    is_suggested?: boolean;
 }
 
 export interface ManagerInsight {
@@ -181,15 +190,25 @@ export interface DeepAnalytics {
     top_performers: ItemPerformance[];
     risks: ItemPerformance[];
     unmatched_mentions: UnmatchedMention[];
-    briefing: ManagerBriefing;
+    briefing?: ManagerBriefing | null;
 }
 
 export function fetchOverview(signal?: AbortSignal): Promise<Overview> {
     return apiFetch('/api/analytics/overview', {}, signal);
 }
 
-export function fetchDeepAnalytics(signal?: AbortSignal): Promise<DeepAnalytics> {
-    return apiFetch('/api/analytics/deep', {}, signal);
+export async function fetchDeepAnalytics(days?: number | null, signal?: AbortSignal): Promise<DeepAnalytics> {
+    const params = new URLSearchParams();
+    if (days) params.set('days', String(days));
+    const url = `/api/analytics/deep${params.toString() ? '?' + params.toString() : ''}`;
+    return apiFetch(url, {}, signal);
+}
+
+export async function fetchBriefing(days?: number | null, signal?: AbortSignal): Promise<ManagerBriefing> {
+    const params = new URLSearchParams();
+    if (days) params.set('days', String(days));
+    const url = `/api/analytics/briefing${params.toString() ? '?' + params.toString() : ''}`;
+    return apiFetch(url, {}, signal);
 }
 
 // ── Guests ──────────────────────────────────────────────────────────
@@ -331,6 +350,7 @@ export interface SyncStatus {
     last_synced_at: string;
     ago: string;
     on_cooldown: boolean;
+    cooldown_remaining_minutes?: number;
     reviews_fetched: number;
     new_reviews: number;
 }
@@ -362,14 +382,15 @@ export function fetchSyncStatus(): Promise<any> {
     return apiFetch('/api/sync/status');
 }
 
-export function syncApifyReviews(platform: string, url: string, name: string, address?: string): Promise<any> {
+export function syncApifyReviews(platform: string, url: string, name: string, address?: string, force: boolean = false, signal?: AbortSignal): Promise<any> {
     const params = new URLSearchParams({
         platform,
         business_url: url,
         business_name: name,
+        force: String(force),
     });
     if (address) params.append('business_address', address);
-    return apiFetch(`/api/sync/apify-reviews?${params.toString()}`, { method: 'POST' });
+    return apiFetch(`/api/sync/apify-reviews?${params.toString()}`, { method: 'POST' }, signal, 0); // 0 = infinite timeout
 }
 
 export function searchBusiness(name: string, location?: string, lat?: number | null, lng?: number | null): Promise<UnifiedBusiness[]> {
@@ -380,12 +401,41 @@ export function searchBusiness(name: string, location?: string, lat?: number | n
     return apiFetch(`/api/sync/search?${params}`);
 }
 
-export function resetAndSync(restaurantId: string): Promise<any> {
+export function resetAndSync(restaurantId: string, signal?: AbortSignal): Promise<any> {
     return apiFetch(`/api/sync/reset-and-sync?restaurant_id=${restaurantId}`, {
         method: 'POST',
-    });
+    }, signal, 0); // 0 = infinite timeout
 }
 
+
+
+// ── Admin ──────────────────────────────────────────────────────────
+
+export interface AdminLocation {
+    id: string;
+    name: string;
+    address: string | null;
+    google_reviews: number;
+    yelp_reviews: number;
+    total_reviews: number;
+    guest_count: number;
+    google_last_synced: string | null;
+    yelp_last_synced: string | null;
+    subscription_status: 'active' | 'trial' | 'none';
+}
+
+export function fetchAdminLocations(signal?: AbortSignal): Promise<AdminLocation[]> {
+    return apiFetch('/api/admin/locations', {}, signal);
+}
+
+export function deleteAdminLocation(id: string, confirmName: string): Promise<any> {
+    return apiFetch(`/api/admin/locations/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'X-Confirm-Delete': confirmName,
+        }
+    });
+}
 
 
 // ── Intercept Actions ───────────────────────────────────────────────
@@ -396,4 +446,25 @@ export function postInterceptAction(guestId: string, data: { action: string; not
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
+}
+
+// ── Admin Diagnostics ──────────────────────────────────────────────
+
+export interface ComponentHealth {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency_ms: number | null;
+    message: string | null;
+}
+
+export interface SystemHealth {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    backend: ComponentHealth;
+    database: ComponentHealth;
+    gemini: ComponentHealth;
+    apify: ComponentHealth;
+    uptime_seconds: number;
+}
+
+export async function fetchAdminHealth(): Promise<SystemHealth> {
+    return apiFetch<SystemHealth>('/api/admin/health');
 }

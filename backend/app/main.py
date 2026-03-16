@@ -1,19 +1,33 @@
 """SavorIQ FastAPI application entry point."""
 
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+start_time = time.time()
 
 from app.config import settings
 from app.database import init_db
 from app.routers import admin, analytics, guests, menu, orders, reviews, sync
 
 
+from app.services.yelp_tracker import perform_live_sync
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database tables on startup."""
+    """Initialize database tables and sync quotas on startup."""
     await init_db()
+    
+    # Perform initial Yelp quota sync
+    try:
+        await perform_live_sync()
+        print("INFO: Initial Yelp quota sync successful.")
+    except Exception as e:
+        print(f"WARNING: Initial Yelp quota sync failed: {e}")
+        
     yield
 
 
@@ -64,6 +78,15 @@ app.include_router(analytics.router)
 app.include_router(menu.router)
 app.include_router(sync.router)
 app.include_router(admin.router)
+
+
+@app.get("/")
+async def root():
+    return {
+        "message": "SavorIQ API is running",
+        "health_check": "/health",
+        "admin_dashboard": "http://localhost:5174"
+    }
 
 
 @app.get("/health")

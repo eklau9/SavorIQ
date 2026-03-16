@@ -1,38 +1,71 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useAdminContext } from '../AdminContext'
 import TokenCard from '../components/TokenCard'
 import ServiceCard from '../components/ServiceCard'
+import Header from '../components/Header'
 
 const API_BASE = '/api/admin'
-const AUTO_REFRESH_MS = 60_000 // 60 seconds
 
 export default function QuotasPage() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [lastRefresh, setLastRefresh] = useState(null)
+  const { quotas: data, loading, error, lastRefresh, refresh: fetchQuotas, setQuotas: setData, showToast } = useAdminContext()
+  const [apifyExpanded, setApifyExpanded] = useState(false)
+  const [syncingYelp, setSyncingYelp] = useState(false)
+  const [syncingGemini, setSyncingGemini] = useState(false)
 
-  const fetchQuotas = useCallback(async () => {
+  const handleYelpSync = async () => {
+    setSyncingYelp(true)
     try {
-      setError(null)
-      const resp = await fetch(`${API_BASE}/quotas`, {
+      const resp = await fetch(`${API_BASE}/quotas/yelp-sync`, {
+        method: 'POST',
         headers: { 'X-Access-Key': 'SavorIQ' },
       })
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
       const json = await resp.json()
-      setData(json)
-      setLastRefresh(new Date())
+      if (json?.status === 'success') {
+        setData(prev => ({ ...prev, yelp: json.yelp }))
+        showToast("Yelp quota calibrated correctly from live headers.")
+      } else {
+        showToast(`Sync failed: ${json?.message || 'Unexpected response'}`, 'error')
+      }
     } catch (err) {
-      setError(err.message)
+      showToast(`Sync error: ${err?.message || 'Failed to reach server'}`, 'error')
     } finally {
-      setLoading(false)
+      setSyncingYelp(false)
     }
-  }, [])
+  }
 
-  useEffect(() => {
-    fetchQuotas()
-    const interval = setInterval(fetchQuotas, AUTO_REFRESH_MS)
-    return () => clearInterval(interval)
-  }, [fetchQuotas])
+  const handleGeminiSync = async () => {
+    setSyncingGemini(true)
+    try {
+      const resp = await fetch(`${API_BASE}/quotas/gemini-sync`, {
+        method: 'POST',
+        headers: { 'X-Access-Key': 'SavorIQ' },
+      })
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+      const json = await resp.json()
+      
+      // Update usage data if returned (even on error, e.g. 429 calibration)
+      if (json?.gemini) {
+        setData(prev => ({ 
+          ...prev, 
+          google: { 
+            ...prev.google, 
+            gemini: { ...prev.google.gemini, usage: json.gemini } 
+          } 
+        }))
+      }
+
+      if (json?.status === 'success') {
+        showToast("Gemini calibrated successfully. Live probe succeeded.")
+      } else {
+        showToast(`Sync confirmed: ${json?.message || 'Still exhausted'}`, 'error')
+      }
+    } catch (err) {
+      showToast(`Sync error: ${err?.message || 'Failed to reach server'}`, 'error')
+    } finally {
+      setSyncingGemini(false)
+    }
+  }
 
   // Find the first active token index for "Next Up" badge
   const nextUpIndex = data?.apify?.findIndex(t => t.is_active) ?? -1
@@ -57,37 +90,40 @@ export default function QuotasPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>API Quotas</h1>
-        <p>Live usage across all external services</p>
-      </div>
+      <Header 
+        title="API Quotas" 
+        subtitle="Live usage across all external services" 
+      />
 
       <div className="refresh-row">
         <span className="auto-refresh-note">
           {lastRefresh
-            ? `Last updated: ${lastRefresh.toLocaleTimeString()} · Auto-refreshes every 60s`
+            ? `Last updated: ${lastRefresh.toLocaleTimeString()} · Auto-refreshes every 60s · All checks are zero-cost`
             : 'Fetching...'}
         </span>
-        <button className="refresh-btn" onClick={() => { setLoading(true); fetchQuotas(); }}>
-          ↻ Refresh
-        </button>
       </div>
 
       {/* ── Apify Token Waterfall ── */}
       <div className="section">
-        <div className="section-title">
+        <div
+          className="section-title section-toggle"
+          onClick={() => setApifyExpanded(prev => !prev)}
+        >
+          <span className={`toggle-arrow ${apifyExpanded ? 'expanded' : ''}`}>▶</span>
           <span className="dot" />
-          Apify Token Waterfall — {data?.apify?.filter(t => t.is_active).length ?? 0} active
+          Apify Token Waterfall — {data?.apify?.filter(t => t.is_active).length ?? 0} of {data?.apify?.length ?? 0} active
         </div>
-        <div className="token-grid">
-          {data?.apify?.map(token => (
-            <TokenCard
-              key={token.index}
-              token={token}
-              isNextUp={token.index === nextUpIndex}
-            />
-          ))}
-        </div>
+        {apifyExpanded && (
+          <div className="token-grid">
+            {data?.apify?.map(token => (
+              <TokenCard
+                key={token.index}
+                token={token}
+                isNextUp={token.index === nextUpIndex}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Other Services ── */}
@@ -112,14 +148,28 @@ export default function QuotasPage() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div className="stat-label">Daily Limit</div>
+                      <div className="stat-label">Used Today</div>
                       <div className="stat-value" style={{ color: 'var(--text-secondary)' }}>
-                        {data.yelp.daily_limit ?? '—'}
+                        {data.yelp.used_today ?? '—'}
                       </div>
                     </div>
                   </div>
-                  <div className="meta-row">
-                    <span>Resets: {data.yelp.resets_at ? new Date(data.yelp.resets_at).toLocaleDateString() : 'Daily'}</span>
+                  <div className="meta-row" style={{ marginTop: 12, alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="token-hint" style={{ marginBottom: 4 }}>
+                        {data.yelp.tracking === 'internal' ? '📊 Internal tracking' : 'Live API'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Daily Limit: {data.yelp.daily_limit ?? '—'}
+                      </div>
+                    </div>
+                    <button 
+                      className="refresh-btn tiny" 
+                      onClick={handleYelpSync}
+                      disabled={syncingYelp}
+                    >
+                      {syncingYelp ? 'Syncing...' : 'Sync to Live'}
+                    </button>
                   </div>
                 </>
               )
@@ -175,11 +225,33 @@ export default function QuotasPage() {
             )}
           </ServiceCard>
 
-          {/* Gemini AI */}
-          <ServiceCard title="Gemini AI" icon="✨">
+          {/* Google Gemini AI */}
+          <ServiceCard title="Google Gemini AI" icon="✨">
             {data?.google?.gemini?.configured ? (
               <>
-                <div className="stat-label" style={{ marginBottom: 8 }}>{data.google.gemini.note}</div>
+                <div className="token-stats" style={{ marginBottom: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="stat-label">Minute Burst (RPM)</div>
+                    <div className="stat-value" style={{ color: data.google.gemini.usage.rpm >= 13 ? 'var(--accent-rose)' : data.google.gemini.usage.rpm >= 8 ? 'var(--accent-gold)' : 'var(--accent-emerald)' }}>
+                      {data.google.gemini.usage.rpm} / {data.google.gemini.usage.rpm_limit}
+                    </div>
+                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: 2 }}>Limit: 15 per minute</div>
+                  </div>
+                  <div style={{ flex: 1, textAlign: 'right' }}>
+                    <div className="stat-label">Daily Quota (RPD)</div>
+                    <div className="stat-value" style={{ color: 'var(--text-secondary)' }}>
+                      {data.google.gemini.usage.rpd} / {data.google.gemini.usage.rpd_limit}
+                    </div>
+                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: 2 }}>Limit: 1,500 per day</div>
+                  </div>
+                </div>
+                
+                {data.google.gemini.usage.rpm >= 12 && (
+                  <div className="token-error" style={{ marginBottom: 12, padding: '4px 8px', fontSize: 11, background: 'rgba(255, 107, 107, 0.1)' }}>
+                    ⚠ High Burst Pressure: Slowing down requests...
+                  </div>
+                )}
+
                 <a
                   href={data.google.gemini.console_url}
                   target="_blank"
@@ -188,6 +260,16 @@ export default function QuotasPage() {
                 >
                   View Plan Info →
                 </a>
+
+                <div className="meta-row" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
+                  <button 
+                    className="refresh-btn tiny" 
+                    onClick={handleGeminiSync}
+                    disabled={syncingGemini}
+                  >
+                    {syncingGemini ? 'Syncing...' : 'Sync to Live'}
+                  </button>
+                </div>
               </>
             ) : (
               <div className="stat-label">Not configured</div>

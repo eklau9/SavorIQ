@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import RestaurantSwitcher from "./RestaurantSwitcher";
 
 export default function Sidebar() {
     const pathname = usePathname();
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            window.name = "savoriq-app";
+        }
+    }, []);
 
     const navItems = [
         {
@@ -44,6 +51,7 @@ export default function Sidebar() {
         return pathname.startsWith(href);
     };
 
+
     return (
         <aside className="sidebar">
             <div className="sidebar-logo">
@@ -70,6 +78,20 @@ export default function Sidebar() {
                     ))}
                 </div>
             ))}
+
+            {process.env.NODE_ENV === "development" && (
+                <div className="nav-section">
+                    <div className="nav-section-title">System</div>
+                    <a
+                        href="http://localhost:5174"
+                        target="savoriq-admin"
+                        rel="opener"
+                        className="nav-link"
+                    >
+                        <span className="icon">🛠️</span> Admin Dashboard
+                    </a>
+                </div>
+            )}
         </aside>
     );
 }

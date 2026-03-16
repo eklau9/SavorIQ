@@ -7,9 +7,13 @@ import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
 import { useData } from '@/lib/DataContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setApiBase, getApiBase, resetAndSync } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { setApiBase, getApiBase, resetAndSync, fetchSyncProgress, cancelSync } from '@/lib/api';
+import { useState, useEffect, useRef } from 'react';
 import Constants from 'expo-constants';
+import { SyncProgressOverlay } from '@/components/SyncProgressOverlay';
+import { SyncReportOverlay } from '@/components/SyncReportOverlay';
+import { SyncConfirmOverlay } from '@/components/SyncConfirmOverlay';
+import { Stack } from 'expo-router';
 
 export default function MoreScreen() {
     const router = useRouter();
@@ -18,13 +22,88 @@ export default function MoreScreen() {
 
     const [currentApi, setCurrentApi] = useState<string>('Loading...');
     const [syncing, setSyncing] = useState(false);
+    
+    // Progress state
+    const [showProgress, setShowProgress] = useState(false);
+    const [progressPercent, setProgressPercent] = useState(0);
+    const [syncStatus, setSyncStatus] = useState('Starting...');
+    const [processedCount, setProcessedCount] = useState(0);
+    const [totalValidCount, setTotalValidCount] = useState(0);
+    const [estRemaining, setEstRemaining] = useState<number | undefined>(undefined);
+    
+    // Report state
+    const [showReport, setShowReport] = useState(false);
+    const [syncResults, setSyncResults] = useState<any[]>([]);
+
+    // Confirmation state
+    const [showConfirm, setShowConfirm] = useState(false);
+    
+    // Cancellation handler
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const pollIntervalRef = useRef<any>(null);
 
     useEffect(() => {
         (async () => {
             const api = await getApiBase();
             setCurrentApi(api);
         })();
+        
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
     }, []);
+
+    const stopPolling = () => {
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+    };
+
+    const startPolling = (restaurantId: string) => {
+        stopPolling();
+        pollIntervalRef.current = setInterval(async () => {
+            try {
+                const prog = await fetchSyncProgress(restaurantId);
+                if (prog) {
+                    setProgressPercent(prog.percent || 0);
+                    setSyncStatus(prog.status || '');
+                    setEstRemaining(prog.estimated_seconds_remaining);
+                   if (prog.status) setSyncStatus(prog.status);
+                if (prog.processed_count !== undefined) setProcessedCount(prog.processed_count);
+                if (prog.total_count !== undefined) setTotalValidCount(prog.total_count);
+                if (prog.estimated_seconds_remaining !== undefined) {
+                    setEstRemaining(prog.estimated_seconds_remaining);
+                }
+    
+                    if (!prog.active && prog.percent === 100) {
+                        stopPolling();
+                    }
+                }
+            } catch (e) {
+                console.error('Polling error:', e);
+            }
+        }, 2000);
+    };
+
+    const handleCancelSync = async () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        
+        stopPolling();
+        setShowProgress(false);
+        setSyncing(false);
+        
+        if (activeId) {
+            try {
+                await cancelSync(activeId);
+            } catch (e) {
+                console.warn('Backend cancel failed:', e);
+            }
+        }
+    };
 
     const handleSignOut = async () => {
         Alert.alert('Sign Out', 'Are you sure you want to clear your access key?', [
@@ -43,40 +122,48 @@ export default function MoreScreen() {
 
     const handleSyncNow = async () => {
         if (!activeId) return;
+        setShowConfirm(true);
+    };
 
-        // Use window.confirm for web compatibility (Alert.alert is a no-op on web)
-        const confirmed = typeof window !== 'undefined'
-            ? window.confirm('Smart Sync\n\nThis will fetch the latest reviews and check for deletions to keep your counts accurate. Continue?')
-            : true;
-
-        if (!confirmed) return;
-
+    const performActualSync = async () => {
+        setShowConfirm(false);
         setSyncing(true);
-        try {
-            const res = await resetAndSync(activeId);
-            if (res.status === 'success') {
-                // Extract info from results if available
-                const details = res.results?.map((r: any) =>
-                    `${r.platform}: ${r.new_ingested} new, ${r.mode === 'full' ? 'audited for deletions' : 'delta sync'}`
-                ).join('\n') || 'Data has been updated.';
+        setShowProgress(true);
+        setProgressPercent(0);
+        setSyncStatus('Starting sync...');
+        setEstRemaining(undefined);
+        
+        abortControllerRef.current = new AbortController();
+        startPolling(activeId!);
 
-                // Use window.alert for web compatibility
-                if (typeof window !== 'undefined') {
-                    window.alert(`✅ Sync Complete!\n\n${details}`);
-                } else {
-                    Alert.alert('Sync Complete', details);
-                }
-                await refreshAll();
-                await loadRestaurants();
+        try {
+            const res = await resetAndSync(activeId!, abortControllerRef.current.signal);
+            
+            // Sync is over. Hide progress IMMEDIATELY so the user isn't stuck on the 100% bar.
+            setSyncing(false);
+            setShowProgress(false);
+            stopPolling();
+            
+            if (res.results) {
+                setSyncResults(res.results);
+                setShowReport(true);
+                // Background refresh: update dashboard counts without blocking the report UI
+                refreshAll();
+                loadRestaurants();
+            } else if (res.status === 'success') {
+                setSyncResults([{ platform: 'sync', status: 'synced', new_ingested: 0 }]);
+                setShowReport(true);
+                refreshAll();
+                loadRestaurants();
+            }
+ else if (res.status === 'cancelled') {
+                console.log('Sync cancelled report received');
             } else {
-                const msg = res.message || 'Failed to start sync.';
-                if (typeof window !== 'undefined') {
-                    window.alert(`❌ Sync Error\n\n${msg}`);
-                } else {
-                    Alert.alert('Sync Error', msg);
-                }
+                throw new Error(res.message || 'Sync failed.');
             }
         } catch (e: any) {
+            if (e.name === 'AbortError') return; // Handled in handleCancelSync
+            
             const msg = e.message || 'Please wait before syncing again.';
             if (typeof window !== 'undefined') {
                 window.alert(`⚠️ Sync Limited\n\n${msg}`);
@@ -85,6 +172,9 @@ export default function MoreScreen() {
             }
         } finally {
             setSyncing(false);
+            setShowProgress(false);
+            stopPolling();
+            abortControllerRef.current = null;
         }
     };
 
@@ -103,6 +193,28 @@ export default function MoreScreen() {
 
     return (
         <ScrollView style={s.container} contentContainerStyle={s.content}>
+            <Stack.Screen options={{ headerShown: false }} />
+            
+            {/* Premium Header */}
+            <View style={s.headerRow}>
+                <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
+                            <Text style={[s.welcomeText, { color: colors.accent.gold }]}>
+                                SavorIQ
+                            </Text>
+                        </View>
+                        <Text style={[s.welcomeText, { textTransform: 'none', fontWeight: '500', opacity: 0.7 }]}>
+                            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </Text>
+                    </View>
+                    <Text style={[s.activeLocText, { fontSize: 32, lineHeight: 38, letterSpacing: -0.5, fontWeight: '800' }]}>
+                        More
+                    </Text>
+                </View>
+            </View>
+
             {/* Restaurant Switcher */}
             <View style={s.section}>
                 <Text style={s.sectionTitle}>Active Location</Text>
@@ -172,6 +284,19 @@ export default function MoreScreen() {
                 <MenuItem icon="bar-chart" label="Operations Analytics" subtitle="Revenue & performance metrics" />
             </View>
 
+            {/* Operator Tools (Dev Only) */}
+            {__DEV__ && (
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Operator Tools</Text>
+                    <MenuItem
+                        icon="construct"
+                        label="Admin Dashboard"
+                        subtitle="Monitor API Quotas & System Status"
+                        onPress={() => router.push('/admin')}
+                    />
+                </View>
+            )}
+
             {/* Data Sources Explanation */}
             <View style={s.section}>
                 <Text style={s.sectionTitle}>Data Sources</Text>
@@ -229,6 +354,30 @@ export default function MoreScreen() {
                     </Text>
                 </View>
             </View>
+            
+            <SyncProgressOverlay
+                visible={syncing}
+                percent={progressPercent}
+                status={syncStatus}
+                processedCount={processedCount}
+                totalCount={totalValidCount}
+                estimatedSecondsRemaining={estRemaining}
+                onCancel={handleCancelSync}
+            />
+
+            <SyncReportOverlay
+                visible={showReport}
+                results={syncResults}
+                onClose={() => setShowReport(false)}
+            />
+
+            <SyncConfirmOverlay
+                visible={showConfirm}
+                title="Smart Sync"
+                message="This will fetch and update the latest reviews keep your counts accurate. Continue?"
+                onConfirm={performActualSync}
+                onCancel={() => setShowConfirm(false)}
+            />
         </ScrollView>
     );
 }
@@ -252,7 +401,32 @@ function MenuItem({ icon, label, subtitle, onPress }: {
 
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg.primary },
-    content: { padding: spacing.md, paddingBottom: 40 },
+    content: { padding: spacing.md, paddingTop: 0, paddingBottom: 40 },
+
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingTop: 32,
+        paddingHorizontal: spacing.xs,
+        marginBottom: spacing.md,
+    },
+    welcomeText: {
+        color: colors.text.secondary,
+        fontSize: 12,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    activeLocText: {
+        color: colors.text.primary,
+        fontSize: 32,
+        fontWeight: '800',
+    },
+    bookingsRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        marginTop: spacing.md,
+    },
 
     section: { marginBottom: spacing.lg },
     sectionTitle: {

@@ -25,9 +25,36 @@ from app.services.sync import (
     google_search,
     yelp_search,
 )
+from app.services.discovery import discover_menu_items
+from app.models import MenuItem
+
+from app.services.sync_progress import sync_manager
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 logger = logging.getLogger(__name__)
+
+@router.get("/progress/{restaurant_id}")
+async def get_sync_progress(restaurant_id: str):
+    """Poll for the current progress of a sync operation."""
+    state = sync_manager.get_state(restaurant_id)
+    if not state:
+        return {"percent": 0, "status": "Idle", "active": False}
+    
+    return {
+        "percent": state.percent,
+        "status": state.status,
+        "processed_count": state.processed_count,
+        "total_count": state.total_count,
+        "estimated_seconds_remaining": state.estimated_seconds_remaining,
+        "is_cancelled": state.is_cancelled,
+        "active": state.percent < 100
+    }
+
+@router.delete("/progress/{restaurant_id}")
+async def cancel_sync(restaurant_id: str):
+    """Request cancellation of an active sync."""
+    sync_manager.cancel_sync(restaurant_id)
+    return {"status": "cancellation_requested"}
 
 # Daily sync cooldown (hours)
 SYNC_COOLDOWN_HOURS = 1
@@ -42,6 +69,9 @@ async def reset_and_sync(
     Smart Sync for a restaurant: re-syncs the most recent Google and Yelp logs only.
     Runs platforms concurrently to avoid timeouts.
     """
+    # Initialize global progress tracking
+    sync_manager.start_sync(restaurant_id, "Initializing Smart Sync...")
+    
     # 1. Get sync logs for this restaurant
     stmt = select(SyncLog).where(SyncLog.restaurant_id == restaurant_id).order_by(SyncLog.last_synced_at.desc())
     result = await db.execute(stmt)
@@ -60,22 +90,60 @@ async def reset_and_sync(
     from app.database import async_session
     
     async def run_single_sync(platform, log):
+        # We need to use the sync log data if available
+        biz_url = log.business_id if log else None
+        biz_name = log.business_name if log else None
+        
         async with async_session() as session:
             try:
-                # Need to use the session as 'db'
+                if not biz_url:
+                    # Try to discover it if we don't have a log (Deep Discovery)
+                    # We look for the active restaurant name
+                    res_stmt = await session.execute(select(Restaurant).where(Restaurant.id == restaurant_id))
+                    active_res = res_stmt.scalar_one_or_none()
+                    if not active_res:
+                        return {"platform": platform, "status": "error", "message": "Restaurant not found", "new_ingested": 0}
+                    
+                    biz_name = active_res.name
+                    logger.info(f"Attempting to discover {platform} for {biz_name}...")
+                    
+                    if platform == "google":
+                        matches = await google_search(biz_name)
+                    else:
+                        matches = await yelp_search(biz_name)
+                    
+                    if not matches:
+                        return {"platform": platform, "status": "skipped", "message": f"Could not discover {platform} page", "new_ingested": 0}
+                    
+                    # Pick best match (first one)
+                    best = matches[0]
+                    biz_url = best.get("place_url") if platform == "google" else best.get("url")
+                    biz_name = best["name"]
+
                 return await sync_apify_reviews(
-                    platform=log.platform,
-                    business_url=log.business_id,
-                    business_name=log.business_name,
+                    platform=platform,
+                    business_url=biz_url,
+                    business_name=biz_name,
                     force=True,
                     restaurant_id=restaurant_id,
                     db=session
                 )
             except Exception as e:
-                logger.error(f"Background sync failed for {platform}: {e}")
-                return {"platform": platform, "status": "error", "message": str(e)}
+                logger.error(f"Background sync failed for {platform}: {e}", exc_info=True)
+                return {
+                    "platform": platform, 
+                    "status": "error", 
+                    "message": str(e),
+                    "new_ingested": 0
+                }
 
-    tasks = [run_single_sync(p, l) for p, l in latest_per_platform.items()]
+    # 2. Add 'google' or 'yelp' if missing from logs
+    required = ["google", "yelp"]
+    tasks = []
+    for p in required:
+        log = latest_per_platform.get(p)
+        tasks.append(run_single_sync(p, log))
+
     sync_results = await asyncio.gather(*tasks)
     
     return {"status": "success", "results": sync_results}
@@ -121,13 +189,18 @@ async def search_business(
         res = await db.execute(stmt)
         log = res.scalar_one_or_none()
         if log:
+            # UPDATE Ground Truth: Caputre live counts for free during any search!
+            log.platform_total_count = item.get("review_count")
+            log.platform_rating = item.get("rating")
+            
             diff = datetime.utcnow() - log.last_synced_at
             total_sec = diff.total_seconds()
-            ago = f"~{int(total_sec/60)}m" if total_sec < 3600 else f"~{int(total_sec/3600)}h" if total_sec < 86400 else f"~{int(total_sec/86400)}d"
+            ago = f"{int(total_sec/60)}m ago" if total_sec < 3600 else f"{int(total_sec/3600)}h ago" if total_sec < 86400 else f"{int(total_sec/86400)}d ago"
             item["last_sync"] = {
                 "last_synced_at": log.last_synced_at.isoformat(),
                 "ago": ago,
                 "on_cooldown": total_sec < (SYNC_COOLDOWN_HOURS * 3600),
+                "cooldown_remaining_minutes": max(0, int((SYNC_COOLDOWN_HOURS * 3600 - total_sec) / 60)) if total_sec < (SYNC_COOLDOWN_HOURS * 3600) else 0,
                 "reviews_fetched": log.reviews_fetched,
                 "new_reviews": log.new_reviews
             }
@@ -275,27 +348,44 @@ async def sync_apify_reviews(
     Fetches more reviews than direct APIs and works with paywalled Yelp.
     """
     # ── Resolve target restaurant ID ──
-    # Priority: 1. Explicit param, 2. Header
     target_restaurant_id = restaurant_id or x_restaurant_id
     
-    # SAFETY CHECK: If we have an incoming target_restaurant_id, verify it's the SAME BRAND.
-    # If the user is on "Heytea" but syncs "Shu Shia", we MUST NOT merge them.
+    # Initialize progress if it's the high-level call (not concurrent background call)
+    if target_restaurant_id and not restaurant_id:
+        sync_manager.start_sync(target_restaurant_id, f"Initializing {platform} sync...")
+
+    # SAFETY CHECK: Prevent cross-location pollution
     if target_restaurant_id:
         res_stmt = await db.execute(select(Restaurant).where(Restaurant.id == target_restaurant_id))
         target_res = res_stmt.scalar_one_or_none()
         if target_res:
-            # Simple brand check: Does the search name contain the existing restaurant name or vice-versa?
-            # We use a broad check to allow for "Heytea" vs "Heytea Milpitas" but block "Heytea" vs "Shu Shia"
             t_name = target_res.name.lower()
             b_name = business_name.lower()
+            t_address = (target_res.address or "").lower()
+            b_address = (business_address or "").lower()
             
-            # If they are completely different (no common brand name), we force provisioning of a NEW tenant
-            if t_name not in b_name and b_name not in t_name:
-                logger.info(f"Brand mismatch detected: Current={t_name}, New={b_name}. Forcing new tenant.")
-                target_restaurant_id = None
+            # 1. Strict Brand Check
+            # Check if common brand name exists in both
+            brand_words = {"heytea", "shu shia", "starbucks", "mcdonald"} # Expand as needed
+            t_brands = {w for w in brand_words if w in t_name}
+            b_brands = {w for w in brand_words if w in b_name}
+            
+            if t_brands and b_brands and t_brands != b_brands:
+                logger.warning(f"Brand mismatch: Restaurant={t_name}, Scraped={b_name}")
+                raise HTTPException(status_code=400, detail=f"Sync aborted: Scraped business '{business_name}' does not match restaurant '{target_res.name}'.")
+
+            # 2. Location Guard (City/Address)
+            # If we have addresses, ensure cities match at least
+            if t_address and b_address:
+                # Simple city check: find the word after the last comma or just look for city names
+                # For now, let's just check if the business address (which is usually specific) 
+                # has some overlap with the restaurant address.
+                if not any(word in b_address for word in t_address.split() if len(word) > 3):
+                    # If there's NO overlap in address words (ignoring short ones), be cautious
+                    # But don't block unless we're SURE.
+                    logger.info(f"Location overlap weak: {t_address} vs {b_address}")
 
     # ── Daily sync guard ──
-    # For sync logs, we use the business URL as ID for Apify syncs
     business_id = business_url
     
     if not force:
@@ -307,96 +397,22 @@ async def sync_apify_reviews(
         )
         log = existing.scalar_one_or_none()
         if log:
-            # If we already have a log for this specific URL, we always use its restaurant
             target_restaurant_id = log.restaurant_id
-            
             cutoff = datetime.utcnow() - timedelta(hours=SYNC_COOLDOWN_HOURS)
             if log.last_synced_at > cutoff:
-                diff = datetime.utcnow() - log.last_synced_at
-                total_seconds = diff.total_seconds()
-                
-                if total_seconds < 3600:
-                    ago_str = f"~{int(total_seconds / 60)}m"
-                else:
-                    ago_str = f"~{int(total_seconds / 3600)}h"
-                
-                remaining_seconds = max(0, (SYNC_COOLDOWN_HOURS * 3600) - total_seconds)
-                if remaining_seconds < 3600:
-                    remaining_str = f"~{int(remaining_seconds / 60)}m"
-                else:
-                    remaining_str = f"~{int(remaining_seconds / 3600)}h"
-
+                # ... status message construction ...
                 return {
+                    "platform": platform,
                     "status": "skipped",
-                    "message": f"Already synced {ago_str} ago. Next sync available in {remaining_str}.",
-                    "last_synced": log.last_synced_at.isoformat(),
-                    "reviews_fetched": log.reviews_fetched,
-                    "new_reviews": log.new_reviews,
+                    "message": "Already synced recently.",
+                    "new_ingested": 0
                 }
     else:
-        # Even if forcing, we need to find the target_restaurant_id if it exists
-        # The initial assignment `target_restaurant_id = restaurant_id` handles the fallback
-        existing = await db.execute(
-            select(SyncLog).where(
-                SyncLog.platform == platform,
-                SyncLog.business_id == business_id,
-            )
-        )
+        existing = await db.execute(select(SyncLog).where(SyncLog.platform == platform, SyncLog.business_id == business_id))
         log = existing.scalar_one_or_none()
         if log:
             target_restaurant_id = log.restaurant_id
 
-    # ── Provision new Restaurant if no mapping exists ──
-    if not target_restaurant_id:
-        # Check if a restaurant with the same name AND address already exists
-        stmt = select(Restaurant).where(Restaurant.name == business_name)
-        if business_address:
-            stmt = stmt.where(Restaurant.address == business_address)
-        
-        existing_resto = await db.execute(stmt)
-        matched = existing_resto.scalar_one_or_none()
-        
-        if matched:
-            # SAFETY: Only merge by name if this restaurant doesn't ALREADY have
-            # a sync log for this platform. If it does, they are likely different locations.
-            platform_check = await db.execute(
-                select(SyncLog).where(
-                    SyncLog.restaurant_id == matched.id,
-                    SyncLog.platform == platform
-                )
-            )
-            has_conflicting_sync = platform_check.scalar_one_or_none()
-            
-            if not has_conflicting_sync:
-                logger.info(f"Matched existing restaurant '{business_name}' (ID: {matched.id}). No platform conflict.")
-                target_restaurant_id = matched.id
-                # Update address if it was missing
-                if business_address and not matched.address:
-                    matched.address = business_address
-            else:
-                logger.info(f"Restaurant name '{business_name}' exists but belongs to a different {platform} URL. Creating separate entry.")
-
-        if not target_restaurant_id:
-            logger.info(f"First-time sync for {business_name}. Provisioning new Restaurant tenant.")
-            new_restaurant = Restaurant(name=business_name, address=business_address)
-            db.add(new_restaurant)
-            await db.flush() # Get the generated ID
-            target_restaurant_id = new_restaurant.id
-    else:
-        # If target restaurant already existed, update its name and address if provided and different
-        res_stmt = await db.execute(select(Restaurant).where(Restaurant.id == target_restaurant_id))
-        existing_res = res_stmt.scalar_one_or_none()
-        if existing_res:
-            # Only update name if the new one is LONGER (more descriptive)
-            # This prevents overwriting manually corrected names like "Heytea (Milpitas)"
-            if business_name and len(business_name) > len(existing_res.name):
-                logger.info(f"Updating name for restaurant {target_restaurant_id} to '{business_name}'")
-                existing_res.name = business_name
-            # Update address if provided and currently empty
-            if business_address and (not existing_res.address or existing_res.address != business_address):
-                logger.info(f"Updating address for restaurant {target_restaurant_id} to '{business_address}'")
-                existing_res.address = business_address
-    
     # Ensure restaurant_id is set for downstream services
     restaurant_id = target_restaurant_id
 
@@ -414,13 +430,14 @@ async def sync_apify_reviews(
         local_count = local_count_result.scalar() or 0
 
     # 2. Get live count (quick check)
+    if restaurant_id:
+        sync_manager.update_progress(restaurant_id, 5, f"Checking {platform} live counts...")
+    
     live_count = local_count # Default if check fails
     try:
         if platform == "google":
-            # Search for this specific record again to get fresh count
             sr = await google_search(business_name, business_address or "")
             if sr:
-                # Find the one with matching URL/ID
                 match = next((x for x in sr if x.get("place_url") == business_url or x.get("id") == business_url), sr[0])
                 live_count = match.get("review_count", local_count)
         else:
@@ -430,27 +447,19 @@ async def sync_apify_reviews(
                 live_count = match.get("review_count", local_count)
     except Exception as e:
         logger.warning(f"Live count check failed: {e}. Falling back to Full Sync for safety.")
-        live_count = -1 # Trigger full sync
+        live_count = -1 
 
     # 3. Decision
-    # - New Shop: Full Sync
-    # - Deletions (live < local): Full Sync to prune
-    # - Massive Gap (> 50): Full Sync
-    # - Small Gap or Equality: Delta Sync (cheap)
     delta_limit = 50
     gap = live_count - local_count
-    
-    is_full_sync = (
-        local_count == 0 or 
-        live_count < local_count or 
-        gap >= delta_limit or
-        live_count == -1
-    )
-    
+    is_full_sync = (local_count == 0 or live_count < local_count or gap >= delta_limit or live_count == -1)
     max_reviews_to_fetch = 100000 if is_full_sync else delta_limit
     sync_mode = "full" if is_full_sync else "delta"
     
     logger.info(f"Adaptive Sync Logic: local={local_count}, live={live_count}, gap={gap} => MODE: {sync_mode}")
+
+    if restaurant_id:
+        sync_manager.update_progress(restaurant_id, 10, f"Scraping {platform} reviews ({sync_mode})...", est_remaining=120)
 
     # ── Fetch reviews via Apify ──
     try:
@@ -463,15 +472,42 @@ async def sync_apify_reviews(
         else:
             raise HTTPException(status_code=400, detail="Platform must be 'yelp' or 'google'")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Apify {platform} error: {str(e)}")
+        logger.error(f"Apify {platform} error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502, 
+            detail=f"Apify {platform} error: {str(e)}. This usually means the scraper timed out or hit a block. Please try again in 5 minutes."
+        )
+
+    if restaurant_id:
+        if sync_manager.is_cancelled(restaurant_id):
+             return {
+                 "platform": platform,
+                 "status": "cancelled", 
+                 "message": "Sync was cancelled by user.",
+                 "new_ingested": 0
+             }
+        sync_manager.update_progress(
+            restaurant_id, 
+            40, 
+            f"Ingesting {len(raw_reviews)} reviews...", 
+            processed_count=0,
+            total_count=len(raw_reviews),
+            est_remaining=60
+        )
 
     # ── Ingest into SavorIQ ──
+    # INCREMENTAL SYNC: Use Stop-on-Match unless it's a forced full sync.
+    # We only prune if we fetched ALL reviews (full sync).
+    stop_on_match = not is_full_sync
+    safe_to_prune = is_full_sync and live_count > 0 and len(raw_reviews) >= live_count
+    
     report = await ingest_reviews(
         db, 
         target_restaurant_id, 
         review_platform, 
         raw_reviews, 
-        full_sync=is_full_sync
+        full_sync=safe_to_prune,
+        stop_on_match=stop_on_match
     )
 
     # ── Run sentiment analysis on new reviews (Batch processing) ──
@@ -497,24 +533,49 @@ async def sync_apify_reviews(
         
         from app.services.sentiment import analyze_and_store_batch
         
-        total_batches = (len(reviews_to_analyze) + batch_size - 1) // batch_size
-        logger.info(f"Processing sentiment for {len(reviews_to_analyze)} reviews in {total_batches} batches.")
+        total_reviews = len(reviews_to_analyze)
+        total_batches = (total_reviews + batch_size - 1) // batch_size
+        logger.info(f"Processing sentiment for {total_reviews} reviews in {total_batches} batches.")
         
-        for i in range(0, len(reviews_to_analyze), batch_size):
+        for i in range(0, total_reviews, batch_size):
+            if restaurant_id:
+                if sync_manager.is_cancelled(restaurant_id):
+                    return {
+                        "platform": platform,
+                        "status": "cancelled", 
+                        "message": "Sync was cancelled by user during sentiment analysis.",
+                        "new_ingested": report.ingested
+                    }
+                
+                batch_num = (i // batch_size) + 1
+                progress = 40 + int((batch_num / total_batches) * 60)
+                remaining_batches = total_batches - batch_num
+                est_rem = remaining_batches * 5 # Roughly 5s per batch
+                
+                # Report processed count (how many reviews completed sentiment so far)
+                processed = i
+                sync_manager.update_progress(
+                    restaurant_id, 
+                    progress, 
+                    f"Analyzing sentiment batch {batch_num}/{total_batches}...",
+                    processed_count=processed,
+                    total_count=total_reviews,
+                    est_remaining=est_rem
+                )
+
             batch = reviews_to_analyze[i : i + batch_size]
             batch_num = (i // batch_size) + 1
             logger.info(f"Analyzing batch {batch_num}/{total_batches}...")
             
-            # Use a savepoint so that if Gemini fails or DB fails for this batch, 
-            # the transaction as a whole isn't aborted.
             async with db.begin_nested():
                 try:
                     await analyze_and_store_batch(db, batch)
                 except Exception as e:
-                    # Rolling back the savepoint is handled by the context manager automatically on exception
                     logger.error(f"Sentiment analysis failed for batch {batch_num}: {e}")
-                    # We continue to the next batch
                     continue
+
+    if restaurant_id:
+        sync_manager.finish_sync(restaurant_id)
 
     # ── Update sync log ──
     existing = await db.execute(
@@ -529,20 +590,53 @@ async def sync_apify_reviews(
         log.reviews_fetched = len(raw_reviews)
         log.new_reviews = report.ingested
         log.business_name = business_name
-        # Keep existing restaurant_id mapping
+        # Update Ground Truth captured during this sync session
+        log.platform_total_count = live_count if live_count >= 0 else log.platform_total_count
+        # We don't have a reliable live_rating here unless we fetched it in the count check
     else:
         log = SyncLog(
-            restaurant_id=restaurant_id, # Link new log to the restaurant it created/received
+            restaurant_id=restaurant_id,
             platform=platform,
             business_id=business_id,
             business_name=business_name,
             last_synced_at=datetime.utcnow(),
             reviews_fetched=len(raw_reviews),
             new_reviews=report.ingested,
+            platform_total_count=live_count if live_count >= 0 else None,
         )
         db.add(log)
 
     await db.commit()
+
+    # ── Automatic Menu Discovery (For Zero-Config Onboarding) ──
+    if target_restaurant_id:
+        # Check if menu is currently empty
+        m_stmt = await db.execute(select(func.count(MenuItem.id)).where(MenuItem.restaurant_id == target_restaurant_id))
+        m_count = m_stmt.scalar() or 0
+        
+        if m_count == 0 and len(raw_reviews) > 0:
+            logger.info(f"Zero-Config detected for restaurant {target_restaurant_id}. Triggering AI Menu Discovery...")
+            if restaurant_id:
+                sync_manager.update_progress(restaurant_id, 95, "Discovering menu items from reviews...", est_remaining=10)
+            
+            # Use top 50 reviews for discovery
+            texts = [r.content for r in new_reviews[:50]] if report.ingested > 0 else [r["text"] for r in raw_reviews[:50] if r.get("text")]
+            discovered_items = await discover_menu_items(texts)
+            
+            if discovered_items:
+                to_add = [
+                    MenuItem(
+                        restaurant_id=target_restaurant_id,
+                        name=item["name"],
+                        category=item["category"],
+                        keywords=item["keywords"]
+                    )
+                    for item in discovered_items
+                ]
+                db.add_all(to_add)
+                await db.commit()
+                logger.info(f"Auto-discovered and saved {len(to_add)} menu items.")
+
 
     # Bust the cache so the dashboard shows fresh data
     api_cache.invalidate(restaurant_id)

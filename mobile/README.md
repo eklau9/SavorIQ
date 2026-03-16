@@ -23,5 +23,6 @@ The mobile app is designed for restaurant managers to:
 1. Install dependencies: `npm install`
 2. Set up environment: `npx expo install expo-location` (if missing).
 3. Set `EXPO_PUBLIC_API_URL` to point to your local or staging backend.
-4. Run: `npx expo start`
+4. **Unified Startup (App + Backend)**: `npm run dev`
+   - This starts both the Expo server and the FastAPI backend concurrently.
 5. Press `w` for Web or use a simulator/device.

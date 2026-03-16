@@ -21,6 +21,20 @@ from app.models import SentimentScore
 
 logger = logging.getLogger(__name__)
 
+BATCH_PROMPT = """Analyze the following restaurant reviews and return a JSON object.
+For each review, categorize the sentiment into 'food', 'drink', or 'ambiance' buckets.
+Each bucket should have a score from -1.0 (very negative) to 1.0 (very positive) and a brief English summary.
+
+IMPORTANT:
+1. The input reviews may be in any language (Chinese, Spanish, etc.).
+2. You MUST analyze the sentiment regardless of the language.
+3. The 'summary' you return MUST be in English.
+4. If a review doesn't mention a specific category, omit that bucket.
+
+Input format: [{"id": "...", "text": "..."}, ...]
+Output format: {"results": [{"id": "...", "sentiment": [{"bucket": "food", "score": 0.8, "summary": "..."}, ...]}]}
+"""
+
 # ── Keyword Heuristic (fallback) ──────────────────────────────────────────
 
 FOOD_KEYWORDS = [

@@ -113,6 +113,7 @@ async def ingest_reviews(
     platform: ReviewPlatform,
     reviews_data: list[dict],
     full_sync: bool = False,
+    stop_on_match: bool = False,
 ) -> IngestionReport:
     """
     Optimized ingestion pipeline with batch lookups and minimal queries.
@@ -137,9 +138,12 @@ async def ingest_reviews(
     guest_cache = {g.name: g for g in existing_guests_result.scalars().all()}
 
     # 2. Bulk check for existing reviews to handle updates (upserts)
+    # NOTE: Check globally (not just this restaurant) because platform_review_id
+    # has a UNIQUE constraint. The same review can appear on Yelp/Google for
+    # multiple nearby locations (e.g., two Heytea branches).
     review_ids = [r.get("review_id") for r in reviews_data if r.get("review_id")]
     existing_reviews_result = await db.execute(
-        select(Review).where(Review.restaurant_id == restaurant_id, Review.platform_review_id.in_(review_ids))
+        select(Review).where(Review.platform_review_id.in_(review_ids))
     )
     review_cache = {r.platform_review_id: r for r in existing_reviews_result.scalars().all()}
 
@@ -168,6 +172,13 @@ async def ingest_reviews(
                     report.ingested += 1
                 else:
                     report.duplicates_skipped += 1
+                
+                # INCREMENTAL SYNC OPTIMIZATION:
+                # If we hit a duplicate and stop_on_match is True, we assume we've hit the 
+                # existing historical record and can stop the entire ingestion.
+                if stop_on_match:
+                    logger.info(f"Incremental Sync: Hit existing review {normalized['platform_review_id']}. Stopping.")
+                    return report
                 continue
 
             # Get guest from cache or create

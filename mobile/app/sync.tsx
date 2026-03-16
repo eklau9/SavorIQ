@@ -14,6 +14,7 @@ import { colors, spacing, radius, fonts } from '@/lib/theme';
 import * as Location from 'expo-location';
 import { searchBusiness, syncApifyReviews, fetchSyncStatus, UnifiedBusiness } from '@/lib/api';
 import { calculateDistance } from '../lib/geo';
+import { SyncConfirmOverlay } from '@/components/SyncConfirmOverlay';
 
 export default function SyncScreen() {
     const router = useRouter();
@@ -25,6 +26,8 @@ export default function SyncScreen() {
     const [syncHistory, setSyncHistory] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [pendingSync, setPendingSync] = useState<UnifiedBusiness | null>(null);
 
     useEffect(() => {
         loadStatus();
@@ -98,25 +101,62 @@ export default function SyncScreen() {
         }
     };
 
-    const handleSync = async (item: UnifiedBusiness) => {
+    const handleSync = (item: UnifiedBusiness) => {
+        setPendingSync(item);
+        setShowConfirm(true);
+    };
+
+    const performSync = async () => {
+        if (!pendingSync) return;
+        const item = pendingSync;
+        setShowConfirm(false);
+        setPendingSync(null);
+
         const key = item.id;
         setSyncing(prev => ({ ...prev, [key]: true }));
         try {
             const syncTasks = [];
             if (item.google) {
-                syncTasks.push(syncApifyReviews('google', item.google.url || item.google.id, item.google.name, item.google.address));
+                syncTasks.push(syncApifyReviews('google', item.google.url || item.google.id, item.google.name, item.google.address, true));
             }
             if (item.yelp) {
-                syncTasks.push(syncApifyReviews('yelp', item.yelp.url || item.yelp.id, item.yelp.name, item.yelp.address));
+                syncTasks.push(syncApifyReviews('yelp', item.yelp.url || item.yelp.id, item.yelp.name, item.yelp.address, true));
             }
 
-            const results = await Promise.all(syncTasks);
+            const syncResults = await Promise.all(syncTasks);
 
             // Calculate total new reviews across platforms
-            const newReviews = results.reduce((acc, res) => acc + (res.new_ingested || 0), 0);
-            const totalFetched = results.reduce((acc, res) => acc + (res.total_fetched || 0), 0);
+            const newReviews = syncResults.reduce((acc, res) => acc + (res.new_ingested || 0), 0);
+            const totalFetched = syncResults.reduce((acc, res) => acc + (res.total_fetched || 0), 0);
 
             loadStatus();
+
+            // Update the item in the local results list to reflect the new sync status
+            setResults(prev => {
+                if (!prev) return prev;
+                return prev.map(r => {
+                    if (r.id === item.id) {
+                        const now = new Date().toISOString();
+                        const updatePlatform = (p: any) => p ? {
+                            ...p,
+                            last_sync: {
+                                last_synced_at: now,
+                                ago: 'just now',
+                                on_cooldown: true,
+                                cooldown_remaining_minutes: 60,
+                                reviews_fetched: totalFetched,
+                                new_reviews: newReviews
+                            }
+                        } : p;
+                        return {
+                            ...r,
+                            google: updatePlatform(r.google),
+                            yelp: updatePlatform(r.yelp),
+                        };
+                    }
+                    return r;
+                });
+            });
 
             if (newReviews > 0) {
                 alert(`✅ Sync Complete for ${item.name}!\n\nFetched ${totalFetched} reviews and added ${newReviews} new entries to your dashboard.`);
@@ -132,8 +172,10 @@ export default function SyncScreen() {
     };
 
     const renderBizCard = ({ item }: { item: UnifiedBusiness }) => {
-        const onCooldown = (item.google?.last_sync?.on_cooldown || item.yelp?.last_sync?.on_cooldown);
-        const cooldownText = item.google?.last_sync?.ago || item.yelp?.last_sync?.ago;
+        const cooldownMeta = item.google?.last_sync?.on_cooldown ? item.google.last_sync : item.yelp?.last_sync;
+        const onCooldown = cooldownMeta?.on_cooldown;
+        const cooldownText = cooldownMeta?.ago;
+        const readyIn = cooldownMeta?.cooldown_remaining_minutes;
         const isSyncing = syncing[item.id];
 
         const platforms = [];
@@ -167,30 +209,38 @@ export default function SyncScreen() {
                         {item.google && (
                             <View style={[s.platBadge, { backgroundColor: '#4285F420' }]}>
                                 <Ionicons name="logo-google" size={10} color="#4285F4" />
-                                <Text style={[s.platText, { color: '#4285F4' }]}>Google</Text>
+                                <Text style={[s.platText, { color: '#4285F4' }]}>Google • {item.google.review_count}</Text>
                             </View>
                         )}
                         {item.yelp && (
                             <View style={[s.platBadge, { backgroundColor: '#FF1A1A20' }]}>
                                 <Ionicons name="star" size={10} color="#FF1A1A" />
-                                <Text style={[s.platText, { color: '#FF1A1A' }]}>Yelp</Text>
+                                <Text style={[s.platText, { color: '#FF1A1A' }]}>Yelp • {item.yelp.review_count}</Text>
                             </View>
                         )}
                     </View>
                 </View>
-                <TouchableOpacity
-                    style={[s.syncBtn, isSyncing && { opacity: 0.6 }]}
-                    disabled={isSyncing || onCooldown}
-                    onPress={() => handleSync(item)}
-                >
-                    {isSyncing ? (
-                        <ActivityIndicator size="small" color={colors.text.primary} />
-                    ) : onCooldown ? (
-                        <Text style={s.syncBtnText}>⏳ {cooldownText}</Text>
-                    ) : (
-                        <Text style={s.syncBtnText}>Sync</Text>
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    {onCooldown && !isSyncing && (
+                        <View style={{ alignItems: 'flex-end' }}>
+                            {readyIn ? (
+                                <Text style={s.readyText}>Ready in ~{readyIn}m</Text>
+                            ) : null}
+                            <Text style={s.cooldownText}>Synced {cooldownText}</Text>
+                        </View>
                     )}
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[s.syncBtn, isSyncing && { opacity: 0.6 }]}
+                        disabled={isSyncing}
+                        onPress={() => handleSync(item)}
+                    >
+                        {isSyncing ? (
+                            <ActivityIndicator size="small" color={colors.text.primary} />
+                        ) : (
+                            <Text style={s.syncBtnText}>Sync</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
             </View>
         );
     };
@@ -274,6 +324,13 @@ export default function SyncScreen() {
                     ) : null
                 }
             />
+            <SyncConfirmOverlay
+                visible={showConfirm}
+                title="Smart Sync"
+                message="This will fetch and update the latest reviews keep your counts accurate. Continue?"
+                onConfirm={performSync}
+                onCancel={() => setShowConfirm(false)}
+            />
         </View>
     );
 }
@@ -350,12 +407,18 @@ const s = StyleSheet.create({
     syncBtn: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        backgroundColor: colors.bg.secondary,
+        backgroundColor: colors.accent.gold,
         borderRadius: radius.sm,
-        borderWidth: 1,
-        borderColor: colors.border.default,
+        shadowColor: colors.accent.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    syncBtnText: { color: colors.text.primary, fontSize: fonts.sizes.sm, fontWeight: '600' },
+    syncBtnText: { color: colors.bg.primary, fontSize: fonts.sizes.sm, fontWeight: '700' },
+
+    cooldownText: { color: colors.text.muted, fontSize: 9, marginBottom: 2 },
+    readyText: { color: colors.accent.gold, fontSize: 10, fontWeight: '700', marginBottom: 2 },
 
     platBadge: {
         flexDirection: 'row',

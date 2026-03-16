@@ -330,6 +330,7 @@ class ItemPerformance(BaseModel):
     category: OrderCategory
     avg_sentiment: float | None = None
     review_count: int
+    is_suggested: bool = False
 
 
 class ManagerInsight(BaseModel):
@@ -356,7 +357,7 @@ class DeepAnalytics(BaseModel):
     top_performers: list[ItemPerformance]
     risks: list[ItemPerformance]
     unmatched_mentions: list[UnmatchedMention] = []
-    briefing: ManagerBriefing
+    briefing: ManagerBriefing | None = None
 
 
 # ── Sentiment Analytics ───────────────────────────────────────────────────
@@ -401,3 +402,25 @@ class OperationsAnalytics(BaseModel):
     tier_distribution: list[GuestTierCount]
     total_guests: int
     platform_split: dict[str, int]  # {"google": 10, "yelp": 6}
+
+# ── System Health ──────────────────────────────────────────────────────────
+
+class HealthStatus(str, Enum):
+    healthy = "healthy"
+    degraded = "degraded"
+    unhealthy = "unhealthy"
+
+
+class ComponentHealth(BaseModel):
+    status: HealthStatus
+    latency_ms: float | None = None
+    message: str | None = None
+
+
+class SystemHealth(BaseModel):
+    status: HealthStatus
+    backend: ComponentHealth
+    database: ComponentHealth
+    gemini: ComponentHealth
+    apify: ComponentHealth
+    uptime_seconds: float

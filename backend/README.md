@@ -5,10 +5,11 @@ The FastAPI-based intelligence engine for SavorIQ.
 ## Overview
 
 The backend is responsible for:
-1. **Data Sync**: Scraping reviews from Yelp and Google Maps using Apify actors.
-2. **Sentiment Analysis**: Processing reviews through Google's Gemini AI to identify specific friction points and strengths (the "Deep Sentiment" system).
-3. **Guest Resolution**: Tracking VIP guest status and prioritizing manager intercepts based on recent feedback.
-4. **Tenant Management**: Multi-location support with restaurant-level data isolation.
+- **Automatic Review Sync**: Multi-platform ingestion via Apify (Google/Yelp).
+- **Zero-Config Onboarding**: AI-powered menu discovery extracts products directly from review text.
+- **Deep Sentiment Analytics**: Product-level sentiment mapping using Gemini AI to identify specific friction points and strengths (the "Deep Sentiment" system).
+- **Guest Resolution**: Tracking VIP guest status and prioritizing manager intercepts based on recent feedback.
+- **Tenant Management**: Multi-location support with restaurant-level data isolation.
 
 ## Key Components
 

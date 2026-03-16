@@ -137,6 +137,10 @@ class SyncLog(Base):
     last_synced_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     reviews_fetched: Mapped[int] = mapped_column(Integer, default=0)
     new_reviews: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # "Ground Truth" fields — captured from platform search API (cheap)
+    platform_total_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    platform_rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
 
 class MenuItem(Base):

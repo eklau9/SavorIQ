@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,14 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
 import { useData } from '@/lib/DataContext';
 import { DeepAnalytics } from '@/lib/api';
 import NoRestaurantSelected from '@/components/NoRestaurantSelected';
+import { StartupLoadingScreen } from '@/components/StartupLoadingScreen';
 
 // Helper to render text with ++Item++ (green) and --Item-- (red) highlights
 const renderFormattedText = (text: string) => {
@@ -46,9 +47,24 @@ const renderFormattedText = (text: string) => {
 export default function DashboardScreen() {
   const router = useRouter();
   const { activeName, activeId } = useRestaurant();
-  const { dashboardData: data, loading, refreshAll } = useData();
+  const { 
+    dashboardData: data, 
+    loading, 
+    progress, 
+    loadingStep, 
+    estimatedSecondsRemaining, 
+    refreshAll,
+    error // Add error here
+  } = useData();
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<number | null>(90); // Default to 90 days
+
+  // Trigger refresh when timeRange changes
+  useEffect(() => {
+    if (activeId) {
+      refreshAll(timeRange);
+    }
+  }, [timeRange, activeId, refreshAll]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -58,16 +74,16 @@ export default function DashboardScreen() {
 
   const handleResetKey = async () => {
     await AsyncStorage.removeItem('accessKey');
-    alert('Access key cleared. Please reload the app or navigate to another tab.');
-    // Ideally we'd use a context to trigger the layout gate, but this is a quick fix
-    setError('Access key cleared. Please reload.');
+    alert('Access key cleared. Please reload the app.');
   };
 
-  if (loading) {
+  if (loading && !data && activeId) {
     return (
-      <View style={s.center}>
-        <ActivityIndicator size="large" color={colors.accent.gold} />
-      </View>
+      <StartupLoadingScreen 
+        progress={progress} 
+        loadingStep={loadingStep} 
+        estimatedSecondsRemaining={estimatedSecondsRemaining} 
+      />
     );
   }
 
@@ -108,36 +124,87 @@ export default function DashboardScreen() {
     >
       {!activeId ? (
         <NoRestaurantSelected />
-      ) : !data ? (
-        <View style={[s.center, { marginTop: 100 }]}>
-          <ActivityIndicator color={colors.accent.gold} />
-        </View>
       ) : (
         <>
+          <Stack.Screen options={{ headerShown: false }} />
+          
           {/* Header Action */}
           <View style={s.headerRow}>
-            <View>
-              <Text style={s.welcomeText}>Intelligence Hub</Text>
-              <Text style={s.activeLocText}>{activeName}</Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
+                  <Text style={[s.welcomeText, { color: colors.accent.gold }]}>
+                    SavorIQ
+                  </Text>
+                </View>
+                <Text style={[s.welcomeText, { textTransform: 'none', fontWeight: '500', opacity: 0.7 }]}>
+                  {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </Text>
+              </View>
+              <Text style={[s.activeLocText, { fontSize: 32, lineHeight: 38, letterSpacing: -0.5, fontWeight: '800' }]}>
+                {activeName}
+              </Text>
+              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
+                {/* Productivity Alert Badge */}
+                {data?.top_performers?.some(i => i.is_suggested) ? (
+                  <TouchableOpacity 
+                    style={s.integrityBadge}
+                    onPress={() => alert("Self-Healing Active: We've automatically discovered these items from your reviews because your menu isn't fully configured yet.")}
+                  >
+                    <Ionicons name="shield-checkmark" size={12} color={colors.accent.gold} />
+                    <Text style={s.integrityText}>AI Integrity Mode</Text>
+                  </TouchableOpacity>
+                ) : <View />}
+
+                {/* Time Filter Chips */}
+                <View style={s.filterRow}>
+                   {[
+                    { label: '30D', val: 30 },
+                    { label: '90D', val: 90 },
+                    { label: '6MO', val: 180 },
+                    { label: '1Y', val: 365 },
+                    { label: 'ALL', val: null }
+                  ].map((chip) => (
+                    <TouchableOpacity
+                      key={chip.label}
+                      onPress={() => setTimeRange(chip.val)}
+                      style={[
+                        s.filterChip,
+                        timeRange === chip.val && s.filterChipActive
+                      ]}
+                    >
+                      <Text style={[
+                        s.filterChipText,
+                        timeRange === chip.val && s.filterChipTextActive
+                      ]}>
+                        {chip.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             </View>
           </View>
+          
           {/* KPI Row */}
           <View style={s.kpiRow}>
             <KPICard
               label="Guests"
-              value={data.overview.total_guests}
+              value={data?.overview?.total_guests ?? '...'}
               icon="people"
               onPress={() => router.push('/guests')}
             />
             <KPICard
               label="Reviews"
-              value={data.overview.total_reviews}
+              value={data?.overview?.total_reviews ?? '...'}
               icon="chatbubbles"
               onPress={() => router.push('/reviews')}
             />
             <KPICard
               label="Avg Rating"
-              value={data.overview.avg_rating.toFixed(1)}
+              value={data?.overview?.avg_rating !== undefined ? data.overview.avg_rating.toFixed(1) : '...'}
               icon="star"
               accent={colors.accent.gold}
               onPress={() => router.push('/rating-breakdown')}
@@ -145,95 +212,114 @@ export default function DashboardScreen() {
           </View>
 
           {/* AI Briefing */}
-          {data.briefing && (
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <Ionicons name="sparkles" size={18} color={colors.accent.gold} />
-                <Text style={s.cardTitle}>Manager Briefing</Text>
-              </View>
-              <Text style={s.briefingSummary}>{renderFormattedText(data.briefing.summary)}</Text>
-              {data.briefing.insights.map((insight, idx) => (
-                <View key={idx} style={s.insightRow}>
-                  <View style={[
-                    s.insightBadge,
-                    {
-                      backgroundColor: insight.type === 'win' ? colors.accent.green + '20' :
-                        insight.type === 'risk' ? colors.accent.red + '20' : colors.accent.blue + '20'
-                    },
-                  ]}>
-                    <Ionicons
-                      name={insight.type === 'win' ? 'trophy' : insight.type === 'risk' ? 'warning' : 'bulb'}
-                      size={14}
-                      color={insight.type === 'win' ? colors.accent.green :
-                        insight.type === 'risk' ? colors.accent.red : colors.accent.blue}
-                    />
-                  </View>
-                  <View style={s.insightContent}>
-                    <Text style={s.insightTitle}>{insight.title}</Text>
-                    <Text style={s.insightDesc}>{renderFormattedText(insight.description)}</Text>
-                  </View>
-                </View>
-              ))}
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <Ionicons name="sparkles" size={18} color={colors.accent.gold} />
+              <Text style={s.cardTitle}>Manager Briefing</Text>
             </View>
-          )}
+            {!data?.briefing ? (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator color={colors.accent.gold} />
+                <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: 8 }}>Generating AI Briefing...</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={s.briefingSummary}>{renderFormattedText(data.briefing.summary)}</Text>
+                {data.briefing.insights.map((insight, idx) => (
+                  <View key={idx} style={s.insightRow}>
+                    <View style={[
+                      s.insightBadge,
+                      {
+                        backgroundColor: insight.type === 'win' ? colors.accent.green + '20' :
+                          insight.type === 'risk' ? colors.accent.red + '20' : colors.accent.blue + '20'
+                      },
+                    ]}>
+                      <Ionicons
+                        name={insight.type === 'win' ? 'trophy' : insight.type === 'risk' ? 'warning' : 'bulb'}
+                        size={14}
+                        color={insight.type === 'win' ? colors.accent.green :
+                          insight.type === 'risk' ? colors.accent.red : colors.accent.blue}
+                      />
+                    </View>
+                    <View style={s.insightContent}>
+                      <Text style={s.insightTitle}>{insight.title}</Text>
+                      <Text style={s.insightDesc}>{renderFormattedText(insight.description)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
 
           {/* Top Performing Items */}
-          {data.top_performers.length > 0 && (
+          {(!data || data.top_performers.length > 0) && (
             <View style={s.card}>
               <View style={s.cardHeader}>
                 <Ionicons name="trending-up" size={18} color={colors.sentiment.positive} />
                 <Text style={s.cardTitle}>Top Performing Items</Text>
               </View>
-              {data.top_performers.map((item, idx) => (
-                <ItemRow key={idx} item={item} type="success" onPress={() => router.push(`/reviews?search=${encodeURIComponent(item.item_name)}`)} />
-              ))}
+              {!data ? (
+                <ActivityIndicator color={colors.sentiment.positive} style={{ marginVertical: 10 }} />
+              ) : (
+                data.top_performers.map((item, idx) => (
+                  <ItemRow key={idx} item={item} type="success" onPress={() => router.push(`/reviews?search=${encodeURIComponent(item.item_name)}`)} />
+                ))
+              )}
             </View>
           )}
 
           {/* At-Risk Items */}
-          {data.risks.length > 0 && (
+          {(!data || data.risks.length > 0) && (
             <View style={s.card}>
               <View style={s.cardHeader}>
                 <Ionicons name="trending-down" size={18} color={colors.accent.red} />
                 <Text style={s.cardTitle}>At-Risk Items</Text>
               </View>
-              {data.risks.map((item, idx) => (
-                <ItemRow key={idx} item={item} type="danger" onPress={() => router.push(`/reviews?search=${encodeURIComponent(item.item_name)}`)} />
-              ))}
+              {!data ? (
+                <ActivityIndicator color={colors.accent.red} style={{ marginVertical: 10 }} />
+              ) : (
+                data.risks.map((item, idx) => (
+                  <ItemRow key={idx} item={item} type="danger" onPress={() => router.push(`/reviews?search=${encodeURIComponent(item.item_name)}`)} />
+                ))
+              )}
             </View>
           )}
 
           {/* Customer Mentions — items not on the menu */}
-          {data.unmatched_mentions && data.unmatched_mentions.length > 0 && (
+          {(!data || (data.unmatched_mentions && data.unmatched_mentions.length > 0)) && (
             <View style={s.card}>
               <View style={s.cardHeader}>
                 <Ionicons name="chatbubble-ellipses" size={18} color={colors.accent.blue} />
                 <Text style={s.cardTitle}>Customer Mentions (Not on Menu)</Text>
               </View>
-              {data.unmatched_mentions.map((mention, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={s.itemRow}
-                  onPress={() => router.push(`/reviews?search=${encodeURIComponent(mention.term)}`)}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.itemName}>{mention.term}</Text>
-                  </View>
-                  <View style={s.itemStats}>
-                    <Text style={s.itemMentions}>{mention.mention_count}</Text>
-                    <Text style={s.itemMentionLabel}>mentions</Text>
-                  </View>
-                  <View style={[s.sentimentBadge, {
-                    backgroundColor: colors.accent.blue + '20',
-                  }]}>
-                    <Text style={[s.sentimentText, {
-                      color: colors.accent.blue,
+              {!data ? (
+                <ActivityIndicator color={colors.accent.blue} style={{ marginVertical: 10 }} />
+              ) : (
+                data.unmatched_mentions.map((mention, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={s.itemRow}
+                    onPress={() => router.push(`/reviews?search=${encodeURIComponent(mention.term)}`)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.itemName}>{mention.term}</Text>
+                    </View>
+                    <View style={s.itemStats}>
+                      <Text style={s.itemMentions}>{mention.mention_count}</Text>
+                      <Text style={s.itemMentionLabel}>mentions</Text>
+                    </View>
+                    <View style={[s.sentimentBadge, {
+                      backgroundColor: colors.accent.blue + '20',
                     }]}>
-                      Unmatched
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                      <Text style={[s.sentimentText, {
+                        color: colors.accent.blue,
+                      }]}>
+                        Unmatched
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           )}
         </>
@@ -274,12 +360,12 @@ function ItemRow({ item, type, onPress }: { item: any; type: 'success' | 'danger
         <Text style={s.itemMentionLabel}>mentions</Text>
       </View>
       <View style={[s.sentimentBadge, {
-        backgroundColor: isDanger ? colors.accent.red + '20' : colors.sentiment.positive + '20',
+        backgroundColor: item.is_suggested ? colors.accent.gold + '15' : (isDanger ? colors.accent.red + '20' : colors.sentiment.positive + '20'),
       }]}>
         <Text style={[s.sentimentText, {
-          color: isDanger ? colors.accent.red : colors.sentiment.positive,
+          color: item.is_suggested ? colors.accent.gold : (isDanger ? colors.accent.red : colors.sentiment.positive),
         }]}>
-          {isDanger ? 'Criticized' : 'Praised'}
+          {item.is_suggested ? 'Suggested' : (isDanger ? 'Criticized' : 'Praised')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -288,17 +374,19 @@ function ItemRow({ item, type, onPress }: { item: any; type: 'success' | 'danger
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.primary },
-  content: { padding: spacing.md, paddingBottom: 40 },
+  content: { padding: spacing.md, paddingTop: 0, paddingBottom: 40 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg.primary },
 
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    paddingTop: 32,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
-  welcomeText: { color: colors.text.muted, fontSize: fonts.sizes.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
-  activeLocText: { color: colors.text.primary, fontSize: fonts.sizes.xl, fontWeight: '800', marginTop: 2 },
+  welcomeText: { color: colors.text.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  activeLocText: { color: colors.text.primary, fontSize: 32, fontWeight: '800', marginTop: 2 },
   syncBtn: {
     display: 'none',
   },
@@ -374,5 +462,51 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.default,
   },
+  integrityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.accent.gold + '20',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.full,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.accent.gold + '40',
+  },
+  integrityText: {
+    color: colors.accent.gold,
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   retryBtnText: { color: colors.text.primary, fontWeight: '600' },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  filterChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    backgroundColor: colors.bg.secondary,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  filterChipActive: {
+    backgroundColor: colors.accent.gold + '20',
+    borderColor: colors.accent.gold,
+  },
+  filterChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.text.muted,
+  },
+  filterChipTextActive: {
+    color: colors.accent.gold,
+    fontWeight: '700',
+  },
 });

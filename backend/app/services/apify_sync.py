@@ -83,10 +83,10 @@ async def _run_apify_actor(actor_id: str, run_input: dict, timeout: int = 180) -
                 logger.warning(f"Apify {label}: network error — {exc}")
                 continue
 
-            # Quota exhausted → try next token
-            if run_resp.status_code in (402, 429):
+            # Quota exhausted or access denied → try next token
+            if run_resp.status_code in (402, 403, 429):
                 last_error = RuntimeError(
-                    f"Apify {label}: quota exceeded (HTTP {run_resp.status_code})"
+                    f"Apify {label}: unavailable (HTTP {run_resp.status_code})"
                 )
                 logger.warning(str(last_error))
                 continue
@@ -136,14 +136,12 @@ async def apify_google_reviews(place_id_or_url: str, max_reviews: int = 100000) 
             "startUrls": [{"url": place_id_or_url}],
             "maxReviews": max_reviews,
             "reviewsSort": "newest",
-            "language": "en",
         }
     else:
         run_input = {
             "placeIds": [place_id_or_url],
             "maxReviews": max_reviews,
             "reviewsSort": "newest",
-            "language": "en",
         }
 
     raw_items = await _run_apify_actor("compass~google-maps-reviews-scraper", run_input)
@@ -188,6 +186,7 @@ async def apify_yelp_reviews(yelp_url: str, max_reviews: int = 100000) -> list[d
     run_input = {
         "startUrls": [{"url": yelp_url}],
         "maxReviews": max_reviews,
+        "sort": "newest",
     }
 
     raw_items = await _run_apify_actor("tri_angle~yelp-review-scraper", run_input)

@@ -44,12 +44,12 @@ RESTAURANT DATA:
 """
 
 import hashlib
+import asyncio
 
-# Simple in-memory cache for the manager briefing
-_briefing_cache: dict[str, any] = {
-    "hash": None,
-    "briefing": None
-}
+# Multi-slot cache: maps data_hash -> ManagerBriefing
+_briefing_cache: dict[str, ManagerBriefing] = {}
+# Concurrency locks: maps data_hash -> asyncio.Lock
+_briefing_locks: dict[str, asyncio.Lock] = {}
 
 async def generate_manager_briefing(
     bucket_sentiment: list[BucketSentiment],
@@ -79,52 +79,101 @@ async def generate_manager_briefing(
     data_str = json.dumps(data_context, sort_keys=True)
     data_hash = hashlib.md5(data_str.encode()).hexdigest()
 
-    if _briefing_cache["hash"] == data_hash and _briefing_cache["briefing"]:
-        logger.info("Serving manager briefing from data-aware cache")
-        return _briefing_cache["briefing"]
+    if data_hash in _briefing_cache:
+        logger.info(f"Rapid Cache HIT for briefing: {data_hash}")
+        return _briefing_cache[data_hash]
 
-    try:
-        import google.generativeai as genai
-        
-        if not settings.GEMINI_API_KEY:
-            raise ValueError("Gemini API key not configured")
-
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-
-        prompt = BRIEFING_PROMPT + json.dumps(data_context, indent=2)
-        response = await model.generate_content_async(prompt)
-        text = response.text.strip()
-
-        # Extract JSON
-        if "```" in text:
-            json_match = re.search(r'```(?:json)?\s*(.*?)```', text, re.DOTALL)
-            if json_match:
-                text = json_match.group(1).strip()
-
-        payload = json.loads(text)
-        
-        result = ManagerBriefing(
-            summary=payload.get("summary", "No summary available."),
-            insights=[ManagerInsight(**i) for i in payload.get("insights", [])]
-        )
-
-    except Exception as e:
-        logger.warning(f"Manager briefing generation failed: {e}")
-        # Return a fallback briefing
-        result = ManagerBriefing(
-            summary="Unable to generate AI briefing at this time. Please check your manual analytics below.",
-            insights=[
-                ManagerInsight(
-                    title="API Unavailable",
-                    description="The AI insight engine is currently offline. Review your top performers and risks manually.",
-                    type="risk"
-                )
-            ]
-        )
-
-    # Update cache (Cache the result, even if it's the fallback, for this data state)
-    _briefing_cache["hash"] = data_hash
-    _briefing_cache["briefing"] = result
+    # 3. Request Locking: Only allow ONE generation for this specific data hash
+    if data_hash not in _briefing_locks:
+        _briefing_locks[data_hash] = asyncio.Lock()
     
+    async with _briefing_locks[data_hash]:
+        # Re-check cache inside lock
+        if data_hash in _briefing_cache:
+            return _briefing_cache[data_hash]
+
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                import google.generativeai as genai
+                
+                if not settings.GEMINI_API_KEY:
+                    raise ValueError("Gemini API key not configured")
+
+                from app.services.gemini_tracker import record_gemini_request
+                record_gemini_request()
+                
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                model = genai.GenerativeModel(settings.GEMINI_MODEL)
+
+                prompt = BRIEFING_PROMPT + json.dumps(data_context, indent=2)
+                response = await model.generate_content_async(prompt)
+                text = response.text.strip()
+
+                # Extract JSON
+                if "```" in text:
+                    json_match = re.search(r'```(?:json)?\s*(.*?)```', text, re.DOTALL)
+                    if json_match:
+                        text = json_match.group(1).strip()
+
+                payload = json.loads(text)
+                
+                result = ManagerBriefing(
+                    summary=payload.get("summary", "No summary available."),
+                    insights=[ManagerInsight(**i) for i in payload.get("insights", [])]
+                )
+                # Success! Break out of retry loop
+                break
+
+            except Exception as e:
+                error_msg = str(e)
+                if "429" in error_msg and retry_count < max_retries - 1:
+                    retry_count += 1
+                    wait_time = retry_count * 2
+                    logger.warning(f"Gemini 429 Rate Limit hit. Retry {retry_count}/{max_retries} in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                
+                logger.warning(f"Manager briefing generation failed: {e}")
+                
+                # Check internal tracker to distinguish between burst (RPM) and daily (RPD)
+                from app.services.gemini_tracker import get_gemini_usage
+                usage = get_gemini_usage()
+                
+                is_rpd_limited = usage.get("rpd", 0) >= usage.get("rpd_limit", 1500)
+                is_rpm_limited = usage.get("rpm", 0) >= usage.get("rpm_limit", 15)
+                
+                if is_rpd_limited:
+                    title = "Daily Quota Exhausted"
+                    description = "You've reached your 1,500 daily AI insight limit. Service will resume tomorrow."
+                elif is_rpm_limited:
+                    title = "Minute Burst Limit Hit"
+                    description = "Too many requests at once. Please wait 60 seconds for the burst limit to reset."
+                else:
+                    # If we got a 429 but tracker says we are fine, it might be an external limit or RPM
+                    title = "AI Engine Under Pressure"
+                    description = "Google is reporting high traffic. Insights will return shortly—try switching dates again in a minute."
+                
+                # Return a fallback briefing WITHOUT caching it
+                return ManagerBriefing(
+                    summary="AI Briefing is temporarily paused due to API limits. Manual data below is still live.",
+                    insights=[
+                        ManagerInsight(
+                            title=title,
+                            description=description,
+                            type="risk",
+                            steps=["Check User Center for live quota status", "Wait 60 seconds if it's a burst limit", "Review manual analytics below"]
+                        )
+                    ]
+                )
+
+    # Update cache (only for successful results)
+    _briefing_cache[data_hash] = result
+    
+    # Optional: limit cache size
+    if len(_briefing_cache) > 20:
+        _briefing_cache.pop(next(iter(_briefing_cache)))
+
     return result

@@ -63,7 +63,7 @@ export default function GuestsScreen() {
             const data = await fetchGuests({
                 tier: filterTier,
                 sort_by: sortBy,
-                limit: 5000
+                limit: 100
             });
             setGuests(data);
         } catch (e) {
