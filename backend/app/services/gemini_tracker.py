@@ -106,9 +106,17 @@ async def perform_gemini_probe() -> dict:
         
         return {"configured": True, "status": "error", "message": "Unexpected empty response"}
     except Exception as e:
-        error_msg = str(e)
+        error_msg = str(e).lower()
+        usage = get_gemini_usage()
+        
         if "429" in error_msg:
+            # Check if it was likely a burst limit (RPM) or daily limit (RPD)
+            # If we are below the daily limit, it was probably just a burst limit
+            if usage["rpd"] < usage["rpd_limit"] - 10:
+                return {"configured": True, "status": "error", "message": "Minute Burst Limit Hit (RPM). Try again in 60 seconds."}
+            
             # Still hard limited - update tracker to match reality
             await calibrate_gemini_usage(1500)
-            return {"configured": True, "status": "error", "message": "Still rate limited: 429 Quota Exhausted"}
-        return {"configured": True, "status": "error", "message": error_msg}
+            return {"configured": True, "status": "error", "message": "Daily Quota Exhausted (1500/1500)."}
+            
+        return {"configured": True, "status": "error", "message": str(e)}

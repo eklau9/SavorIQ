@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models import SentimentScore
+from app.services.gemini_tracker import record_gemini_request
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,9 @@ class GeminiAnalyzer(SentimentAnalyzer):
 
         id_map = {f"idx_{i}": r["id"] for i, r in enumerate(reviews)}
         gemini_reviews = [{"id": f"idx_{i}", "text": r["text"]} for i, r in enumerate(reviews)]
+
+        # Record request to internal tracker
+        record_gemini_request()
 
         try:
             import google.generativeai as genai

@@ -573,6 +573,11 @@ async def sync_apify_reviews(
                 except Exception as e:
                     logger.error(f"Sentiment analysis failed for batch {batch_num}: {e}")
                     continue
+            
+            # Rate limiting: 15 RPM = 1 request every 4 seconds
+            if i + batch_size < total_reviews:
+                logger.info(f"Rate limiting: Waiting 4s before next batch...")
+                await asyncio.sleep(4)
 
     if restaurant_id:
         sync_manager.finish_sync(restaurant_id)

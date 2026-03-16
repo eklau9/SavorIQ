@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from app.config import settings
+from app.services.gemini_tracker import record_gemini_request
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ async def discover_menu_items(reviews: List[str]) -> List[dict]:
         
         if not settings.GEMINI_API_KEY:
             raise ValueError("Gemini API key not configured")
+
+        # Record request to internal tracker
+        record_gemini_request()
 
         genai.configure(api_key=settings.GEMINI_API_KEY)
         model = genai.GenerativeModel(settings.GEMINI_MODEL)
