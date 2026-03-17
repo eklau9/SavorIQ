@@ -72,6 +72,7 @@ interface DataContextType {
     timeRange: number | null;
     setTimeRange: (range: number | null) => void;
     refreshAll: (days?: number | null) => Promise<void>;
+    skipLoading: () => void;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -90,6 +91,7 @@ const DataContext = createContext<DataContextType>({
     timeRange: 90,
     setTimeRange: () => {},
     refreshAll: async (days?: number | null) => { },
+    skipLoading: () => {},
 });
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -235,7 +237,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             // If no briefing to wait for (cache hit scenario), mark loading done
             // Otherwise briefing .then/.catch will handle it
 
-            // Fetch briefing — on cold load, splash stays visible until this resolves
+            // Fetch briefing in background — dashboard shows inline spinner until it resolves
             const briefingPromise = Promise.race([
                 fetchBriefing(days, controller.signal),
                 new Promise<never>((_, reject) =>
@@ -269,13 +271,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 coldLoadRef.current = false;
             });
 
-            // On cold load, wait for briefing before dismissing splash
-            if (coldLoadRef.current) {
-                await briefingPromise;
-                setLoadingStep('Loading insights for other date ranges...');
-                setProgress(40);
-            }
-
             // Fetch other background metrics with timeouts to prevent hanging
             const withTimeout = (promise: Promise<any>, ms = 15000) => {
                 return Promise.race([
@@ -294,9 +289,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
             Promise.allSettled(bgOps);
 
-            // On cold load, prefetch ALL other frames and wait for them before dismissing splash
-            if (coldLoadRef.current && abortControllerRef.current === controller) {
-                await prefetchOtherFrames(controller.signal, true);
+            // Prefetch other frames in the background (don't block splash)
+            if (abortControllerRef.current === controller) {
+                prefetchOtherFrames(controller.signal, false);
             }
             
         } catch (err: any) {
@@ -420,6 +415,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
     }, [activeId]);
 
+    const skipLoading = useCallback(() => {
+        setLoading(false);
+    }, []);
+
     return (
         <DataContext.Provider value={{
             dashboardData,
@@ -437,6 +436,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             briefingLoaded,
             timeRange,
             setTimeRange,
+            skipLoading,
         }}>
             {children}
         </DataContext.Provider>

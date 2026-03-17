@@ -1,6 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, ScrollView } from 'react-native';
-import { BlurView } from 'expo-blur';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -8,6 +7,7 @@ interface StartupLoadingScreenProps {
     progress: number;
     loadingStep: string;
     estimatedSecondsRemaining?: number;
+    onSkip?: () => void;
 }
 
 const ShimmerBlock = ({ width, height, style, borderRadius = radius.sm }: any) => {
@@ -46,7 +46,23 @@ const ShimmerBlock = ({ width, height, style, borderRadius = radius.sm }: any) =
     );
 };
 
-export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = () => {
+export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({ onSkip }) => {
+    const [showSkip, setShowSkip] = useState(false);
+    const skipFadeAnim = useRef(new Animated.Value(0)).current;
+
+    // Show skip button after 3.5 seconds
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowSkip(true);
+            Animated.timing(skipFadeAnim, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+            }).start();
+        }, 3500);
+        return () => clearTimeout(timer);
+    }, [skipFadeAnim]);
+
     return (
         <View style={s.container}>
             <View style={s.content}>
@@ -151,7 +167,16 @@ export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = () => {
                 </View>
             </View>
             <View style={s.footerOverlay}>
-                  <Text style={s.footerText}>Optimizing intelligence engine for your restaurant...</Text>
+                  {showSkip && onSkip ? (
+                      <Animated.View style={{ opacity: skipFadeAnim, alignItems: 'center' }}>
+                          <TouchableOpacity style={s.skipButton} onPress={onSkip} activeOpacity={0.7}>
+                              <Text style={s.skipButtonText}>Skip</Text>
+                              <Ionicons name="arrow-forward" size={14} color={colors.accent.gold} />
+                          </TouchableOpacity>
+                      </Animated.View>
+                  ) : (
+                      <Text style={s.footerText}>Optimizing intelligence engine for your restaurant...</Text>
+                  )}
             </View>
         </View>
     );
@@ -207,5 +232,21 @@ const s = StyleSheet.create({
         color: colors.text.muted,
         fontSize: fonts.sizes.xs,
         textAlign: 'center',
-    }
+    },
+    skipButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: radius.full,
+        borderWidth: 1,
+        borderColor: colors.accent.gold + '50',
+        backgroundColor: colors.accent.gold + '10',
+    },
+    skipButtonText: {
+        color: colors.accent.gold,
+        fontSize: fonts.sizes.sm,
+        fontWeight: '600',
+    },
 });

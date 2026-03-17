@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Modal,
   Pressable,
+  Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter, Stack } from 'expo-router';
@@ -77,9 +78,36 @@ export default function DashboardScreen() {
     error,
     timeRange,
     setTimeRange,
+    skipLoading,
+    briefingLoaded,
   } = useData();
   const [refreshing, setRefreshing] = useState(false);
   const [showIntegrityModal, setShowIntegrityModal] = useState(false);
+  const [showIntelBadge, setShowIntelBadge] = useState(false);
+  const intelBadgeAnim = useRef(new Animated.Value(0)).current;
+  const prevBriefingLoaded = useRef(briefingLoaded);
+
+  // Show intelligence-ready badge when briefing finishes loading
+  useEffect(() => {
+    if (briefingLoaded && !prevBriefingLoaded.current && data) {
+      setShowIntelBadge(true);
+      Animated.timing(intelBadgeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+      // Auto-hide after 4 seconds
+      const timer = setTimeout(() => {
+        Animated.timing(intelBadgeAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start(() => setShowIntelBadge(false));
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+    prevBriefingLoaded.current = briefingLoaded;
+  }, [briefingLoaded, data, intelBadgeAnim]);
 
   // Trigger refresh when timeRange changes
   useEffect(() => {
@@ -104,7 +132,8 @@ export default function DashboardScreen() {
       <StartupLoadingScreen 
         progress={progress} 
         loadingStep={loadingStep} 
-        estimatedSecondsRemaining={estimatedSecondsRemaining} 
+        estimatedSecondsRemaining={estimatedSecondsRemaining}
+        onSkip={skipLoading}
       />
     );
   }
@@ -151,6 +180,14 @@ export default function DashboardScreen() {
         <>
           <Stack.Screen options={{ headerShown: false }} />
           
+          {/* Intelligence Ready Badge */}
+          {showIntelBadge && (
+            <Animated.View style={[s.intelBadge, { opacity: intelBadgeAnim, transform: [{ translateY: intelBadgeAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }] }]}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.sentiment.positive} />
+              <Text style={s.intelBadgeText}>Intelligence Ready</Text>
+            </Animated.View>
+          )}
+
           {/* Header Action */}
           <View style={s.headerRow}>
             <View style={{ flex: 1 }}>
@@ -707,5 +744,23 @@ const s = StyleSheet.create({
   },
   modalDismissBtnText: {
     color: colors.bg.primary, fontSize: fonts.sizes.md, fontWeight: '700' as const,
+  },
+  intelBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    alignSelf: 'center' as const,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: radius.full,
+    backgroundColor: colors.sentiment.positive + '15',
+    borderWidth: 1,
+    borderColor: colors.sentiment.positive + '30',
+    marginBottom: spacing.xs,
+  },
+  intelBadgeText: {
+    color: colors.sentiment.positive,
+    fontSize: fonts.sizes.xs,
+    fontWeight: '600' as const,
   },
 });
