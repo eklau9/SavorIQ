@@ -29,19 +29,36 @@
                     #savoriq-splash .tagline {
                         font-size: 13px;
                         color: #6B7280;
-                        margin-bottom: 32px;
+                        margin-bottom: 28px;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     }
-                    #savoriq-splash .spinner {
-                        width: 28px;
-                        height: 28px;
-                        border: 3px solid #1C2333;
-                        border-top-color: #D4A84B;
-                        border-radius: 50%;
-                        animation: spin 0.8s linear infinite;
+                    #savoriq-splash .progress-container {
+                        width: 200px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 10px;
                     }
-                    @keyframes spin {
-                        to { transform: rotate(360deg); }
+                    #savoriq-splash .progress-track {
+                        width: 100%;
+                        height: 3px;
+                        background: #1C2333;
+                        border-radius: 3px;
+                        overflow: hidden;
+                    }
+                    #savoriq-splash .progress-fill {
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(90deg, #D4A84B, #E8C66A);
+                        border-radius: 3px;
+                        transition: width 0.3s ease;
+                    }
+                    #savoriq-splash .progress-text {
+                        font-size: 12px;
+                        font-weight: 500;
+                        color: #4B5563;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        font-variant-numeric: tabular-nums;
                     }
                     /* Prevent body scroll while splash is visible */
                     body { background: #05070A; }
@@ -475,13 +492,59 @@ input::-webkit-search-cancel-button,input::-webkit-search-decoration,input::-web
 @keyframes r-1pzkwqh{0%{transform:translateY(100%);}100%{transform:translateY(0%);}}
 @keyframes r-imtty0{0%{opacity:0;}100%{opacity:1;}}
 @keyframes r-q67da2{0%{transform:translateX(-100%);}100%{transform:translateX(400%);}}
-@keyframes r-t2lo5v{0%{opacity:1;}100%{opacity:0;}}</style><style id="expo-generated-fonts">@font-face{font-family:"SpaceMono";src:url("/assets/assets/fonts/SpaceMono-Regular.49a79d66bdea2debf1832bf4d7aca127.ttf");font-display:auto}</style><link rel="preload" href="/assets/assets/fonts/SpaceMono-Regular.49a79d66bdea2debf1832bf4d7aca127.ttf" as="font" crossorigin="" /><script type="module">globalThis.__EXPO_ROUTER_HYDRATE__=true;</script><link rel="icon" href="/favicon.ico" /></head><body><div id="savoriq-splash"><div class="logo">Savor<span>IQ</span></div><div class="tagline">Loading intelligence...</div><div class="spinner"></div></div><div id="root"><div class="css-g5y9jx r-13awgt0"><!--$--><div style="position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;visibility:hidden"></div><div class="css-g5y9jx r-13awgt0"><div aria-hidden="true" class="css-g5y9jx r-13awgt0 r-1p0dtai r-1d2f490 r-u8s1d r-zchlnj r-ipm5af" style="background-color:rgba(15,25,35,1.00);display:none"><div class="css-g5y9jx r-13awgt0"><div class="css-g5y9jx r-13awgt0"><!--$--><div class="css-g5y9jx r-1awozwy r-1g2m8m3 r-13awgt0 r-cxgwc0 r-oejqat" style="justify-content:center"><div role="progressbar" aria-valuemax="1" aria-valuemin="0" class="css-g5y9jx r-1awozwy r-1777fci"><div class="css-g5y9jx r-1r8g8re r-1acpoxo r-17bb2tj r-1muvv40 r-1yef0xd r-1ldzwu0"><svg height="100%" viewBox="0 0 32 32" width="100%"><circle cx="16" cy="16" fill="none" r="14" stroke-width="4" style="stroke:#fbbf24;opacity:0.2"></circle><circle cx="16" cy="16" fill="none" r="14" stroke-width="4" style="stroke:#fbbf24;stroke-dasharray:80;stroke-dashoffset:60"></circle></svg></div></div></div><!--/$--></div></div></div><div class="css-g5y9jx r-13awgt0 r-1p0dtai r-1d2f490 r-u8s1d r-zchlnj r-ipm5af" style="background-color:rgba(15,25,35,1.00);display:flex"><div class="css-g5y9jx r-184en5c r-12vffkv"><div class="css-g5y9jx r-12vffkv" style="height:64px"><div class="css-g5y9jx r-1p0dtai r-1d2f490 r-u8s1d r-zchlnj r-ipm5af r-12vffkv"><div class="css-g5y9jx r-qklmqi r-13awgt0 r-105ug2t" style="background-color:rgba(19,31,46,1.00);border-bottom-color:rgba(255,255,255,0.06)"></div></div><div class="css-g5y9jx r-633pao" style="height:0px"></div><div class="css-g5y9jx r-1oszu61 r-13awgt0 r-18u37iz r-12vffkv"><div class="css-g5y9jx r-1awozwy r-18u37iz r-1h0z5md r-12vffkv" style="margin-left:0px"><a href="/" aria-label="(tabs), back" role="link" tabindex="0" class="css-g5y9jx r-1otgn73 r-1awozwy r-1onu96p r-1dzdj1l r-18u37iz r-n5f61p r-jdiy1a r-60vfwk r-1e084wi" style="cursor:pointer;opacity:1"><div class="css-g5y9jx r-1mlwlqe r-1udh08x r-417010 r-1472mwg r-1bq2mok r-1e97lx8 r-lrsllp"><div class="css-g5y9jx r-1niwhzg r-vvn4in r-u6sd8q r-1p0dtai r-1pi2tsx r-1d2f490 r-u8s1d r-zchlnj r-ipm5af r-13qz1uu r-1wyyakw r-ehq7j7" style="filter:url(#tint-3)"></div><svg style="position:absolute;height:0;visibility:hidden;width:0"><defs><filter id="tint-3"><feFlood flood-color="#f1f5f9"></feFlood><feComposite in2="SourceAlpha" operator="in"></feComposite></filter></defs></svg></div></a></div><div class="css-g5y9jx r-1777fci r-12vffkv" style="max-width:-68px;margin-left:4px"><h1 dir="auto" aria-level="1" role="heading" class="css-146c3p1 r-dnmrzs r-1udh08x r-1udbk01 r-3s2u2q r-1iln25a r-1i10wst" style="color:rgba(241,245,249,1.00);font-family:system-ui, &quot;Segoe UI&quot;, Roboto, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;;font-weight:500">sync</h1></div><div class="css-g5y9jx r-1awozwy r-18u37iz r-17s6mgv r-1iusvr4 r-16y2uox r-12vffkv" style="margin-right:0px"></div></div></div></div><div class="css-g5y9jx r-13awgt0"><div class="css-g5y9jx r-13awgt0"><!--$--><div class="css-g5y9jx r-1g2m8m3 r-13awgt0"><div class="css-g5y9jx r-150rngu r-eqz5dr r-16y2uox r-1wbh5a2 r-11yh6sk r-1rnoaur r-agouwx"><div class="css-g5y9jx r-nsbfu8 r-z7lthc"><div class="css-g5y9jx"><div class="css-g5y9jx r-1peese0"><div dir="auto" class="css-146c3p1 r-1gnjku r-zz5t5d r-b88u0q">Add New Restaurant</div><div dir="auto" class="css-146c3p1 r-1npgj5g r-a023e6 r-14gqq1x">Search Google &amp; Yelp to fetch customer reviews</div></div><div class="css-g5y9jx r-1a4k6e8 r-1ottc9m r-1867qdf r-rs99b7 r-f4gmv6 r-zd98yo r-nsbfu8"><div class="css-g5y9jx r-ojf8lh"><div dir="auto" class="css-146c3p1 r-1npgj5g r-n6v787 r-1kfrs79">Business Name</div><input placeholder="e.g. Heytea Milpitas" autoCapitalize="sentences" autoComplete="on" autoCorrect="on" dir="auto" rows="1" spellCheck="true" virtualkeyboardpolicy="auto" class="css-11aywtz r-6taxm2 r-1abbpei r-1wioyrx r-1q9bdsx r-rs99b7 r-1gnjku r-a023e6 r-h3s6tt r-3pj75a" style="--placeholderTextColor:#64748b" value=""/></div><div class="css-g5y9jx r-ojf8lh"><div dir="auto" class="css-146c3p1 r-1npgj5g r-n6v787 r-1kfrs79">Location (Optional)</div><input placeholder="e.g. California" autoCapitalize="sentences" autoComplete="on" autoCorrect="on" dir="auto" rows="1" spellCheck="true" virtualkeyboardpolicy="auto" class="css-11aywtz r-6taxm2 r-1abbpei r-1wioyrx r-1q9bdsx r-rs99b7 r-1gnjku r-a023e6 r-h3s6tt r-3pj75a" style="--placeholderTextColor:#64748b" value=""/></div><div aria-disabled="true" tabindex="-1" class="css-g5y9jx r-1i6wzkk r-lrvibr r-1awozwy r-upglh3 r-1q9bdsx r-18u37iz r-1cmwbt1 r-h3s6tt r-1777fci r-14gqq1x r-12vffkv" style="opacity:0.6;transition-duration:0s"><div dir="auto" class="css-146c3p1"></div><div dir="auto" class="css-146c3p1 r-6nvquq r-a023e6 r-b88u0q">Search Platforms</div></div></div></div></div></div></div><!--/$--></div></div></div></div><!--/$--></div></div><script>
-                    window.addEventListener('savoriq-ready', function() {
-                        var splash = document.getElementById('savoriq-splash');
-                        if (splash) {
-                            splash.classList.add('hide');
-                            setTimeout(function() { splash.remove(); }, 400);
+@keyframes r-t2lo5v{0%{opacity:1;}100%{opacity:0;}}</style><style id="expo-generated-fonts">@font-face{font-family:"SpaceMono";src:url("/assets/assets/fonts/SpaceMono-Regular.49a79d66bdea2debf1832bf4d7aca127.ttf");font-display:auto}</style><link rel="preload" href="/assets/assets/fonts/SpaceMono-Regular.49a79d66bdea2debf1832bf4d7aca127.ttf" as="font" crossorigin="" /><script type="module">globalThis.__EXPO_ROUTER_HYDRATE__=true;</script><link rel="icon" href="/favicon.ico" /></head><body><div id="savoriq-splash"><div class="logo">Savor<span>IQ</span></div><div class="tagline">Loading intelligence...</div><div class="progress-container"><div class="progress-track"><div class="progress-fill" id="splash-progress-fill"></div></div><div class="progress-text" id="splash-progress-text">0%</div></div></div><div id="root"><div class="css-g5y9jx r-13awgt0"><!--$--><div style="position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;visibility:hidden"></div><div class="css-g5y9jx r-13awgt0"><div aria-hidden="true" class="css-g5y9jx r-13awgt0 r-1p0dtai r-1d2f490 r-u8s1d r-zchlnj r-ipm5af" style="background-color:rgba(15,25,35,1.00);display:none"><div class="css-g5y9jx r-13awgt0"><div class="css-g5y9jx r-13awgt0"><!--$--><div class="css-g5y9jx r-1awozwy r-1g2m8m3 r-13awgt0 r-cxgwc0 r-oejqat" style="justify-content:center"><div role="progressbar" aria-valuemax="1" aria-valuemin="0" class="css-g5y9jx r-1awozwy r-1777fci"><div class="css-g5y9jx r-1r8g8re r-1acpoxo r-17bb2tj r-1muvv40 r-1yef0xd r-1ldzwu0"><svg height="100%" viewBox="0 0 32 32" width="100%"><circle cx="16" cy="16" fill="none" r="14" stroke-width="4" style="stroke:#fbbf24;opacity:0.2"></circle><circle cx="16" cy="16" fill="none" r="14" stroke-width="4" style="stroke:#fbbf24;stroke-dasharray:80;stroke-dashoffset:60"></circle></svg></div></div></div><!--/$--></div></div></div><div class="css-g5y9jx r-13awgt0 r-1p0dtai r-1d2f490 r-u8s1d r-zchlnj r-ipm5af" style="background-color:rgba(15,25,35,1.00);display:flex"><div class="css-g5y9jx r-184en5c r-12vffkv"><div class="css-g5y9jx r-12vffkv" style="height:64px"><div class="css-g5y9jx r-1p0dtai r-1d2f490 r-u8s1d r-zchlnj r-ipm5af r-12vffkv"><div class="css-g5y9jx r-qklmqi r-13awgt0 r-105ug2t" style="background-color:rgba(19,31,46,1.00);border-bottom-color:rgba(255,255,255,0.06)"></div></div><div class="css-g5y9jx r-633pao" style="height:0px"></div><div class="css-g5y9jx r-1oszu61 r-13awgt0 r-18u37iz r-12vffkv"><div class="css-g5y9jx r-1awozwy r-18u37iz r-1h0z5md r-12vffkv" style="margin-left:0px"><a href="/" aria-label="(tabs), back" role="link" tabindex="0" class="css-g5y9jx r-1otgn73 r-1awozwy r-1onu96p r-1dzdj1l r-18u37iz r-n5f61p r-jdiy1a r-60vfwk r-1e084wi" style="cursor:pointer;opacity:1"><div class="css-g5y9jx r-1mlwlqe r-1udh08x r-417010 r-1472mwg r-1bq2mok r-1e97lx8 r-lrsllp"><div class="css-g5y9jx r-1niwhzg r-vvn4in r-u6sd8q r-1p0dtai r-1pi2tsx r-1d2f490 r-u8s1d r-zchlnj r-ipm5af r-13qz1uu r-1wyyakw r-ehq7j7" style="filter:url(#tint-3)"></div><svg style="position:absolute;height:0;visibility:hidden;width:0"><defs><filter id="tint-3"><feFlood flood-color="#f1f5f9"></feFlood><feComposite in2="SourceAlpha" operator="in"></feComposite></filter></defs></svg></div></a></div><div class="css-g5y9jx r-1777fci r-12vffkv" style="max-width:-68px;margin-left:4px"><h1 dir="auto" aria-level="1" role="heading" class="css-146c3p1 r-dnmrzs r-1udh08x r-1udbk01 r-3s2u2q r-1iln25a r-1i10wst" style="color:rgba(241,245,249,1.00);font-family:system-ui, &quot;Segoe UI&quot;, Roboto, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;;font-weight:500">sync</h1></div><div class="css-g5y9jx r-1awozwy r-18u37iz r-17s6mgv r-1iusvr4 r-16y2uox r-12vffkv" style="margin-right:0px"></div></div></div></div><div class="css-g5y9jx r-13awgt0"><div class="css-g5y9jx r-13awgt0"><!--$--><div class="css-g5y9jx r-1g2m8m3 r-13awgt0"><div class="css-g5y9jx r-150rngu r-eqz5dr r-16y2uox r-1wbh5a2 r-11yh6sk r-1rnoaur r-agouwx"><div class="css-g5y9jx r-nsbfu8 r-z7lthc"><div class="css-g5y9jx"><div class="css-g5y9jx r-1peese0"><div dir="auto" class="css-146c3p1 r-1gnjku r-zz5t5d r-b88u0q">Add New Restaurant</div><div dir="auto" class="css-146c3p1 r-1npgj5g r-a023e6 r-14gqq1x">Search Google &amp; Yelp to fetch customer reviews</div></div><div class="css-g5y9jx r-1a4k6e8 r-1ottc9m r-1867qdf r-rs99b7 r-f4gmv6 r-zd98yo r-nsbfu8"><div class="css-g5y9jx r-ojf8lh"><div dir="auto" class="css-146c3p1 r-1npgj5g r-n6v787 r-1kfrs79">Business Name</div><input placeholder="e.g. Heytea Milpitas" autoCapitalize="sentences" autoComplete="on" autoCorrect="on" dir="auto" rows="1" spellCheck="true" virtualkeyboardpolicy="auto" class="css-11aywtz r-6taxm2 r-1abbpei r-1wioyrx r-1q9bdsx r-rs99b7 r-1gnjku r-a023e6 r-h3s6tt r-3pj75a" style="--placeholderTextColor:#64748b" value=""/></div><div class="css-g5y9jx r-ojf8lh"><div dir="auto" class="css-146c3p1 r-1npgj5g r-n6v787 r-1kfrs79">Location (Optional)</div><input placeholder="e.g. California" autoCapitalize="sentences" autoComplete="on" autoCorrect="on" dir="auto" rows="1" spellCheck="true" virtualkeyboardpolicy="auto" class="css-11aywtz r-6taxm2 r-1abbpei r-1wioyrx r-1q9bdsx r-rs99b7 r-1gnjku r-a023e6 r-h3s6tt r-3pj75a" style="--placeholderTextColor:#64748b" value=""/></div><div aria-disabled="true" tabindex="-1" class="css-g5y9jx r-1i6wzkk r-lrvibr r-1awozwy r-upglh3 r-1q9bdsx r-18u37iz r-1cmwbt1 r-h3s6tt r-1777fci r-14gqq1x r-12vffkv" style="opacity:0.6;transition-duration:0s"><div dir="auto" class="css-146c3p1"></div><div dir="auto" class="css-146c3p1 r-6nvquq r-a023e6 r-b88u0q">Search Platforms</div></div></div></div></div></div></div><!--/$--></div></div></div></div><!--/$--></div></div><script>
+                    (function() {
+                        var fill = document.getElementById('splash-progress-fill');
+                        var text = document.getElementById('splash-progress-text');
+                        var progress = 0;
+                        var resourceCount = 0;
+                        var startTime = Date.now();
+
+                        function setProgress(p) {
+                            p = Math.min(Math.round(p), 100);
+                            if (p <= progress) return;
+                            progress = p;
+                            if (fill) fill.style.width = p + '%';
+                            if (text) text.textContent = p + '%';
                         }
-                    });
-                </script><script src="/_expo/static/js/web/entry-2cbf70bc22ef502a491c3d09c1ad5b68.js" defer></script>
+
+                        // Phase 1: HTML parsed (instant → 10%)
+                        setProgress(10);
+
+                        // Phase 2: Track resource loading with PerformanceObserver
+                        if (window.PerformanceObserver) {
+                            try {
+                                var observer = new PerformanceObserver(function(list) {
+                                    resourceCount += list.getEntries().length;
+                                    // Estimate: each resource bump = ~3-5%, cap at 80%
+                                    var resourceProgress = Math.min(10 + resourceCount * 4, 80);
+                                    setProgress(resourceProgress);
+                                });
+                                observer.observe({ type: 'resource', buffered: true });
+                            } catch(e) {}
+                        }
+
+                        // Phase 3: Smooth time-based progression for visual feedback
+                        var interval = setInterval(function() {
+                            var elapsed = Date.now() - startTime;
+                            // Logarithmic curve: fast at start, slows approaching 90%
+                            var timeBased = Math.min(10 + Math.log(1 + elapsed / 100) * 12, 92);
+                            if (timeBased > progress) setProgress(Math.round(timeBased));
+                            if (progress >= 92) clearInterval(interval);
+                        }, 100);
+
+                        // Phase 4: App ready → 100% and hide
+                        window.addEventListener('savoriq-ready', function() {
+                            clearInterval(interval);
+                            setProgress(100);
+                            var splash = document.getElementById('savoriq-splash');
+                            if (splash) {
+                                setTimeout(function() {
+                                    splash.classList.add('hide');
+                                    setTimeout(function() { splash.remove(); }, 400);
+                                }, 300);
+                            }
+                        });
+                    })();
+                </script><script src="/_expo/static/js/web/entry-30e4170301e3bbf9c9f549ce0abd0c26.js" defer></script>
 </body></html>

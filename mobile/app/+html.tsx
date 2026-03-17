@@ -3,7 +3,7 @@ import type { PropsWithChildren } from 'react';
 
 /**
  * Custom HTML root for Expo Web.
- * Injects a branded splash screen that shows instantly (before React hydrates).
+ * Injects a branded splash screen with progress indicator that shows instantly.
  * Once React renders, the splash is removed by dispatching 'savoriq-ready'.
  */
 export default function Root({ children }: PropsWithChildren) {
@@ -50,19 +50,36 @@ export default function Root({ children }: PropsWithChildren) {
                     #savoriq-splash .tagline {
                         font-size: 13px;
                         color: #6B7280;
-                        margin-bottom: 32px;
+                        margin-bottom: 28px;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     }
-                    #savoriq-splash .spinner {
-                        width: 28px;
-                        height: 28px;
-                        border: 3px solid #1C2333;
-                        border-top-color: #D4A84B;
-                        border-radius: 50%;
-                        animation: spin 0.8s linear infinite;
+                    #savoriq-splash .progress-container {
+                        width: 200px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 10px;
                     }
-                    @keyframes spin {
-                        to { transform: rotate(360deg); }
+                    #savoriq-splash .progress-track {
+                        width: 100%;
+                        height: 3px;
+                        background: #1C2333;
+                        border-radius: 3px;
+                        overflow: hidden;
+                    }
+                    #savoriq-splash .progress-fill {
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(90deg, #D4A84B, #E8C66A);
+                        border-radius: 3px;
+                        transition: width 0.3s ease;
+                    }
+                    #savoriq-splash .progress-text {
+                        font-size: 12px;
+                        font-weight: 500;
+                        color: #4B5563;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        font-variant-numeric: tabular-nums;
                     }
                     /* Prevent body scroll while splash is visible */
                     body { background: #05070A; }
@@ -73,22 +90,74 @@ export default function Root({ children }: PropsWithChildren) {
                 <div id="savoriq-splash">
                     <div className="logo">Savor<span>IQ</span></div>
                     <div className="tagline">Loading intelligence...</div>
-                    <div className="spinner" />
+                    <div className="progress-container">
+                        <div className="progress-track">
+                            <div className="progress-fill" id="splash-progress-fill" />
+                        </div>
+                        <div className="progress-text" id="splash-progress-text">0%</div>
+                    </div>
                 </div>
 
                 {children}
 
-                {/* Remove splash once app signals readiness */}
+                {/* Progress tracking and splash removal */}
                 <script dangerouslySetInnerHTML={{ __html: `
-                    window.addEventListener('savoriq-ready', function() {
-                        var splash = document.getElementById('savoriq-splash');
-                        if (splash) {
-                            splash.classList.add('hide');
-                            setTimeout(function() { splash.remove(); }, 400);
+                    (function() {
+                        var fill = document.getElementById('splash-progress-fill');
+                        var text = document.getElementById('splash-progress-text');
+                        var progress = 0;
+                        var resourceCount = 0;
+                        var startTime = Date.now();
+
+                        function setProgress(p) {
+                            p = Math.min(Math.round(p), 100);
+                            if (p <= progress) return;
+                            progress = p;
+                            if (fill) fill.style.width = p + '%';
+                            if (text) text.textContent = p + '%';
                         }
-                    });
+
+                        // Phase 1: HTML parsed (instant → 10%)
+                        setProgress(10);
+
+                        // Phase 2: Track resource loading with PerformanceObserver
+                        if (window.PerformanceObserver) {
+                            try {
+                                var observer = new PerformanceObserver(function(list) {
+                                    resourceCount += list.getEntries().length;
+                                    // Estimate: each resource bump = ~3-5%, cap at 80%
+                                    var resourceProgress = Math.min(10 + resourceCount * 4, 80);
+                                    setProgress(resourceProgress);
+                                });
+                                observer.observe({ type: 'resource', buffered: true });
+                            } catch(e) {}
+                        }
+
+                        // Phase 3: Smooth time-based progression for visual feedback
+                        var interval = setInterval(function() {
+                            var elapsed = Date.now() - startTime;
+                            // Logarithmic curve: fast at start, slows approaching 90%
+                            var timeBased = Math.min(10 + Math.log(1 + elapsed / 100) * 12, 92);
+                            if (timeBased > progress) setProgress(Math.round(timeBased));
+                            if (progress >= 92) clearInterval(interval);
+                        }, 100);
+
+                        // Phase 4: App ready → 100% and hide
+                        window.addEventListener('savoriq-ready', function() {
+                            clearInterval(interval);
+                            setProgress(100);
+                            var splash = document.getElementById('savoriq-splash');
+                            if (splash) {
+                                setTimeout(function() {
+                                    splash.classList.add('hide');
+                                    setTimeout(function() { splash.remove(); }, 400);
+                                }, 300);
+                            }
+                        });
+                    })();
                 `}} />
             </body>
         </html>
     );
 }
+
