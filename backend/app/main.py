@@ -5,6 +5,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 start_time = time.time()
 
@@ -53,8 +56,9 @@ from fastapi.responses import JSONResponse
 # Access Key Middleware
 @app.middleware("http")
 async def access_control_middleware(request: Request, call_next):
-    # Skip check for health, root, and OPTIONS preflight
-    if request.method == "OPTIONS" or request.url.path in ["/health", "/"]:
+    # Skip check for health, root, OPTIONS, and static files
+    path = request.url.path
+    if request.method == "OPTIONS" or path in ["/health", "/"] or not path.startswith("/api"):
         return await call_next(request)
     
     # Skip check if no key is configured on server
@@ -80,15 +84,32 @@ app.include_router(sync.router)
 app.include_router(admin.router)
 
 
-@app.get("/")
-async def root():
-    return {
-        "message": "SavorIQ API is running",
-        "health_check": "/health",
-        "admin_dashboard": "http://localhost:5174"
-    }
-
-
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": settings.APP_NAME}
+
+# Serve the Expo web build if available
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+if os.path.isdir(STATIC_DIR):
+    # Mount static assets (JS, CSS, images, etc.)
+    app.mount("/_expo", StaticFiles(directory=os.path.join(STATIC_DIR, "_expo")), name="expo_assets")
+    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="static_assets")
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """SPA fallback — serve index.html for any non-API, non-file path."""
+        file_path = os.path.join(STATIC_DIR, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "message": "SavorIQ API is running",
+            "health_check": "/health",
+        }
