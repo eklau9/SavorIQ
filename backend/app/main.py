@@ -88,6 +88,24 @@ app.include_router(admin.router)
 async def health():
     return {"status": "ok", "service": settings.APP_NAME}
 
+
+@app.get("/debug-web")
+async def debug_web():
+    """Debug endpoint to check static file serving."""
+    static_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
+    index_path = os.path.join(static_dir, "index.html")
+    exists = os.path.isfile(index_path)
+    files = []
+    if os.path.isdir(static_dir):
+        files = os.listdir(static_dir)[:20]
+    return {
+        "static_dir": static_dir,
+        "index_exists": exists,
+        "dir_exists": os.path.isdir(static_dir),
+        "files_in_static": files,
+        "version": "v4-unconditional"
+    }
+
 # Serve the Expo web build if available, otherwise JSON root
 import mimetypes
 STATIC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
