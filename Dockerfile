@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/app/ app/
 COPY backend/static/ static/
+RUN echo "deployed $(date)"
 
 # Railway assigns PORT via environment variable
 EXPOSE ${PORT:-8000}
