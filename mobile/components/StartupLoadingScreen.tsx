@@ -50,7 +50,7 @@ export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({ onSk
     const [showSkip, setShowSkip] = useState(false);
     const skipFadeAnim = useRef(new Animated.Value(0)).current;
 
-    // Show skip button after 3.5 seconds
+    // Show skip button after 1.5 seconds
     useEffect(() => {
         const timer = setTimeout(() => {
             setShowSkip(true);
@@ -59,7 +59,7 @@ export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({ onSk
                 duration: 400,
                 useNativeDriver: true,
             }).start();
-        }, 3500);
+        }, 1500);
         return () => clearTimeout(timer);
     }, [skipFadeAnim]);
 
