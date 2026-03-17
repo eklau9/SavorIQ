@@ -81,6 +81,28 @@ export default function Root({ children }: PropsWithChildren) {
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                         font-variant-numeric: tabular-nums;
                     }
+                    #savoriq-splash .skip-btn {
+                        margin-top: 24px;
+                        padding: 8px 20px;
+                        border: 1px solid rgba(212, 168, 75, 0.3);
+                        border-radius: 50px;
+                        background: rgba(212, 168, 75, 0.08);
+                        color: #D4A84B;
+                        font-size: 13px;
+                        font-weight: 600;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        cursor: pointer;
+                        opacity: 0;
+                        transition: opacity 0.4s ease;
+                        pointer-events: none;
+                    }
+                    #savoriq-splash .skip-btn.visible {
+                        opacity: 1;
+                        pointer-events: auto;
+                    }
+                    #savoriq-splash .skip-btn:active {
+                        background: rgba(212, 168, 75, 0.15);
+                    }
                     /* Prevent body scroll while splash is visible */
                     body { background: #05070A; }
                 `}} />
@@ -96,6 +118,7 @@ export default function Root({ children }: PropsWithChildren) {
                         </div>
                         <div className="progress-text" id="splash-progress-text">0%</div>
                     </div>
+                    <button className="skip-btn" id="splash-skip-btn">Skip →</button>
                 </div>
 
                 {children}
@@ -105,6 +128,7 @@ export default function Root({ children }: PropsWithChildren) {
                     (function() {
                         var fill = document.getElementById('splash-progress-fill');
                         var text = document.getElementById('splash-progress-text');
+                        var skipBtn = document.getElementById('splash-skip-btn');
                         var progress = 0;
                         var resourceCount = 0;
                         var startTime = Date.now();
@@ -117,6 +141,15 @@ export default function Root({ children }: PropsWithChildren) {
                             if (text) text.textContent = p + '%';
                         }
 
+                        function dismissSplash() {
+                            clearInterval(interval);
+                            var splash = document.getElementById('savoriq-splash');
+                            if (splash) {
+                                splash.classList.add('hide');
+                                setTimeout(function() { splash.remove(); }, 400);
+                            }
+                        }
+
                         // Phase 1: HTML parsed (instant → 10%)
                         setProgress(10);
 
@@ -125,7 +158,6 @@ export default function Root({ children }: PropsWithChildren) {
                             try {
                                 var observer = new PerformanceObserver(function(list) {
                                     resourceCount += list.getEntries().length;
-                                    // Estimate: each resource bump = ~3-5%, cap at 80%
                                     var resourceProgress = Math.min(10 + resourceCount * 4, 80);
                                     setProgress(resourceProgress);
                                 });
@@ -133,26 +165,31 @@ export default function Root({ children }: PropsWithChildren) {
                             } catch(e) {}
                         }
 
-                        // Phase 3: Smooth time-based progression for visual feedback
+                        // Phase 3: Smooth time-based progression (no hard cap — keeps creeping)
                         var interval = setInterval(function() {
                             var elapsed = Date.now() - startTime;
-                            // Logarithmic curve: fast at start, slows approaching 90%
-                            var timeBased = Math.min(10 + Math.log(1 + elapsed / 100) * 12, 92);
-                            if (timeBased > progress) setProgress(Math.round(timeBased));
-                            if (progress >= 92) clearInterval(interval);
+                            var timeBased = 10 + Math.log(1 + elapsed / 100) * 12;
+                            // Asymptotic: slows dramatically but never fully stops
+                            if (timeBased > 95) timeBased = 95 + (timeBased - 95) * 0.1;
+                            if (timeBased > progress) setProgress(Math.round(Math.min(timeBased, 99)));
                         }, 100);
+
+                        // Show skip button after 2 seconds
+                        setTimeout(function() {
+                            if (skipBtn) skipBtn.classList.add('visible');
+                        }, 2000);
+
+                        // Skip button handler
+                        if (skipBtn) {
+                            skipBtn.addEventListener('click', function() {
+                                dismissSplash();
+                            });
+                        }
 
                         // Phase 4: App ready → 100% and hide
                         window.addEventListener('savoriq-ready', function() {
-                            clearInterval(interval);
                             setProgress(100);
-                            var splash = document.getElementById('savoriq-splash');
-                            if (splash) {
-                                setTimeout(function() {
-                                    splash.classList.add('hide');
-                                    setTimeout(function() { splash.remove(); }, 400);
-                                }, 300);
-                            }
+                            setTimeout(dismissSplash, 300);
                         });
                     })();
                 `}} />

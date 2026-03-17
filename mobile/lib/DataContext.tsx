@@ -203,7 +203,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setEstimatedSecondsRemaining(Math.ceil(remaining));
 
             setProgress(prev => {
-                if (prev < 90) return prev + 2;
+                // Fast ramp to 85, then slow asymptotic creep toward 98
+                if (prev < 85) return prev + 2;
+                if (prev < 98) return prev + 0.3;
                 return prev;
             });
             
