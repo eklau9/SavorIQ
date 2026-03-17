@@ -89,24 +89,43 @@ async def health():
     return {"status": "ok", "service": settings.APP_NAME}
 
 # Serve the Expo web build if available
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
-if os.path.isdir(STATIC_DIR):
-    # Mount static assets (JS, CSS, images, etc.)
-    app.mount("/_expo", StaticFiles(directory=os.path.join(STATIC_DIR, "_expo")), name="expo_assets")
-    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="static_assets")
+STATIC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
+_index_html = os.path.join(STATIC_DIR, "index.html")
+
+if os.path.isfile(_index_html):
+    import mimetypes
+    print(f"INFO: Serving web app from {STATIC_DIR}")
+
+    # Mount each subdirectory that exists as a static mount
+    for subdir in ["_expo", "assets", "static"]:
+        subdir_path = os.path.join(STATIC_DIR, subdir)
+        if os.path.isdir(subdir_path):
+            app.mount(f"/{subdir}", StaticFiles(directory=subdir_path), name=f"static_{subdir}")
+            print(f"INFO:   Mounted /{subdir} -> {subdir_path}")
 
     @app.get("/")
     async def serve_index():
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        return FileResponse(_index_html)
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        """SPA fallback — serve index.html for any non-API, non-file path."""
+        """SPA fallback — serve static file if it exists, otherwise index.html."""
         file_path = os.path.join(STATIC_DIR, full_path)
         if os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+            content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+            return FileResponse(file_path, media_type=content_type)
+        # Check for .html extension (Expo static export creates route.html files)
+        html_path = file_path + ".html"
+        if os.path.isfile(html_path):
+            return FileResponse(html_path, media_type="text/html")
+        # Check for index.html in subdirectory
+        index_path = os.path.join(file_path, "index.html")
+        if os.path.isfile(index_path):
+            return FileResponse(index_path, media_type="text/html")
+        return FileResponse(_index_html, media_type="text/html")
 else:
+    print(f"INFO: No web app found at {STATIC_DIR}, serving API only")
+
     @app.get("/")
     async def root():
         return {
