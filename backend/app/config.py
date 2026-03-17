@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Gemini AI for Deep Sentiment
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-flash-latest"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     # Google Places API (New)
     GOOGLE_PLACES_API_KEY: str = ""

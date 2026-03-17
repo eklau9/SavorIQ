@@ -112,6 +112,14 @@ export default function QuotasPage() {
           <span className={`toggle-arrow ${apifyExpanded ? 'expanded' : ''}`}>▶</span>
           <span className="dot" />
           Apify Token Waterfall — {data?.apify?.filter(t => t.is_active).length ?? 0} of {data?.apify?.length ?? 0} active
+          {(() => {
+            const tokens = data?.apify ?? []
+            const totalMax = tokens.reduce((s, t) => s + (t.max_usd || 0), 0)
+            const totalRemaining = tokens.reduce((s, t) => s + (t.remaining_usd || 0), 0)
+            const pct = totalMax > 0 ? Math.round((totalRemaining / totalMax) * 100) : 0
+            const color = pct < 20 ? 'var(--accent-rose)' : pct < 50 ? 'var(--accent-gold)' : 'var(--accent-emerald)'
+            return <span style={{ marginLeft: 10, fontSize: '12px', fontWeight: 500, color }}>· {pct}% remaining</span>
+          })()}
         </div>
         {apifyExpanded && (
           <div className="token-grid">
@@ -229,20 +237,25 @@ export default function QuotasPage() {
           <ServiceCard title="Google Gemini AI" icon="✨">
             {data?.google?.gemini?.configured ? (
               <>
+                {data.google.gemini.model && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: 8, fontFamily: 'monospace' }}>
+                    Model: {data.google.gemini.model}
+                  </div>
+                )}
                 <div className="token-stats" style={{ marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div className="stat-label">Minute Burst (RPM)</div>
                     <div className="stat-value" style={{ color: data.google.gemini.usage.rpm >= 13 ? 'var(--accent-rose)' : data.google.gemini.usage.rpm >= 8 ? 'var(--accent-gold)' : 'var(--accent-emerald)' }}>
                       {data.google.gemini.usage.rpm} / {data.google.gemini.usage.rpm_limit}
                     </div>
-                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: 2 }}>Limit: 15 per minute</div>
+                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: 2 }}>Limit: {data.google.gemini.usage.rpm_limit} per minute</div>
                   </div>
                   <div style={{ flex: 1, textAlign: 'right' }}>
                     <div className="stat-label">Daily Quota (RPD)</div>
-                    <div className="stat-value" style={{ color: 'var(--text-secondary)' }}>
+                    <div className="stat-value" style={{ color: data.google.gemini.usage.rpd >= data.google.gemini.usage.rpd_limit ? 'var(--accent-rose)' : 'var(--text-secondary)' }}>
                       {data.google.gemini.usage.rpd} / {data.google.gemini.usage.rpd_limit}
                     </div>
-                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: 2 }}>Limit: 1,500 per day</div>
+                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: 2 }}>Limit: {data.google.gemini.usage.rpd_limit.toLocaleString()} per day</div>
                   </div>
                 </div>
                 

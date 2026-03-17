@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -12,9 +12,23 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import * as Location from 'expo-location';
-import { searchBusiness, syncApifyReviews, fetchSyncStatus, UnifiedBusiness } from '@/lib/api';
+import { 
+    searchBusiness, 
+    syncApifyReviews, 
+    fetchSyncStatus, 
+    fetchSyncProgress,
+    fetchLatestSyncResults,
+    cancelSync,
+    cancelAllSyncs,
+    autocompleteBusiness,
+    getActiveRestaurantId,
+    UnifiedBusiness,
+    AutocompleteSuggestion,
+} from '@/lib/api';
 import { calculateDistance } from '../lib/geo';
 import { SyncConfirmOverlay } from '@/components/SyncConfirmOverlay';
+import { SyncProgressOverlay } from '@/components/SyncProgressOverlay';
+import { SyncReportOverlay } from '@/components/SyncReportOverlay';
 
 export default function SyncScreen() {
     const router = useRouter();
@@ -26,12 +40,124 @@ export default function SyncScreen() {
     const [syncHistory, setSyncHistory] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [pendingSync, setPendingSync] = useState<UnifiedBusiness | null>(null);
 
+    // Report state
+    const [showReport, setShowReport] = useState(false);
+    const [syncResults, setSyncResults] = useState<any[]>([]);
+
+    // Progress state
+    const [showProgress, setShowProgress] = useState(false);
+    const [progressPercent, setProgressPercent] = useState(0);
+    const [syncStatusText, setSyncStatusText] = useState('Starting...');
+    const [processedCount, setProcessedCount] = useState(0);
+    const [totalValidCount, setTotalValidCount] = useState(0);
+    const [estRemaining, setEstRemaining] = useState<number | undefined>(undefined);
+
+    // Polling ref
+    const pollIntervalRef = React.useRef<any>(null);
+    const abortControllerRef = React.useRef<AbortController | null>(null);
+
+    // Debounce ref for search-as-you-type
+    const debounceRef = useRef<any>(null);
+
+    // Fetch GPS once on mount
     useEffect(() => {
         loadStatus();
+        (async () => {
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const pos = await Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                    });
+                    setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    console.log(`[Sync] GPS cached: ${pos.coords.latitude}, ${pos.coords.longitude}`);
+                }
+            } catch (e) {
+                console.warn('[Sync] GPS unavailable:', e);
+            }
+        })();
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
     }, []);
+
+    // Debounced autocomplete when name changes (lightweight, no full search)
+    useEffect(() => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        if (!name.trim() || name.trim().length < 3) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        debounceRef.current = setTimeout(async () => {
+            try {
+                const data = await autocompleteBusiness(
+                    name.trim(),
+                    userCoords?.lat,
+                    userCoords?.lng,
+                );
+                setSuggestions(data);
+                setShowSuggestions(data.length > 0);
+            } catch (e) {
+                console.warn('[Autocomplete] Error:', e);
+            }
+        }, 300);
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, [name]);
+
+    const stopPolling = () => {
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+    };
+
+    const startPolling = (restaurantId: string) => {
+        stopPolling();
+        pollIntervalRef.current = setInterval(async () => {
+            try {
+                const prog = await fetchSyncProgress(restaurantId);
+                if (prog && prog.active) {
+                    // Only accept backend progress if it's HIGHER (never go backwards)
+                    setProgressPercent(prev => Math.max(prev, prog.percent || 0));
+                    setSyncStatusText(prog.status || '');
+                    setProcessedCount(prog.processed_count || 0);
+                    setTotalValidCount(prog.total_count || 0);
+                    setEstRemaining(prog.estimated_seconds_remaining);
+
+                    if (!prog.active && prog.percent === 100) {
+                        stopPolling();
+                    }
+                }
+            } catch (e) {
+                // Silently ignore polling errors (timeouts during heavy backend work)
+            }
+        }, 2000);
+    };
+
+    const handleCancelSync = async () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        stopPolling();
+        setShowProgress(false);
+        setSyncing({});
+        // Cancel ALL active syncs on the backend — we don't know the new restaurant's ID
+        try {
+            await cancelAllSyncs();
+        } catch (e) {
+            console.warn('Backend cancel-all failed:', e);
+        }
+    };
 
     const loadStatus = async () => {
         try {
@@ -44,29 +170,15 @@ export default function SyncScreen() {
         if (!name.trim()) return;
         setSearching(true);
         setError(null);
-        setResults(null);
 
         try {
-            let lat: number | null = null;
-            let lng: number | null = null;
+            let lat: number | null = userCoords?.lat ?? null;
+            let lng: number | null = userCoords?.lng ?? null;
 
-            // Only fetch GPS if manual location is NOT provided
-            if (!location.trim()) {
-                try {
-                    const { status } = await Location.requestForegroundPermissionsAsync();
-                    if (status === 'granted') {
-                        const pos = await Location.getCurrentPositionAsync({
-                            accuracy: Location.Accuracy.Balanced,
-                        });
-                        lat = pos.coords.latitude;
-                        lng = pos.coords.longitude;
-                        setUserCoords({ lat, lng });
-                        console.log(`[Sync] Using GPS bias: ${lat}, ${lng}`);
-                    }
-                } catch (gpsError) {
-                    console.warn('[Sync] Could not fetch GPS location:', gpsError);
-                    // Fallback to generic search if GPS fails
-                }
+            // Use location text override if provided, otherwise use cached GPS
+            if (location.trim()) {
+                lat = null;
+                lng = null;
             }
 
             const data = await searchBusiness(name.trim(), location.trim(), lat, lng);
@@ -114,68 +226,153 @@ export default function SyncScreen() {
 
         const key = item.id;
         setSyncing(prev => ({ ...prev, [key]: true }));
+        setShowProgress(true);
+        setProgressPercent(0);
+        setSyncStatusText('Initializing sync...');
+        
+        abortControllerRef.current = new AbortController();
+
+        // Start polling for backend progress if we have a restaurant ID
+        const activeId = await getActiveRestaurantId();
+        if (activeId) {
+            startPolling(activeId);
+        }
+
+        // Simulated progress: Smoothly ticks up while waiting for the actual sync response.
+        // This guarantees visible progress even for brand-new restaurants where the
+        // backend restaurant_id isn't known yet (polling returns idle/0%).
+        const SYNC_PHASES = [
+            { pct: 5,  at: 2,   msg: 'Connecting to platforms...' },
+            { pct: 10, at: 5,   msg: 'Checking live review counts...' },
+            { pct: 15, at: 10,  msg: 'Scraping reviews...' },
+            { pct: 25, at: 20,  msg: 'Scraping reviews...' },
+            { pct: 35, at: 40,  msg: 'Downloading review data...' },
+            { pct: 45, at: 60,  msg: 'Processing reviews...' },
+            { pct: 55, at: 90,  msg: 'Ingesting reviews into database...' },
+            { pct: 65, at: 120, msg: 'Running sentiment analysis...' },
+            { pct: 75, at: 180, msg: 'Analyzing sentiment batches...' },
+            { pct: 82, at: 240, msg: 'Almost there...' },
+            { pct: 88, at: 300, msg: 'Finalizing sync...' },
+        ];
+        const startTime = Date.now();
+        const simIntervalRef = setInterval(() => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            // Find the highest phase we've passed
+            let simPct = 0;
+            let simMsg = 'Initializing sync...';
+            for (const phase of SYNC_PHASES) {
+                if (elapsed >= phase.at) {
+                    simPct = phase.pct;
+                    simMsg = phase.msg;
+                }
+            }
+            // Only update if simulated progress is AHEAD of what polling returned
+            setProgressPercent(prev => Math.max(prev, simPct));
+            setSyncStatusText(prev => {
+                // Don't overwrite real backend status if polling is working
+                if (prev.includes('batch') || prev.includes('Ingesting')) return prev;
+                return simMsg;
+            });
+        }, 1000);
+
         try {
-            const syncTasks = [];
+            // Run platform syncs SEQUENTIALLY to prevent duplicate restaurant creation.
+            // The first call creates the restaurant and returns its ID as tracking_id.
+            // The second call reuses that ID.
+            let primaryTrackingId: string | null = null;
+            const syncResults: any[] = [];
+
             if (item.google) {
-                syncTasks.push(syncApifyReviews('google', item.google.url || item.google.id, item.google.name, item.google.address, true));
+                const res = await syncApifyReviews('google', item.google.url || item.google.id, item.google.name, item.google.address, true, abortControllerRef.current.signal);
+                syncResults.push(res);
+                if (res?.tracking_id) primaryTrackingId = res.tracking_id;
             }
             if (item.yelp) {
-                syncTasks.push(syncApifyReviews('yelp', item.yelp.url || item.yelp.id, item.yelp.name, item.yelp.address, true));
+                const res = await syncApifyReviews('yelp', item.yelp.url || item.yelp.id, item.yelp.name, item.yelp.address, true, abortControllerRef.current.signal, primaryTrackingId ?? undefined);
+                syncResults.push(res);
+                if (!primaryTrackingId && res?.tracking_id) primaryTrackingId = res.tracking_id;
             }
 
-            const syncResults = await Promise.all(syncTasks);
 
-            // Calculate total new reviews across platforms
-            const newReviews = syncResults.reduce((acc, res) => acc + (res.new_ingested || 0), 0);
-            const totalFetched = syncResults.reduce((acc, res) => acc + (res.total_fetched || 0), 0);
-
-            loadStatus();
-
-            // Update the item in the local results list to reflect the new sync status
-            setResults(prev => {
-                if (!prev) return prev;
-                return prev.map(r => {
-                    if (r.id === item.id) {
-                        const now = new Date().toISOString();
-                        const updatePlatform = (p: any) => p ? {
-                            ...p,
-                            last_sync: {
-                                last_synced_at: now,
-                                ago: 'just now',
-                                on_cooldown: true,
-                                cooldown_remaining_minutes: 60,
-                                reviews_fetched: totalFetched,
-                                new_reviews: newReviews
-                            }
-                        } : p;
-                        return {
-                            ...r,
-                            google: updatePlatform(r.google),
-                            yelp: updatePlatform(r.yelp),
-                        };
+            if (primaryTrackingId) {
+                // Also start the existing polling mechanism with the tracking ID
+                startPolling(primaryTrackingId);
+                
+                // Poll until complete
+                const maxWait = 600; // 10 minutes max
+                let waited = 0;
+                let lastProgress: any = null;
+                while (waited < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    waited += 3;
+                    try {
+                        const progress = await fetchSyncProgress(primaryTrackingId);
+                        lastProgress = progress;
+                        if (progress?.percent >= 100) {
+                            clearInterval(simIntervalRef);
+                            setProgressPercent(100);
+                            setSyncStatusText('Sync Complete!');
+                            loadStatus();
+                            break;
+                        }
+                        if (progress?.status?.startsWith('Sync failed')) {
+                            throw new Error(progress.status);
+                        }
+                        // Update from real backend progress
+                        if (progress?.percent > 0) {
+                            setProgressPercent(prev => Math.max(prev, progress.percent));
+                            setSyncStatusText(progress.status || 'Syncing...');
+                        }
+                    } catch (pollErr) {
+                        // Polling failed — don't crash, just continue with simulated progress
                     }
-                    return r;
-                });
-            });
+                }
 
-            if (newReviews > 0) {
-                alert(`✅ Sync Complete for ${item.name}!\n\nFetched ${totalFetched} reviews and added ${newReviews} new entries to your dashboard.`);
+                // Fetch real per-platform results from sync_logs DB
+                try {
+                    const dbResults = await fetchLatestSyncResults(primaryTrackingId);
+                    if (dbResults && dbResults.length > 0) {
+                        setSyncResults(dbResults);
+                        setShowProgress(false);
+                        setShowReport(true);
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch sync results:', e);
+                }
             } else {
-                alert(`✅ Sync Complete for ${item.name}!\n\nYour data is already up to date. No new reviews found.`);
+                // No restaurant ID to poll — just wait a bit with simulated progress
+                await new Promise(resolve => setTimeout(resolve, 30000));
+                clearInterval(simIntervalRef);
+                setProgressPercent(100);
+                setSyncStatusText('Sync Complete!');
             }
         } catch (e: any) {
+            clearInterval(simIntervalRef);
+            if (e.name === 'AbortError') return;
             console.error('[Sync] Error during sync:', e);
-            alert(`❌ Sync failed: ${e.message}`);
+            // Auto-dismiss the overlay and show an alert
+            setShowProgress(false);
+            setSyncStatusText('');
+            setProgressPercent(0);
+            const msg = e.message === 'Failed to fetch' 
+                ? 'Could not reach the server. Make sure the backend is running.'
+                : (e.message || 'Sync failed unexpectedly.');
+            setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                    window.alert(`⚠️ Sync Error\n\n${msg}`);
+                }
+            }, 100);
         } finally {
+            clearInterval(simIntervalRef);
+            stopPolling();
             setSyncing(prev => ({ ...prev, [key]: false }));
+            abortControllerRef.current = null;
         }
     };
 
     const renderBizCard = ({ item }: { item: UnifiedBusiness }) => {
-        const cooldownMeta = item.google?.last_sync?.on_cooldown ? item.google.last_sync : item.yelp?.last_sync;
-        const onCooldown = cooldownMeta?.on_cooldown;
-        const cooldownText = cooldownMeta?.ago;
-        const readyIn = cooldownMeta?.cooldown_remaining_minutes;
+        const lastSyncMeta = item.google?.last_sync || item.yelp?.last_sync;
+        const lastSyncText = lastSyncMeta?.ago;
         const isSyncing = syncing[item.id];
 
         const platforms = [];
@@ -221,13 +418,8 @@ export default function SyncScreen() {
                     </View>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    {onCooldown && !isSyncing && (
-                        <View style={{ alignItems: 'flex-end' }}>
-                            {readyIn ? (
-                                <Text style={s.readyText}>Ready in ~{readyIn}m</Text>
-                            ) : null}
-                            <Text style={s.cooldownText}>Synced {cooldownText}</Text>
-                        </View>
+                    {lastSyncText && !isSyncing && (
+                        <Text style={s.cooldownText}>Synced {lastSyncText}</Text>
                     )}
                     <TouchableOpacity
                         style={[s.syncBtn, isSyncing && { opacity: 0.6 }]}
@@ -270,8 +462,42 @@ export default function SyncScreen() {
                                     placeholder="e.g. Heytea Milpitas"
                                     placeholderTextColor={colors.text.muted}
                                     value={name}
-                                    onChangeText={setName}
+                                    onChangeText={(text) => {
+                                        setName(text);
+                                        if (!text.trim()) {
+                                            setSuggestions([]);
+                                            setShowSuggestions(false);
+                                        }
+                                    }}
                                 />
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <View style={s.suggestionsDropdown}>
+                                        {suggestions.map((s_item, idx) => (
+                                            <TouchableOpacity
+                                                key={`${s_item.source}-${idx}`}
+                                                style={[s.suggestionItem, idx > 0 && s.suggestionBorder]}
+                                                onPress={() => {
+                                                    setName(s_item.name);
+                                                    setShowSuggestions(false);
+                                                    setSuggestions([]);
+                                                }}
+                                            >
+                                                <Ionicons
+                                                    name="search-outline"
+                                                    size={14}
+                                                    color={colors.text.muted}
+                                                    style={{ marginRight: 8 }}
+                                                />
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={s.suggestionName} numberOfLines={1}>{s_item.name}</Text>
+                                                    {s_item.description ? (
+                                                        <Text style={s.suggestionDesc} numberOfLines={1}>{s_item.description}</Text>
+                                                    ) : null}
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
                             </View>
                             <View style={s.inputGroup}>
                                 <Text style={s.label}>Location (Optional)</Text>
@@ -330,6 +556,32 @@ export default function SyncScreen() {
                 message="This will fetch and update the latest reviews keep your counts accurate. Continue?"
                 onConfirm={performSync}
                 onCancel={() => setShowConfirm(false)}
+            />
+
+            <SyncProgressOverlay
+                visible={showProgress}
+                percent={progressPercent}
+                status={syncStatusText}
+                processedCount={processedCount}
+                totalCount={totalValidCount}
+                estimatedSecondsRemaining={estRemaining}
+                onCancel={handleCancelSync}
+                onClose={() => {
+                    // Just dismiss the overlay — do NOT call cancelAllSyncs
+                    setShowProgress(false);
+                    setSyncStatusText('');
+                    setProgressPercent(0);
+                    loadStatus();
+                }}
+            />
+
+            <SyncReportOverlay
+                visible={showReport}
+                results={syncResults}
+                onClose={() => {
+                    setShowReport(false);
+                    loadStatus();
+                }}
             />
         </View>
     );
@@ -453,4 +705,34 @@ const s = StyleSheet.create({
     platformDot: { width: 8, height: 8, borderRadius: 4 },
     historyName: { color: colors.text.primary, fontSize: fonts.sizes.sm, fontWeight: '600' },
     historyMeta: { color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: 1 },
+
+    // Autocomplete dropdown
+    suggestionsDropdown: {
+        backgroundColor: colors.bg.card,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border.subtle,
+        marginTop: 4,
+        overflow: 'hidden' as const,
+    },
+    suggestionItem: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        paddingVertical: 10,
+        paddingHorizontal: spacing.sm,
+    },
+    suggestionBorder: {
+        borderTopWidth: 1,
+        borderTopColor: colors.border.subtle,
+    },
+    suggestionName: {
+        color: colors.text.primary,
+        fontSize: fonts.sizes.sm,
+        fontWeight: '500' as const,
+    },
+    suggestionDesc: {
+        color: colors.text.muted,
+        fontSize: fonts.sizes.xs,
+        marginTop: 1,
+    },
 });

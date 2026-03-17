@@ -54,6 +54,7 @@ export default function LocationsPage() {
   const [deleteInput, setDeleteInput] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [expandedIds, setExpandedIds] = useState(new Set())
+  const [toast, setToast] = useState(null) // { message, type }
 
   const toggleExpand = (id) => {
     setExpandedIds(prev => {
@@ -82,9 +83,12 @@ export default function LocationsPage() {
         const body = await resp.json().catch(() => ({}))
         throw new Error(body.detail || `HTTP ${resp.status}`)
       }
+      const deletedName = deleteModal.name
       setDeleteModal(null)
       setDeleteInput('')
       refresh()
+      setToast({ message: `✅ "${deletedName}" has been permanently deleted.`, type: 'success' })
+      setTimeout(() => setToast(null), 4000)
     } catch (err) {
       alert(`Delete failed: ${err.message}`)
     } finally {
@@ -169,6 +173,9 @@ export default function LocationsPage() {
                   <div>
                     <div className="loc-name">{loc.name}</div>
                     {loc.address && <div className="loc-address">{loc.address}</div>}
+                    <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--text-muted)', opacity: 0.6, marginTop: 2 }}>
+                      ID: {loc.id.slice(0, 8)}
+                    </div>
                   </div>
                 </div>
                 <div className="loc-sub-badge">
@@ -271,6 +278,20 @@ export default function LocationsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: toast.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+          color: '#fff', padding: '12px 24px', borderRadius: 8,
+          fontSize: 14, fontWeight: 600, zIndex: 9999,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          animation: 'fadeIn 0.3s ease',
+        }}>
+          {toast.message}
         </div>
       )}
     </>

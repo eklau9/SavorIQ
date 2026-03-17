@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "dev": "concurrently \"npm start\" \"cd ../backend && ./venv/bin/python3 -m uvicorn app.main:app --port 8000 --reload\" \"cd ../admin && npm run dev\"",
+    "dev": "concurrently \"npm run web\" \"cd ../backend && ./venv/bin/python3 -m uvicorn app.main:app --port 8000 --reload\" \"cd ../admin && npm run dev\"",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

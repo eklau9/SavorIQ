@@ -138,3 +138,99 @@ async def google_search(
         }
         for p in data.get("places", [])
     ]
+
+
+# ── Autocomplete APIs (Lightweight typeahead) ────────────────────────────
+
+async def google_autocomplete(
+    query: str,
+    lat: float | None = None,
+    lng: float | None = None,
+) -> list[dict]:
+    """Lightweight Google Places autocomplete — returns name suggestions only."""
+    if not settings.GOOGLE_PLACES_API_KEY:
+        return []
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": settings.GOOGLE_PLACES_API_KEY,
+    }
+
+    body: dict[str, Any] = {
+        "input": query,
+        "includedPrimaryTypes": ["restaurant"],
+    }
+
+    if lat is not None and lng is not None:
+        body["locationBias"] = {
+            "circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": 50000.0,
+            }
+        }
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            f"{GOOGLE_PLACES_BASE}/places:autocomplete",
+            headers=headers,
+            json=body,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    suggestions = []
+    for s in data.get("suggestions", []):
+        pred = s.get("placePrediction", {})
+        if pred:
+            text = pred.get("text", {}).get("text", "")
+            secondary = pred.get("structuredFormat", {}).get("secondaryText", {}).get("text", "")
+            suggestions.append({
+                "name": pred.get("structuredFormat", {}).get("mainText", {}).get("text", text),
+                "description": secondary,
+                "source": "google",
+            })
+    return suggestions
+
+
+async def yelp_autocomplete(
+    query: str,
+    lat: float | None = None,
+    lng: float | None = None,
+) -> list[dict]:
+    """Lightweight Yelp autocomplete — returns business name suggestions."""
+    if not settings.YELP_API_KEY:
+        return []
+
+    headers = {"Authorization": f"Bearer {settings.YELP_API_KEY}"}
+    params: dict[str, Any] = {"text": query}
+
+    if lat is not None and lng is not None:
+        params["latitude"] = lat
+        params["longitude"] = lng
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(
+            f"{YELP_BASE}/autocomplete",
+            headers=headers,
+            params=params,
+        )
+        record_yelp_request()
+        resp.raise_for_status()
+        data = resp.json()
+
+    suggestions = []
+    for biz in data.get("businesses", []):
+        suggestions.append({
+            "name": biz.get("name", ""),
+            "description": "",
+            "source": "yelp",
+        })
+    # Also include term suggestions (keyword completions)
+    for term in data.get("terms", []):
+        suggestions.append({
+            "name": term.get("text", ""),
+            "description": "keyword",
+            "source": "yelp",
+        })
+    return suggestions
+

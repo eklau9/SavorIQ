@@ -12,9 +12,9 @@ import { fetchAllReviews, fetchReviewStats, Review, ReviewStats } from '@/lib/ap
 import NoRestaurantSelected from '@/components/NoRestaurantSelected';
 
 export default function ReviewsScreen() {
-    const { search: incomingSearch, sentiment: incomingSentiment } = useLocalSearchParams<{ search?: string; sentiment?: string }>();
+    const { search: incomingSearch, sentiment: incomingSentiment, days: incomingDays } = useLocalSearchParams<{ search?: string; sentiment?: string; days?: string }>();
     const { activeId, loading: contextLoading } = useRestaurant();
-    const { reviews: globalReviews, reviewStats: globalStats, refreshAll } = useData();
+    const { reviews: globalReviews, reviewStats: globalStats, refreshAll, timeRange, setTimeRange } = useData();
 
     const [reviews, setReviews] = useState<Review[]>([]);
     const [stats, setStats] = useState<ReviewStats | null>(null);
@@ -33,6 +33,13 @@ export default function ReviewsScreen() {
         }
     }, [incomingSearch, incomingSentiment]);
 
+    // Sync days filter with incoming route parameter (from insight tap)
+    useEffect(() => {
+        if (incomingDays !== undefined) {
+            setTimeRange(Number(incomingDays) || null);
+        }
+    }, [incomingDays]);
+
     // 1. Local Filtering Logic (Instant Feedback)
     useEffect(() => {
         if (!activeId || globalReviews.length === 0) return;
@@ -50,7 +57,15 @@ export default function ReviewsScreen() {
                 (r.author_name?.toLowerCase().includes(finalSearch)) ||
                 (r.content?.toLowerCase().includes(finalSearch))
             );
-            return matchesPlatform && matchesSentiment && matchesSearch;
+            // Date filter: only show reviews within the timeRange
+            let matchesDate = true;
+            if (timeRange && r.reviewed_at) {
+                const reviewDate = new Date(r.reviewed_at);
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - timeRange);
+                matchesDate = reviewDate >= cutoff;
+            }
+            return matchesPlatform && matchesSentiment && matchesSearch && matchesDate;
         });
 
         setReviews(filtered);
@@ -69,7 +84,7 @@ export default function ReviewsScreen() {
         } else if (!finalSearch && !platform && !sentiment) {
             setStats(globalStats);
         }
-    }, [activeId, globalReviews, search, platform, sentiment, globalStats]);
+    }, [activeId, globalReviews, search, platform, sentiment, timeRange, globalStats]);
 
     const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
 
@@ -174,6 +189,26 @@ export default function ReviewsScreen() {
                                     platform === (p === 'all' ? undefined : p) && s.platformChipTextActive,
                                     ]}>
                                         {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                            <View style={{ flex: 1 }} />
+                            {[
+                                { label: '30D', value: 30 },
+                                { label: '90D', value: 90 },
+                                { label: '6MO', value: 180 },
+                                { label: '1Y', value: 365 },
+                                { label: 'ALL', value: undefined },
+                            ].map((range) => (
+                                <TouchableOpacity
+                                    key={range.label}
+                                    style={[s.platformChip, timeRange === range.value && s.platformChipActive]}
+                                    onPress={() => setTimeRange(range.value)}
+                                >
+                                    <Text style={[s.platformChipText,
+                                        timeRange === range.value && s.platformChipTextActive,
+                                    ]}>
+                                        {range.label}
                                     </Text>
                                 </TouchableOpacity>
                             ))}

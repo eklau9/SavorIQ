@@ -1,5 +1,5 @@
 import {
-    View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
+    View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -146,17 +146,18 @@ export default function MoreScreen() {
             
             if (res.results) {
                 setSyncResults(res.results);
+                setShowProgress(false); // Ensure progress hides before report shows
                 setShowReport(true);
                 // Background refresh: update dashboard counts without blocking the report UI
                 refreshAll();
                 loadRestaurants();
             } else if (res.status === 'success') {
                 setSyncResults([{ platform: 'sync', status: 'synced', new_ingested: 0 }]);
+                setShowProgress(false); // Ensure progress hides before report shows
                 setShowReport(true);
                 refreshAll();
                 loadRestaurants();
-            }
- else if (res.status === 'cancelled') {
+            } else if (res.status === 'cancelled') {
                 console.log('Sync cancelled report received');
             } else {
                 throw new Error(res.message || 'Sync failed.');
@@ -205,7 +206,7 @@ export default function MoreScreen() {
                                 SavorIQ
                             </Text>
                         </View>
-                        <Text style={[s.welcomeText, { textTransform: 'none', fontWeight: '500', opacity: 0.7 }]}>
+                        <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
                             {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </Text>
                     </View>
@@ -292,7 +293,7 @@ export default function MoreScreen() {
                         icon="construct"
                         label="Admin Dashboard"
                         subtitle="Monitor API Quotas & System Status"
-                        onPress={() => router.push('/admin')}
+                        onPress={() => Linking.openURL('http://localhost:5174')}
                     />
                 </View>
             )}

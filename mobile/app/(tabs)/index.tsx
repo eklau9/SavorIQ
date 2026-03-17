@@ -7,6 +7,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  Modal,
+  Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter, Stack } from 'expo-router';
@@ -18,23 +20,41 @@ import { DeepAnalytics } from '@/lib/api';
 import NoRestaurantSelected from '@/components/NoRestaurantSelected';
 import { StartupLoadingScreen } from '@/components/StartupLoadingScreen';
 
-// Helper to render text with ++Item++ (green) and --Item-- (red) highlights
-const renderFormattedText = (text: string) => {
-  const parts = text.split(/(\+\+.*?\+\+|--.*?--)/g);
+// Helper to render text with colored item highlights
+// sentimentType: 'win' = green, 'risk' = red, default = gold
+const renderFormattedText = (text: string, sentimentType?: string) => {
+  const parts = text.split(/(\+\+.*?\+\+|--.*?--|`[^`]+`)/g);
+  
+  // Green for positive/action, red for risk — no other colors
+  const itemColor = sentimentType === 'risk' ? colors.sentiment.negative : colors.sentiment.positive;
+
   return (
     <Text>
       {parts.map((part, i) => {
-        if (part.startsWith('++') && part.endsWith('++')) {
-          return (
-            <Text key={i} style={{ color: colors.sentiment.positive, fontWeight: '700' }}>
-              {part.slice(2, -2)}
-            </Text>
-          );
+        let inner = part;
+        let isItem = false;
+
+        // Strip all marker types
+        if (inner.startsWith('`') && inner.endsWith('`')) {
+          inner = inner.slice(1, -1);
+          isItem = true;
         }
-        if (part.startsWith('--') && part.endsWith('--')) {
+        if (inner.startsWith('++') && inner.endsWith('++')) {
+          inner = inner.slice(2, -2);
+          isItem = true;
+        }
+        if (inner.startsWith('--') && inner.endsWith('--')) {
+          inner = inner.slice(2, -2);
+          isItem = true;
+        }
+
+        // Clean any remaining stray markers
+        inner = inner.replace(/^\+\+|\+\+$/g, '').replace(/^--|--$/g, '').replace(/^`|`$/g, '');
+
+        if (isItem && inner.trim()) {
           return (
-            <Text key={i} style={{ color: colors.sentiment.negative, fontWeight: '700' }}>
-              {part.slice(2, -2)}
+            <Text key={i} style={{ color: itemColor, fontWeight: '700' }}>
+              {inner.trim()}
             </Text>
           );
         }
@@ -54,10 +74,12 @@ export default function DashboardScreen() {
     loadingStep, 
     estimatedSecondsRemaining, 
     refreshAll,
-    error // Add error here
+    error,
+    timeRange,
+    setTimeRange,
   } = useData();
   const [refreshing, setRefreshing] = useState(false);
-  const [timeRange, setTimeRange] = useState<number | null>(90); // Default to 90 days
+  const [showIntegrityModal, setShowIntegrityModal] = useState(false);
 
   // Trigger refresh when timeRange changes
   useEffect(() => {
@@ -111,6 +133,7 @@ export default function DashboardScreen() {
   }
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
       style={s.container}
       contentContainerStyle={s.content}
@@ -138,7 +161,7 @@ export default function DashboardScreen() {
                     SavorIQ
                   </Text>
                 </View>
-                <Text style={[s.welcomeText, { textTransform: 'none', fontWeight: '500', opacity: 0.7 }]}>
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
                   {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </Text>
               </View>
@@ -151,7 +174,7 @@ export default function DashboardScreen() {
                 {data?.top_performers?.some(i => i.is_suggested) ? (
                   <TouchableOpacity 
                     style={s.integrityBadge}
-                    onPress={() => alert("Self-Healing Active: We've automatically discovered these items from your reviews because your menu isn't fully configured yet.")}
+                    onPress={() => setShowIntegrityModal(true)}
                   >
                     <Ionicons name="shield-checkmark" size={12} color={colors.accent.gold} />
                     <Text style={s.integrityText}>AI Integrity Mode</Text>
@@ -225,8 +248,24 @@ export default function DashboardScreen() {
             ) : (
               <>
                 <Text style={s.briefingSummary}>{renderFormattedText(data.briefing.summary)}</Text>
-                {data.briefing.insights.map((insight, idx) => (
-                  <View key={idx} style={s.insightRow}>
+                {data.briefing.insights.map((insight, idx) => {
+                  // Extract menu item names from description for search
+                  const itemMatches = insight.description.match(/`([^`]+)`|\+\+([^+]+)\+\+|--([^-]+)--/g);
+                  let searchTerm = '';
+                  if (itemMatches && itemMatches.length > 0) {
+                    // Use the first mentioned item name
+                    searchTerm = itemMatches[0].replace(/`|\+\+|--/g, '').trim();
+                  } else {
+                    // Fallback: use first 3 words from title (skip generic words)
+                    searchTerm = insight.title.split(/\s+/).slice(0, 3).join(' ');
+                  }
+                  return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={s.insightRow}
+                    onPress={() => router.push(`/reviews?search=${encodeURIComponent(searchTerm)}${timeRange ? `&days=${timeRange}` : ''}`)}
+                    activeOpacity={0.7}
+                  >
                     <View style={[
                       s.insightBadge,
                       {
@@ -242,11 +281,13 @@ export default function DashboardScreen() {
                       />
                     </View>
                     <View style={s.insightContent}>
-                      <Text style={s.insightTitle}>{insight.title}</Text>
-                      <Text style={s.insightDesc}>{renderFormattedText(insight.description)}</Text>
+                      <Text style={[s.insightTitle, { color: insight.type === 'risk' ? colors.sentiment.negative : colors.sentiment.positive }]}>{insight.title.replace(/\+\+|--|`/g, '')}</Text>
+                      <Text style={s.insightDesc}>{renderFormattedText(insight.description, insight.type)}</Text>
                     </View>
-                  </View>
-                ))}
+                    <Ionicons name="chevron-forward" size={14} color={colors.text.muted} style={{ alignSelf: 'center' }} />
+                  </TouchableOpacity>
+                  );
+                })}
               </>
             )}
           </View>
@@ -325,6 +366,87 @@ export default function DashboardScreen() {
         </>
       )}
     </ScrollView>
+
+    {/* AI Integrity Mode Overlay */}
+    <Modal
+      visible={showIntegrityModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowIntegrityModal(false)}
+    >
+      <Pressable style={s.modalBackdrop} onPress={() => setShowIntegrityModal(false)}>
+        <Pressable style={s.modalSheet} onPress={e => e.stopPropagation()}>
+          {/* Header */}
+          <View style={s.modalHeader}>
+            <View style={s.modalIconCircle}>
+              <Ionicons name="shield-checkmark" size={20} color={colors.accent.gold} />
+            </View>
+            <Text style={s.modalTitle}>AI Integrity Mode</Text>
+            <TouchableOpacity onPress={() => setShowIntegrityModal(false)} hitSlop={16}>
+              <Ionicons name="close" size={22} color={colors.text.muted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Explanation */}
+          <Text style={s.modalDesc}>
+            Your menu isn't fully configured yet. SavorIQ automatically discovered these items from guest reviews using AI — they're marked as{' '}
+            <Text style={{ color: colors.accent.gold, fontWeight: '700' }}>Suggested</Text>.
+          </Text>
+
+          {/* Stats */}
+          {(() => {
+            const allItems = [...(data?.top_performers ?? []), ...(data?.risks ?? [])];
+            const suggested = allItems.filter(i => i.is_suggested);
+            const confirmed = allItems.filter(i => !i.is_suggested);
+            return (
+              <View style={s.modalStatsRow}>
+                <View style={s.modalStat}>
+                  <Text style={[s.modalStatNum, { color: colors.accent.gold }]}>{suggested.length}</Text>
+                  <Text style={s.modalStatLabel}>AI Discovered</Text>
+                </View>
+                <View style={[s.modalStatDivider]} />
+                <View style={s.modalStat}>
+                  <Text style={[s.modalStatNum, { color: colors.sentiment.positive }]}>{confirmed.length}</Text>
+                  <Text style={s.modalStatLabel}>Menu Verified</Text>
+                </View>
+              </View>
+            );
+          })()}
+
+          {/* Item List */}
+          <Text style={s.modalSectionTitle}>Auto-Discovered Items</Text>
+          <ScrollView style={s.modalItemList} showsVerticalScrollIndicator={false}>
+            {[...(data?.top_performers ?? []), ...(data?.risks ?? [])]
+              .filter(i => i.is_suggested)
+              .sort((a, b) => b.review_count - a.review_count)
+              .slice(0, 10)
+              .map((item, idx) => (
+                <View key={idx} style={s.modalItemRow}>
+                  <Ionicons name="sparkles" size={12} color={colors.accent.gold} />
+                  <Text style={s.modalItemName}>{item.item_name}</Text>
+                  <Text style={s.modalItemCount}>{item.review_count} mentions</Text>
+                </View>
+              ))}
+          </ScrollView>
+
+          {/* CTA */}
+          <View style={s.modalCTA}>
+            <Ionicons name="information-circle-outline" size={14} color={colors.text.muted} />
+            <Text style={s.modalCTAText}>
+              Configure your full menu in Settings to remove suggested items and get precise tracking.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={s.modalDismissBtn}
+            onPress={() => setShowIntegrityModal(false)}
+          >
+            <Text style={s.modalDismissBtnText}>Got It</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+    </View>
   );
 }
 
@@ -426,13 +548,17 @@ const s = StyleSheet.create({
     lineHeight: 22, marginBottom: spacing.md,
   },
 
-  insightRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  insightRow: {
+    flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm,
+    backgroundColor: colors.bg.input, borderRadius: radius.md,
+    padding: spacing.sm, borderWidth: 1, borderColor: colors.border.subtle,
+  },
   insightBadge: {
     width: 32, height: 32, borderRadius: radius.sm,
     justifyContent: 'center', alignItems: 'center',
   },
   insightContent: { flex: 1 },
-  insightTitle: { color: colors.text.primary, fontSize: fonts.sizes.md, fontWeight: '600' },
+  insightTitle: { color: colors.text.primary, fontSize: fonts.sizes.md, fontWeight: '600', marginBottom: 4 },
   insightDesc: { color: colors.text.secondary, fontSize: fonts.sizes.sm, lineHeight: 18, marginTop: 2 },
 
   itemRow: {
@@ -508,5 +634,78 @@ const s = StyleSheet.create({
   filterChipTextActive: {
     color: colors.accent.gold,
     fontWeight: '700',
+  },
+
+  // AI Integrity Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end' as const,
+  },
+  modalSheet: {
+    backgroundColor: colors.bg.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.lg,
+    paddingBottom: 32,
+    maxHeight: '80%' as any,
+  },
+  modalHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  modalIconCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: colors.accent.gold + '15',
+    justifyContent: 'center' as const, alignItems: 'center' as const,
+  },
+  modalTitle: {
+    flex: 1, color: colors.text.primary,
+    fontSize: fonts.sizes.lg, fontWeight: '700' as const,
+  },
+  modalDesc: {
+    color: colors.text.secondary, fontSize: fonts.sizes.sm,
+    lineHeight: 20, marginBottom: spacing.md,
+  },
+  modalStatsRow: {
+    flexDirection: 'row' as const,
+    backgroundColor: colors.bg.primary, borderRadius: radius.md,
+    padding: spacing.md, marginBottom: spacing.md,
+  },
+  modalStat: { flex: 1, alignItems: 'center' as const },
+  modalStatDivider: { width: 1, backgroundColor: colors.border.subtle },
+  modalStatNum: { fontSize: fonts.sizes.xl, fontWeight: '700' as const },
+  modalStatLabel: { color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: 2 },
+  modalSectionTitle: {
+    color: colors.text.muted, fontSize: fonts.sizes.xs,
+    fontWeight: '700' as const, textTransform: 'uppercase' as const,
+    letterSpacing: 0.5, marginBottom: spacing.sm,
+  },
+  modalItemList: { maxHeight: 200, marginBottom: spacing.md },
+  modalItemRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const,
+    gap: 8, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: colors.border.subtle,
+  },
+  modalItemName: {
+    flex: 1, color: colors.text.primary,
+    fontSize: fonts.sizes.sm, fontWeight: '500' as const,
+  },
+  modalItemCount: { color: colors.text.muted, fontSize: fonts.sizes.xs },
+  modalCTA: {
+    flexDirection: 'row' as const, gap: 6,
+    alignItems: 'flex-start' as const,
+    backgroundColor: colors.bg.primary, borderRadius: radius.sm,
+    padding: spacing.sm, marginBottom: spacing.md,
+  },
+  modalCTAText: { flex: 1, color: colors.text.muted, fontSize: 11, lineHeight: 16 },
+  modalDismissBtn: {
+    backgroundColor: colors.accent.gold, borderRadius: radius.md,
+    paddingVertical: 12, alignItems: 'center' as const,
+  },
+  modalDismissBtnText: {
+    color: colors.bg.primary, fontSize: fonts.sizes.md, fontWeight: '700' as const,
   },
 });

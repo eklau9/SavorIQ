@@ -99,10 +99,9 @@ async def perform_gemini_probe() -> dict:
         response = await model.generate_content_async("hi")
         
         if response.text:
-            # Success! Reset daily counter because we are definitely not hard-limited
-            record_gemini_request() # record this probe
-            await calibrate_gemini_usage(0) 
-            return {"configured": True, "status": "success", "message": "Probe successful. Tracker reset to 0 used."}
+            # Success! Gemini is reachable — record this probe but keep the daily counter intact
+            record_gemini_request() # record this probe as +1
+            return {"configured": True, "status": "success", "message": "Probe successful. Gemini is reachable."}
         
         return {"configured": True, "status": "error", "message": "Unexpected empty response"}
     except Exception as e:

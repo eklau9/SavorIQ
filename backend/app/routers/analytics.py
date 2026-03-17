@@ -66,18 +66,36 @@ async def get_overview(
         
     processed_reviews_count = (await db.execute(processed_reviews_stmt)).scalar() or 0
     
-    # Fetch Ground Truth from SyncLogs
+    # Fetch Ground Truth from SyncLogs (latest per platform only, avoid duplicates)
+    from sqlalchemy import distinct
+    latest_sync_subq = (
+        select(
+            SyncLog.platform,
+            func.max(SyncLog.last_synced_at).label("latest_sync")
+        )
+        .where(SyncLog.restaurant_id == x_restaurant_id)
+        .group_by(SyncLog.platform)
+        .subquery()
+    )
     sync_logs_result = await db.execute(
         select(func.sum(SyncLog.platform_total_count))
+        .join(
+            latest_sync_subq,
+            (SyncLog.platform == latest_sync_subq.c.platform) &
+            (SyncLog.last_synced_at == latest_sync_subq.c.latest_sync)
+        )
         .where(SyncLog.restaurant_id == x_restaurant_id)
     )
     external_reviews_count = sync_logs_result.scalar()
     
-    # Use EXTERNAL count as the primary headline if we have it and it's NOT a filtered view
+    # Use EXTERNAL count as the primary "ALL" headline, but NEVER show less than our actual DB count
     if days:
         reviews_count = processed_reviews_count
     else:
-        reviews_count = external_reviews_count if external_reviews_count is not None else processed_reviews_count
+        if external_reviews_count and external_reviews_count >= processed_reviews_count:
+            reviews_count = external_reviews_count
+        else:
+            reviews_count = processed_reviews_count
     
     avg_rating_stmt = select(func.avg(Review.rating)).where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
     if cutoff:

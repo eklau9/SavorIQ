@@ -28,7 +28,7 @@ export async function getApiBase(): Promise<string> {
     return custom || DEFAULT_API_BASE;
 }
 
-async function getActiveRestaurantId(): Promise<string | null> {
+export async function getActiveRestaurantId(): Promise<string | null> {
     return AsyncStorage.getItem('activeRestaurantId');
 }
 
@@ -129,6 +129,10 @@ export function fetchSyncProgress(restaurantId: string): Promise<any> {
 
 export function cancelSync(restaurantId: string): Promise<any> {
     return apiFetch(`/api/sync/progress/${restaurantId}`, { method: 'DELETE' });
+}
+
+export function cancelAllSyncs(): Promise<any> {
+    return apiFetch('/api/sync/progress', { method: 'DELETE' });
 }
 
 // ── Restaurant ──────────────────────────────────────────────────────
@@ -382,7 +386,7 @@ export function fetchSyncStatus(): Promise<any> {
     return apiFetch('/api/sync/status');
 }
 
-export function syncApifyReviews(platform: string, url: string, name: string, address?: string, force: boolean = false, signal?: AbortSignal): Promise<any> {
+export function syncApifyReviews(platform: string, url: string, name: string, address?: string, force: boolean = false, signal?: AbortSignal, restaurantId?: string): Promise<any> {
     const params = new URLSearchParams({
         platform,
         business_url: url,
@@ -390,6 +394,7 @@ export function syncApifyReviews(platform: string, url: string, name: string, ad
         force: String(force),
     });
     if (address) params.append('business_address', address);
+    if (restaurantId) params.append('restaurant_id', restaurantId);
     return apiFetch(`/api/sync/apify-reviews?${params.toString()}`, { method: 'POST' }, signal, 0); // 0 = infinite timeout
 }
 
@@ -399,6 +404,23 @@ export function searchBusiness(name: string, location?: string, lat?: number | n
     if (lat) params.set('lat', String(lat));
     if (lng) params.set('lng', String(lng));
     return apiFetch(`/api/sync/search?${params}`);
+}
+
+export interface AutocompleteSuggestion {
+    name: string;
+    description: string;
+    source: 'google' | 'yelp';
+}
+
+export function autocompleteBusiness(query: string, lat?: number | null, lng?: number | null): Promise<AutocompleteSuggestion[]> {
+    const params = new URLSearchParams({ q: query });
+    if (lat) params.set('lat', String(lat));
+    if (lng) params.set('lng', String(lng));
+    return apiFetch(`/api/sync/autocomplete?${params}`);
+}
+
+export function fetchLatestSyncResults(restaurantId: string): Promise<any[]> {
+    return apiFetch(`/api/sync/latest-results/${restaurantId}`);
 }
 
 export function resetAndSync(restaurantId: string, signal?: AbortSignal): Promise<any> {

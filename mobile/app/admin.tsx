@@ -11,7 +11,7 @@ import { colors, spacing, radius } from '@/lib/theme';
  */
 export default function AdminScreen() {
     const router = useRouter();
-    const ADMIN_URL = 'http://localhost:5175';
+    const ADMIN_URL = 'http://localhost:5174';
 
     const handleLaunch = async () => {
         try {

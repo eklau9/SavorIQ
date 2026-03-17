@@ -160,7 +160,7 @@ async def list_all_reviews(
     days: int | None = Query(None, ge=1),
     date: str | None = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=5000),
+    limit: Optional[int] = Query(None, ge=1, le=5000),
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -196,8 +196,10 @@ async def list_all_reviews(
         elif sentiment == "neutral":
             query = query.where((sentiment_subq.c.avg_score < 0.3) & (sentiment_subq.c.avg_score > -0.3))
 
-    # Pagination in SQL
-    query = query.offset(skip).limit(limit)
+    # Pagination in SQL (only apply if explicitly requested)
+    query = query.offset(skip)
+    if limit:
+        query = query.limit(limit)
 
     result = await db.execute(query)
     reviews = result.scalars().all()

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, BackgroundTasks
 
 from app.config import settings
 from app.database import get_db
@@ -24,6 +24,8 @@ from app.services.cache import api_cache
 from app.services.sync import (
     google_search,
     yelp_search,
+    google_autocomplete,
+    yelp_autocomplete,
 )
 from app.services.discovery import discover_menu_items
 from app.models import MenuItem
@@ -32,6 +34,71 @@ from app.services.sync_progress import sync_manager
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 logger = logging.getLogger(__name__)
+
+
+@router.get("/autocomplete")
+async def autocomplete_business(
+    q: str = Query(..., min_length=2),
+    lat: float = Query(None),
+    lng: float = Query(None),
+):
+    """Lightweight typeahead — returns name suggestions from Google + Yelp."""
+    import asyncio
+    google_task = asyncio.create_task(google_autocomplete(q, lat, lng))
+    yelp_task = asyncio.create_task(yelp_autocomplete(q, lat, lng))
+
+    google_results, yelp_results = [], []
+    try:
+        google_results = await google_task
+    except Exception as e:
+        logger.warning(f"Google autocomplete failed: {e}")
+    try:
+        yelp_results = await yelp_task
+    except Exception as e:
+        logger.warning(f"Yelp autocomplete failed: {e}")
+
+    # Deduplicate by name (case-insensitive), prefer Google
+    seen = set()
+    combined = []
+    for item in google_results + yelp_results:
+        key = item["name"].strip().lower()
+        if key not in seen:
+            seen.add(key)
+            combined.append(item)
+
+    return combined[:8]  # Cap at 8 suggestions
+
+@router.get("/latest-results/{restaurant_id}")
+async def get_latest_sync_results(
+    restaurant_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the most recent sync_log entries per platform for this restaurant.
+    Used by the frontend to show accurate per-platform results in the report overlay."""
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(hours=1)
+    
+    logs = (await db.execute(
+        select(SyncLog)
+        .where(SyncLog.restaurant_id == restaurant_id, SyncLog.last_synced_at >= cutoff)
+        .order_by(SyncLog.last_synced_at.desc())
+    )).scalars().all()
+    
+    # Deduplicate: keep most recent per platform
+    seen = set()
+    results = []
+    for log in logs:
+        if log.platform not in seen:
+            seen.add(log.platform)
+            results.append({
+                "platform": log.platform,
+                "status": "success",
+                "new_ingested": log.new_reviews,
+                "reviews_fetched": log.reviews_fetched,
+                "business_name": log.business_name,
+            })
+    
+    return results
 
 @router.get("/progress/{restaurant_id}")
 async def get_sync_progress(restaurant_id: str):
@@ -47,7 +114,9 @@ async def get_sync_progress(restaurant_id: str):
         "total_count": state.total_count,
         "estimated_seconds_remaining": state.estimated_seconds_remaining,
         "is_cancelled": state.is_cancelled,
-        "active": state.percent < 100
+        "active": state.percent < 100,
+        "new_ingested": state.new_ingested,
+        "platform": state.platform,
     }
 
 @router.delete("/progress/{restaurant_id}")
@@ -56,8 +125,7 @@ async def cancel_sync(restaurant_id: str):
     sync_manager.cancel_sync(restaurant_id)
     return {"status": "cancellation_requested"}
 
-# Daily sync cooldown (hours)
-SYNC_COOLDOWN_HOURS = 1
+
 
 
 @router.post("/reset-and-sync")
@@ -77,8 +145,7 @@ async def reset_and_sync(
     result = await db.execute(stmt)
     logs = result.scalars().all()
 
-    if not logs:
-        raise HTTPException(status_code=404, detail="No sync logs found for this restaurant")
+    # If no logs exist yet, run_single_sync will use deep discovery (search by restaurant name)
 
     # 2. Pick only the most recent log PER PLATFORM
     latest_per_platform: dict[str, SyncLog] = {}
@@ -98,36 +165,98 @@ async def reset_and_sync(
             try:
                 if not biz_url:
                     # Try to discover it if we don't have a log (Deep Discovery)
-                    # We look for the active restaurant name
                     res_stmt = await session.execute(select(Restaurant).where(Restaurant.id == restaurant_id))
                     active_res = res_stmt.scalar_one_or_none()
                     if not active_res:
                         return {"platform": platform, "status": "error", "message": "Restaurant not found", "new_ingested": 0}
                     
                     biz_name = active_res.name
-                    logger.info(f"Attempting to discover {platform} for {biz_name}...")
+                    # Strip non-ASCII chars for Yelp (e.g. "Shu Shia 树夏" → "Shu Shia")
+                    search_name = biz_name.encode('ascii', 'ignore').decode('ascii').strip()
+                    if not search_name:
+                        search_name = biz_name
+                    
+                    logger.info(f"Attempting to discover {platform} for '{search_name}' (from '{biz_name}')...")
                     
                     if platform == "google":
-                        matches = await google_search(biz_name)
+                        matches = await google_search(biz_name)  # Google handles CJK fine
                     else:
-                        matches = await yelp_search(biz_name)
+                        matches = await yelp_search(search_name)
                     
                     if not matches:
                         return {"platform": platform, "status": "skipped", "message": f"Could not discover {platform} page", "new_ingested": 0}
                     
-                    # Pick best match (first one)
                     best = matches[0]
                     biz_url = best.get("place_url") if platform == "google" else best.get("url")
                     biz_name = best["name"]
 
-                return await sync_apify_reviews(
-                    platform=platform,
-                    business_url=biz_url,
-                    business_name=biz_name,
-                    force=True,
-                    restaurant_id=restaurant_id,
-                    db=session
-                )
+                # ── Scrape reviews via Apify ──
+                sync_manager.update_progress(restaurant_id, 10, f"Scraping {platform}...")
+                if platform == "google":
+                    raw_reviews = await apify_google_reviews(
+                        biz_url, 100000,
+                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                    )
+                else:
+                    raw_reviews = await apify_yelp_reviews(
+                        biz_url, 100000,
+                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                    )
+
+                # ── Ingest ──
+                sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...")
+                def _ingest_progress(done, total):
+                    pct = 35 + int(5 * (done / total)) if total else 35
+                    sync_manager.update_progress(restaurant_id, pct, f"Ingesting review {done}/{total}...",
+                                                 processed_count=done, total_count=total)
+                report = await ingest_reviews(session, restaurant_id, ReviewPlatform(platform), raw_reviews, full_sync=True,
+                                             progress_callback=_ingest_progress)
+
+                # ── Sentiment analysis ──
+                if report.ingested > 0:
+                    res = await session.execute(
+                        select(Review).where(Review.restaurant_id == restaurant_id, Review.platform == platform)
+                        .order_by(Review.ingested_at.desc()).limit(report.ingested)
+                    )
+                    new_reviews = res.scalars().all()
+                    batch_size = 25
+                    reviews_to_analyze = [{"id": r.id, "text": r.content} for r in new_reviews]
+                    total_reviews = len(reviews_to_analyze)
+                    import time as _time
+                    _batch_start = _time.monotonic()
+                    sync_manager.update_progress(restaurant_id, 40, f"Analyzing sentiment... (0/{total_reviews})",
+                                                 processed_count=0, total_count=total_reviews)
+                    for i in range(0, total_reviews, batch_size):
+                        batch = reviews_to_analyze[i : i + batch_size]
+                        await analyze_and_store_batch(session, batch)
+                        done = min(i + batch_size, total_reviews)
+                        pct = 40 + int(50 * (done / total_reviews))
+                        elapsed = _time.monotonic() - _batch_start
+                        rate = done / elapsed if elapsed > 0 else 0
+                        eta = int((total_reviews - done) / rate) if rate > 0 else None
+                        sync_manager.update_progress(
+                            restaurant_id, pct,
+                            f"Analyzing sentiment... ({done}/{total_reviews})",
+                            processed_count=done, total_count=total_reviews, est_remaining=eta
+                        )
+                        if done < total_reviews:
+                            await asyncio.sleep(4)
+
+                # ── Update SyncLog ──
+                sync_log = (await session.execute(
+                    select(SyncLog).where(SyncLog.platform == platform, SyncLog.business_id == biz_url)
+                )).scalar_one_or_none()
+                if not sync_log:
+                    sync_log = SyncLog(restaurant_id=restaurant_id, platform=platform, business_id=biz_url, business_name=biz_name)
+                    session.add(sync_log)
+                sync_log.last_synced_at = datetime.utcnow()
+                sync_log.reviews_fetched = len(raw_reviews)
+                sync_log.new_reviews = report.ingested
+
+                await session.commit()
+                api_cache.invalidate(restaurant_id)
+
+                return {"platform": platform, "status": "success", "new_ingested": report.ingested}
             except Exception as e:
                 logger.error(f"Background sync failed for {platform}: {e}", exc_info=True)
                 return {
@@ -146,7 +275,12 @@ async def reset_and_sync(
 
     sync_results = await asyncio.gather(*tasks)
     
-    return {"status": "success", "results": sync_results}
+    # Log results for debugging
+    for r in sync_results:
+        logger.info(f"SYNC RESULT for {restaurant_id}: {r}")
+    
+    sync_manager.finish_sync(restaurant_id, status="✅ Smart Sync complete.")
+    return {"status": "success", "results": list(sync_results)}
 
 
 @router.get("/search", response_model=list[UnifiedBusiness])
@@ -199,10 +333,10 @@ async def search_business(
             item["last_sync"] = {
                 "last_synced_at": log.last_synced_at.isoformat(),
                 "ago": ago,
-                "on_cooldown": total_sec < (SYNC_COOLDOWN_HOURS * 3600),
-                "cooldown_remaining_minutes": max(0, int((SYNC_COOLDOWN_HOURS * 3600 - total_sec) / 60)) if total_sec < (SYNC_COOLDOWN_HOURS * 3600) else 0,
                 "reviews_fetched": log.reviews_fetched,
-                "new_reviews": log.new_reviews
+                "new_reviews": log.new_reviews,
+                "on_cooldown": total_sec < 3600,     # 1-hour cooldown
+                "cooldown_remaining_minutes": max(0, int((3600 - total_sec) / 60)) if total_sec < 3600 else 0,
             }
 
     # Run sequentially to avoid session concurrency issues
@@ -331,333 +465,257 @@ async def search_business(
     return unified
 
 
-
 @router.post("/apify-reviews")
-async def sync_apify_reviews(
+async def sync_apify_reviews_endpoint(
     platform: str = Query(..., description="Platform: 'yelp' or 'google'"),
     business_url: str = Query(..., description="Full Google Maps or Yelp URL"),
     business_name: str = Query("Unknown", description="Business display name"),
     business_address: str | None = None,
     force: bool = Query(False, description="Force sync even if synced today"),
     restaurant_id: str | None = None,
-    x_restaurant_id: str | None = Header(None, alias="X-Restaurant-ID"),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Sync reviews via Apify actors (Google Maps Reviews Scraper / Yelp Scraper).
-    Fetches more reviews than direct APIs and works with paywalled Yelp.
+    Fire-and-forget sync endpoint. Returns immediately while the sync runs
+    in a background asyncio task.
     """
+    target_restaurant_id = restaurant_id
+    
     # ── Resolve target restaurant ID ──
-    target_restaurant_id = restaurant_id or x_restaurant_id
-    
-    # Initialize progress if it's the high-level call (not concurrent background call)
-    if target_restaurant_id and not restaurant_id:
-        sync_manager.start_sync(target_restaurant_id, f"Initializing {platform} sync...")
-
-    # SAFETY CHECK: Prevent cross-location pollution
-    if target_restaurant_id:
-        res_stmt = await db.execute(select(Restaurant).where(Restaurant.id == target_restaurant_id))
-        target_res = res_stmt.scalar_one_or_none()
-        if target_res:
-            t_name = target_res.name.lower()
-            b_name = business_name.lower()
-            t_address = (target_res.address or "").lower()
-            b_address = (business_address or "").lower()
-            
-            # 1. Strict Brand Check
-            # Check if common brand name exists in both
-            brand_words = {"heytea", "shu shia", "starbucks", "mcdonald"} # Expand as needed
-            t_brands = {w for w in brand_words if w in t_name}
-            b_brands = {w for w in brand_words if w in b_name}
-            
-            if t_brands and b_brands and t_brands != b_brands:
-                logger.warning(f"Brand mismatch: Restaurant={t_name}, Scraped={b_name}")
-                raise HTTPException(status_code=400, detail=f"Sync aborted: Scraped business '{business_name}' does not match restaurant '{target_res.name}'.")
-
-            # 2. Location Guard (City/Address)
-            # If we have addresses, ensure cities match at least
-            if t_address and b_address:
-                # Simple city check: find the word after the last comma or just look for city names
-                # For now, let's just check if the business address (which is usually specific) 
-                # has some overlap with the restaurant address.
-                if not any(word in b_address for word in t_address.split() if len(word) > 3):
-                    # If there's NO overlap in address words (ignoring short ones), be cautious
-                    # But don't block unless we're SURE.
-                    logger.info(f"Location overlap weak: {t_address} vs {b_address}")
-
-    # ── Daily sync guard ──
-    business_id = business_url
-    
-    if not force:
-        existing = await db.execute(
-            select(SyncLog).where(
-                SyncLog.platform == platform,
-                SyncLog.business_id == business_id,
-            )
-        )
-        log = existing.scalar_one_or_none()
-        if log:
-            target_restaurant_id = log.restaurant_id
-            cutoff = datetime.utcnow() - timedelta(hours=SYNC_COOLDOWN_HOURS)
-            if log.last_synced_at > cutoff:
-                # ... status message construction ...
-                return {
-                    "platform": platform,
-                    "status": "skipped",
-                    "message": "Already synced recently.",
-                    "new_ingested": 0
-                }
-    else:
-        existing = await db.execute(select(SyncLog).where(SyncLog.platform == platform, SyncLog.business_id == business_id))
-        log = existing.scalar_one_or_none()
-        if log:
-            target_restaurant_id = log.restaurant_id
-
-    # Ensure restaurant_id is set for downstream services
-    restaurant_id = target_restaurant_id
-
-    # ── Adaptive Sync Branching ──
-    # 1. Get local count
-    local_count = 0
-    if target_restaurant_id:
-        local_count_result = await db.execute(
-            select(func.count(Review.id)).where(
-                Review.restaurant_id == target_restaurant_id, 
-                Review.platform == platform,
-                Review.is_deleted_on_platform == False
-            )
-        )
-        local_count = local_count_result.scalar() or 0
-
-    # 2. Get live count (quick check)
-    if restaurant_id:
-        sync_manager.update_progress(restaurant_id, 5, f"Checking {platform} live counts...")
-    
-    live_count = local_count # Default if check fails
-    try:
-        if platform == "google":
-            sr = await google_search(business_name, business_address or "")
-            if sr:
-                match = next((x for x in sr if x.get("place_url") == business_url or x.get("id") == business_url), sr[0])
-                live_count = match.get("review_count", local_count)
-        else:
-            sr = await yelp_search(business_name, business_address or "")
-            if sr:
-                match = next((x for x in sr if x.get("url") == business_url or x.get("id") == business_url), sr[0])
-                live_count = match.get("review_count", local_count)
-    except Exception as e:
-        logger.warning(f"Live count check failed: {e}. Falling back to Full Sync for safety.")
-        live_count = -1 
-
-    # 3. Decision
-    delta_limit = 50
-    gap = live_count - local_count
-    is_full_sync = (local_count == 0 or live_count < local_count or gap >= delta_limit or live_count == -1)
-    max_reviews_to_fetch = 100000 if is_full_sync else delta_limit
-    sync_mode = "full" if is_full_sync else "delta"
-    
-    logger.info(f"Adaptive Sync Logic: local={local_count}, live={live_count}, gap={gap} => MODE: {sync_mode}")
-
-    if restaurant_id:
-        sync_manager.update_progress(restaurant_id, 10, f"Scraping {platform} reviews ({sync_mode})...", est_remaining=120)
-
-    # ── Fetch reviews via Apify ──
-    try:
-        if platform == "google":
-            raw_reviews = await apify_google_reviews(business_url, max_reviews_to_fetch)
-            review_platform = ReviewPlatform.google
-        elif platform == "yelp":
-            raw_reviews = await apify_yelp_reviews(business_url, max_reviews_to_fetch)
-            review_platform = ReviewPlatform.yelp
-        else:
-            raise HTTPException(status_code=400, detail="Platform must be 'yelp' or 'google'")
-    except Exception as e:
-        logger.error(f"Apify {platform} error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=502, 
-            detail=f"Apify {platform} error: {str(e)}. This usually means the scraper timed out or hit a block. Please try again in 5 minutes."
-        )
-
-    if restaurant_id:
-        if sync_manager.is_cancelled(restaurant_id):
-             return {
-                 "platform": platform,
-                 "status": "cancelled", 
-                 "message": "Sync was cancelled by user.",
-                 "new_ingested": 0
-             }
-        sync_manager.update_progress(
-            restaurant_id, 
-            40, 
-            f"Ingesting {len(raw_reviews)} reviews...", 
-            processed_count=0,
-            total_count=len(raw_reviews),
-            est_remaining=60
-        )
-
-    # ── Ingest into SavorIQ ──
-    # INCREMENTAL SYNC: Use Stop-on-Match unless it's a forced full sync.
-    # We only prune if we fetched ALL reviews (full sync).
-    stop_on_match = not is_full_sync
-    safe_to_prune = is_full_sync and live_count > 0 and len(raw_reviews) >= live_count
-    
-    report = await ingest_reviews(
-        db, 
-        target_restaurant_id, 
-        review_platform, 
-        raw_reviews, 
-        full_sync=safe_to_prune,
-        stop_on_match=stop_on_match
-    )
-
-    # ── Run sentiment analysis on new reviews (Batch processing) ──
-    if report.ingested > 0:
-        result = await db.execute(
-            select(Review)
-            .where(
-                Review.restaurant_id == target_restaurant_id,
-                Review.platform == platform,
-                Review.is_deleted_on_platform == False
-            )
-            .order_by(Review.ingested_at.desc())
-            .limit(report.ingested)
-        )
-        new_reviews = result.scalars().all()
-        
-        # Prepare batches of 25 for Gemini
-        batch_size = 25
-        reviews_to_analyze = [
-            {"id": r.id, "text": r.content} 
-            for r in new_reviews
-        ]
-        
-        from app.services.sentiment import analyze_and_store_batch
-        
-        total_reviews = len(reviews_to_analyze)
-        total_batches = (total_reviews + batch_size - 1) // batch_size
-        logger.info(f"Processing sentiment for {total_reviews} reviews in {total_batches} batches.")
-        
-        for i in range(0, total_reviews, batch_size):
-            if restaurant_id:
-                if sync_manager.is_cancelled(restaurant_id):
-                    return {
-                        "platform": platform,
-                        "status": "cancelled", 
-                        "message": "Sync was cancelled by user during sentiment analysis.",
-                        "new_ingested": report.ingested
-                    }
-                
-                batch_num = (i // batch_size) + 1
-                progress = 40 + int((batch_num / total_batches) * 60)
-                remaining_batches = total_batches - batch_num
-                est_rem = remaining_batches * 5 # Roughly 5s per batch
-                
-                # Report processed count (how many reviews completed sentiment so far)
-                processed = i
-                sync_manager.update_progress(
-                    restaurant_id, 
-                    progress, 
-                    f"Analyzing sentiment batch {batch_num}/{total_batches}...",
-                    processed_count=processed,
-                    total_count=total_reviews,
-                    est_remaining=est_rem
+    if not target_restaurant_id:
+        # Fuzzy match: check if existing name contains the search name or vice versa
+        from sqlalchemy import or_, literal
+        existing_res = (await db.execute(
+            select(Restaurant).where(
+                or_(
+                    Restaurant.name.ilike(f"%{business_name}%"),
+                    literal(business_name).ilike(func.concat('%', Restaurant.name, '%'))
                 )
+            )
+        )).scalar_one_or_none()
+        if existing_res:
+            target_restaurant_id = existing_res.id
+        else:
+            new_res = Restaurant(id=str(uuid.uuid4()), name=business_name, address=business_address)
+            db.add(new_res)
+            await db.commit()
+            target_restaurant_id = new_res.id
 
-            batch = reviews_to_analyze[i : i + batch_size]
-            batch_num = (i // batch_size) + 1
-            logger.info(f"Analyzing batch {batch_num}/{total_batches}...")
-            
-            async with db.begin_nested():
+    # Initialize progress tracking
+    sync_manager.start_sync(target_restaurant_id, f"Initializing {platform} sync...")
+
+    # ── Background Worker ──
+    async def _run_sync_task(
+        platform: str,
+        business_url: str,
+        business_name: str,
+        restaurant_id: str,
+        business_address: str | None,
+        force: bool
+    ):
+        import sys
+        sys.stdout.write(f"\nCRITICAL: _run_sync_task started for {restaurant_id} ({platform})\n")
+        sys.stdout.flush()
+        try:
+            from app.database import async_session
+            from app.services.apify_sync import apify_google_reviews, apify_yelp_reviews
+            from app.services.ingestion import ingest_reviews
+            from app.models import Review, SyncLog, Restaurant, MenuItem
+            from sqlalchemy import select, func
+            from datetime import datetime, timedelta
+            from app.services.cache import api_cache
+            from app.services.discovery import discover_menu_items
+            import uuid
+
+            sys.stdout.write(f"SYNC: imports done, opening session\n")
+            sys.stdout.flush()
+
+            async with async_session() as bg_db:
+                sys.stdout.write(f"SYNC: session acquired\n")
+                sys.stdout.flush()
                 try:
-                    await analyze_and_store_batch(db, batch)
-                except Exception as e:
-                    logger.error(f"Sentiment analysis failed for batch {batch_num}: {e}")
-                    continue
-            
-            # Rate limiting: 15 RPM = 1 request every 4 seconds
-            if i + batch_size < total_reviews:
-                logger.info(f"Rate limiting: Waiting 4s before next batch...")
-                await asyncio.sleep(4)
+                    # ── Strict Business ID Guard ──
+                    existing_binding = (await bg_db.execute(
+                        select(SyncLog.business_id).where(SyncLog.restaurant_id == restaurant_id, SyncLog.platform == platform).limit(1)
+                    )).scalar_one_or_none()
+                    
+                    if existing_binding and existing_binding != business_url:
+                        sync_manager.finish_sync(restaurant_id, status="❌ Sync rejected: Cross-contamination prevented.")
+                        logger.error(f"Guard rejected sync: {business_url} vs bound {existing_binding}")
+                        return
 
-    if restaurant_id:
-        sync_manager.finish_sync(restaurant_id)
+                    sys.stdout.write(f"SYNC: guard passed, checking local count\n")
+                    sys.stdout.flush()
 
-    # ── Update sync log ──
-    existing = await db.execute(
-        select(SyncLog).where(
-            SyncLog.platform == platform,
-            SyncLog.business_id == business_id,
-        )
-    )
-    log = existing.scalar_one_or_none()
-    if log:
-        log.last_synced_at = datetime.utcnow()
-        log.reviews_fetched = len(raw_reviews)
-        log.new_reviews = report.ingested
-        log.business_name = business_name
-        # Update Ground Truth captured during this sync session
-        log.platform_total_count = live_count if live_count >= 0 else log.platform_total_count
-        # We don't have a reliable live_rating here unless we fetched it in the count check
-    else:
-        log = SyncLog(
-            restaurant_id=restaurant_id,
-            platform=platform,
-            business_id=business_id,
-            business_name=business_name,
-            last_synced_at=datetime.utcnow(),
-            reviews_fetched=len(raw_reviews),
-            new_reviews=report.ingested,
-            platform_total_count=live_count if live_count >= 0 else None,
-        )
-        db.add(log)
-
-    await db.commit()
-
-    # ── Automatic Menu Discovery (For Zero-Config Onboarding) ──
-    if target_restaurant_id:
-        # Check if menu is currently empty
-        m_stmt = await db.execute(select(func.count(MenuItem.id)).where(MenuItem.restaurant_id == target_restaurant_id))
-        m_count = m_stmt.scalar() or 0
-        
-        if m_count == 0 and len(raw_reviews) > 0:
-            logger.info(f"Zero-Config detected for restaurant {target_restaurant_id}. Triggering AI Menu Discovery...")
-            if restaurant_id:
-                sync_manager.update_progress(restaurant_id, 95, "Discovering menu items from reviews...", est_remaining=10)
-            
-            # Use top 50 reviews for discovery
-            texts = [r.content for r in new_reviews[:50]] if report.ingested > 0 else [r["text"] for r in raw_reviews[:50] if r.get("text")]
-            discovered_items = await discover_menu_items(texts)
-            
-            if discovered_items:
-                to_add = [
-                    MenuItem(
-                        restaurant_id=target_restaurant_id,
-                        name=item["name"],
-                        category=item["category"],
-                        keywords=item["keywords"]
+                    # ── Adaptive Sync Branching ──
+                    local_count_result = await bg_db.execute(
+                        select(func.count(Review.id)).where(Review.restaurant_id == restaurant_id, Review.platform == platform, Review.is_deleted_on_platform == False)
                     )
-                    for item in discovered_items
-                ]
-                db.add_all(to_add)
-                await db.commit()
-                logger.info(f"Auto-discovered and saved {len(to_add)} menu items.")
+                    local_count = local_count_result.scalar() or 0
 
+                    sync_manager.update_progress(restaurant_id, 5, f"Checking {platform} live counts...")
+                    live_count = local_count
+                    
+                    # Try to get live count for decision making
+                    try:
+                        if platform == "google":
+                            sr = await google_search(business_name, business_address or "")
+                            if sr:
+                                match = next((x for x in sr if x.get("place_url") == business_url or x.get("id") == business_url), sr[0])
+                                live_count = match.get("review_count", local_count)
+                        else:
+                            sr = await yelp_search(business_name, business_address or "")
+                            if sr:
+                                match = next((x for x in sr if x.get("url") == business_url or x.get("id") == business_url), sr[0])
+                                live_count = match.get("review_count", local_count)
+                    except Exception as e:
+                        logger.warning(f"Live count check failed: {e}")
+                        live_count = -1
 
-    # Bust the cache so the dashboard shows fresh data
-    api_cache.invalidate(restaurant_id)
-    logger.info(f"Cache invalidated for restaurant {restaurant_id} after sync")
+                    is_full_sync = (local_count == 0 or force or live_count == -1)
+                    max_reviews = 100000 if is_full_sync else 50
+                    sync_mode = "full" if is_full_sync else "delta"
+                    
+                    sys.stdout.write(f"SYNC: local={local_count} live={live_count} mode={sync_mode} max={max_reviews}\n")
+                    sys.stdout.flush()
+                    sync_manager.update_progress(restaurant_id, 10, f"Scraping {platform} ({sync_mode})...")
+
+                    # ── Fetch reviews ──
+                    try:
+                        if platform == "google":
+                            raw_reviews = await apify_google_reviews(
+                                business_url, 
+                                max_reviews, 
+                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                            )
+                            review_platform = ReviewPlatform(platform)
+                        else:
+                            raw_reviews = await apify_yelp_reviews(
+                                business_url, 
+                                max_reviews,
+                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                            )
+                            review_platform = ReviewPlatform(platform)
+                    except Exception as e:
+                        logger.error(f"Apify error: {e}")
+                        sys.stdout.write(f"SYNC ERROR: Apify failed: {e}\n")
+                        sys.stdout.flush()
+                        sync_manager.finish_sync(restaurant_id, status=f"❌ Scraper error: {str(e)[:50]}")
+                        return
+
+                    sys.stdout.write(f"SYNC: got {len(raw_reviews)} reviews, ingesting...\n")
+                    sys.stdout.flush()
+                    sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...")
+                    
+                    def _ingest_progress(done, total):
+                        pct = 35 + int(5 * (done / total)) if total else 35
+                        sync_manager.update_progress(restaurant_id, pct, f"Ingesting review {done}/{total}...",
+                                                     processed_count=done, total_count=total)
+                    
+                    # ── Ingest into SavorIQ ──
+                    report = await ingest_reviews(bg_db, restaurant_id, review_platform, raw_reviews, full_sync=is_full_sync, stop_on_match=not is_full_sync,
+                                                 progress_callback=_ingest_progress)
+
+                    sys.stdout.write(f"SYNC: ingested={report.ingested} duplicates={report.duplicates_skipped}\n")
+                    sys.stdout.flush()
+
+                    # ── Sentiment analysis ──
+                    if report.ingested > 0:
+                        res = await bg_db.execute(
+                            select(Review).where(Review.restaurant_id == restaurant_id, Review.platform == platform)
+                            .order_by(Review.ingested_at.desc()).limit(report.ingested)
+                        )
+                        new_reviews = res.scalars().all()
+                        
+                        from app.services.sentiment import analyze_and_store_batch
+                        import time as _time
+                        batch_size = 130
+                        reviews_to_analyze = [{"id": r.id, "text": r.content} for r in new_reviews]
+                        total_reviews = len(reviews_to_analyze)
+                        _batch_start = _time.monotonic()
+                        sync_manager.update_progress(restaurant_id, 40, f"Analyzing sentiment... (0/{total_reviews})",
+                                                     processed_count=0, total_count=total_reviews)
+                        for i in range(0, total_reviews, batch_size):
+                            batch = reviews_to_analyze[i : i + batch_size]
+                            await analyze_and_store_batch(bg_db, batch)
+                            done = min(i + batch_size, total_reviews)
+                            pct = 40 + int(50 * (done / total_reviews))
+                            elapsed = _time.monotonic() - _batch_start
+                            rate = done / elapsed if elapsed > 0 else 0
+                            eta = int((total_reviews - done) / rate) if rate > 0 else None
+                            sync_manager.update_progress(
+                                restaurant_id, pct,
+                                f"Analyzing sentiment... ({done}/{total_reviews})",
+                                processed_count=done, total_count=total_reviews, est_remaining=eta
+                            )
+                            if done < total_reviews:
+                                await asyncio.sleep(4)
+
+                    # ── Update SyncLog ──
+                    log = (await bg_db.execute(select(SyncLog).where(SyncLog.platform == platform, SyncLog.business_id == business_url))).scalar_one_or_none()
+                    if not log:
+                        log = SyncLog(restaurant_id=restaurant_id, platform=platform, business_id=business_url, business_name=business_name)
+                        bg_db.add(log)
+                    
+                    log.last_synced_at = datetime.utcnow()
+                    log.reviews_fetched = len(raw_reviews)
+                    log.new_reviews = report.ingested
+                    if live_count > 0: # Only update if we got a valid live count
+                        log.platform_total_count = live_count
+                    
+                    # ── Automatic Menu Discovery ──
+                    m_count = (await bg_db.execute(select(func.count(MenuItem.id)).where(MenuItem.restaurant_id == restaurant_id))).scalar() or 0
+                    if m_count == 0 and report.ingested > 0:
+                        sync_manager.update_progress(restaurant_id, 95, "Discovering menu items...")
+                        try:
+                            # Fetch review texts to feed into AI discovery
+                            review_rows = (await bg_db.execute(
+                                select(Review.content).where(Review.restaurant_id == restaurant_id)
+                                .order_by(Review.reviewed_at.desc()).limit(50)
+                            )).scalars().all()
+                            
+                            discovered = await discover_menu_items(list(review_rows))
+                            
+                            # Persist discovered items into menu_items table
+                            for item in discovered:
+                                mi = MenuItem(
+                                    restaurant_id=restaurant_id,
+                                    name=item.get("name", "Unknown"),
+                                    category=item.get("category", "food"),
+                                    keywords=item.get("keywords", ""),
+                                )
+                                bg_db.add(mi)
+                            if discovered:
+                                logger.info(f"Menu discovery: saved {len(discovered)} items for {restaurant_id}")
+                        except Exception as e:
+                            logger.warning(f"Menu discovery failed: {e}")
+
+                    await bg_db.commit()
+
+                    # ── Finalize ──
+                    api_cache.invalidate(restaurant_id)
+                    sync_manager.finish_sync(restaurant_id, status=f"✅ Sync complete: {report.ingested} new reviews.",
+                                             new_ingested=report.ingested, platform=platform)
+                    sys.stdout.write(f"SYNC: COMPLETE for {restaurant_id} - {report.ingested} new reviews\n")
+                    sys.stdout.flush()
+                    logger.info(f"Background Sync for {restaurant_id} ({platform}) completed successfully.")
+                    
+                except Exception as e:
+                    logger.error(f"Critical sync failure: {e}", exc_info=True)
+                    sys.stdout.write(f"SYNC CRASH (inner): {e}\n")
+                    sys.stdout.flush()
+                    sync_manager.finish_sync(restaurant_id, status=f"❌ Sync crashed: {str(e)[:50]}")
+        except Exception as e:
+            sys.stdout.write(f"SYNC CRASH (outer): {type(e).__name__}: {e}\n")
+            sys.stdout.flush()
+            sync_manager.finish_sync(restaurant_id, status=f"❌ Fatal: {str(e)[:50]}")
+
+    background_tasks.add_task(_run_sync_task, platform, business_url, business_name, target_restaurant_id, business_address, force)
 
     return {
-        "status": "synced",
-        "mode": sync_mode,
-        "platform": platform,
-        "business_name": business_name,
-        "live_count": live_count,
-        "local_count": local_count,
-        "total_fetched": len(raw_reviews),
-        "new_ingested": report.ingested,
-        "duplicates_skipped": report.duplicates_skipped,
-        "errors": report.errors,
+        "status": "processing",
+        "tracking_id": target_restaurant_id
     }
 
 

@@ -11,6 +11,7 @@ interface SyncProgressOverlayProps {
     totalCount?: number;
     estimatedSecondsRemaining?: number;
     onCancel: () => void;
+    onClose?: () => void;
 }
 
 export const SyncProgressOverlay: React.FC<SyncProgressOverlayProps> = ({
@@ -20,7 +21,8 @@ export const SyncProgressOverlay: React.FC<SyncProgressOverlayProps> = ({
     processedCount,
     totalCount,
     estimatedSecondsRemaining,
-    onCancel
+    onCancel,
+    onClose,
 }) => {
     const progressAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -56,7 +58,7 @@ export const SyncProgressOverlay: React.FC<SyncProgressOverlayProps> = ({
                             <Text style={styles.title}>Synchronizing Data</Text>
                         </View>
                         
-                        <Text style={styles.status}>{percent === 100 ? 'Sync Complete!' : status}</Text>
+                        <Text style={styles.status}>{percent === 100 ? (status || 'Sync Complete!') : status}</Text>
                         
                         <View style={styles.progressContainer}>
                             <View style={styles.progressBarBackground}>
@@ -75,6 +77,13 @@ export const SyncProgressOverlay: React.FC<SyncProgressOverlayProps> = ({
                                     <Text style={styles.estimateText}>{formatTime(estimatedSecondsRemaining)}</Text>
                                 ) : null}
                             </View>
+                            {totalCount && totalCount > 0 && percent < 100 ? (
+                                <View style={styles.countsRow}>
+                                    <Text style={styles.countText}>
+                                        {processedCount || 0} / {totalCount} reviews analyzed
+                                    </Text>
+                                </View>
+                            ) : null}
                         </View>
 
                         <TouchableOpacity 
@@ -82,7 +91,7 @@ export const SyncProgressOverlay: React.FC<SyncProgressOverlayProps> = ({
                                 styles.cancelButton, 
                                 percent === 100 && styles.doneButton
                             ]} 
-                            onPress={onCancel}
+                            onPress={percent === 100 ? (onClose || onCancel) : onCancel}
                         >
                             <Ionicons 
                                 name={percent === 100 ? "checkmark-circle" : "close-circle"} 
@@ -169,6 +178,9 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: '#A1A1A6',
         marginTop: 2,
+    },
+    countsRow: {
+        marginTop: 4,
     },
     cancelButton: {
         flexDirection: 'row',

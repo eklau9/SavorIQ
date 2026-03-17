@@ -114,6 +114,7 @@ async def ingest_reviews(
     reviews_data: list[dict],
     full_sync: bool = False,
     stop_on_match: bool = False,
+    progress_callback=None,
 ) -> IngestionReport:
     """
     Optimized ingestion pipeline with batch lookups and minimal queries.
@@ -147,7 +148,10 @@ async def ingest_reviews(
     )
     review_cache = {r.platform_review_id: r for r in existing_reviews_result.scalars().all()}
 
+    total = len(reviews_data)
     for i, raw_data in enumerate(reviews_data):
+        if progress_callback and i % 10 == 0:
+            progress_callback(i, total)
         try:
             if platform == ReviewPlatform.yelp:
                 parsed = YelpReviewIngest.model_validate(raw_data)
@@ -159,27 +163,36 @@ async def ingest_reviews(
             existing_review = review_cache.get(normalized["platform_review_id"])
 
             if existing_review:
-                # Upsert check: update if content/rating changed
-                has_changed = (
-                    existing_review.rating != normalized["rating"] or 
-                    existing_review.content != normalized["content"]
-                )
-                if has_changed:
-                    existing_review.rating = normalized["rating"]
-                    existing_review.content = normalized["content"]
-                    # Mark as NOT deleted if it resurfaced
-                    existing_review.is_deleted_on_platform = False
-                    report.ingested += 1
-                else:
-                    report.duplicates_skipped += 1
+                # ── MISATTRIBUTION RECOVERY ──
+                # If a review ID exists but is attached to the WRONG restaurant, claim it.
+                # This fixes data corruption from previous bugs without needing manual DB cleanup.
+                was_misattributed = existing_review.restaurant_id != restaurant_id
                 
-                # INCREMENTAL SYNC OPTIMIZATION:
-                # If we hit a duplicate and stop_on_match is True, we assume we've hit the 
-                # existing historical record and can stop the entire ingestion.
-                if stop_on_match:
-                    logger.info(f"Incremental Sync: Hit existing review {normalized['platform_review_id']}. Stopping.")
-                    return report
-                continue
+                if was_misattributed:
+                    logger.info(f"RECOVERY: Moving misattributed review {existing_review.platform_review_id} from {existing_review.restaurant_id} to {restaurant_id}")
+                    existing_review.restaurant_id = restaurant_id
+                    # We'll continue the loop to re-resolve the guest for this restaurant below
+                else:
+                    # Standard Upsert check
+                    has_changed = (
+                        existing_review.rating != normalized["rating"] or 
+                        existing_review.content != normalized["content"]
+                    )
+                    if has_changed:
+                        existing_review.rating = normalized["rating"]
+                        existing_review.content = normalized["content"]
+                        # Mark as NOT deleted if it resurfaced
+                        existing_review.is_deleted_on_platform = False
+                        report.ingested += 1
+                    else:
+                        report.duplicates_skipped += 1
+                    
+                    if stop_on_match:
+                        logger.info(f"Incremental Sync: Hit existing review {normalized['platform_review_id']}. Stopping.")
+                        return report
+                    
+                    if not was_misattributed:
+                        continue
 
             # Get guest from cache or create
             name = normalized["guest_name"]
@@ -200,6 +213,15 @@ async def ingest_reviews(
                 db.add(guest)
                 await db.flush()
                 guest_cache[name] = guest
+
+            # Re-associate existing misattributed review with the correct guest in this restaurant
+            if existing_review and existing_review.restaurant_id == restaurant_id:
+                existing_review.guest_id = guest.id
+                # No need to count as 'ingested' if it was just a relocation? 
+                # Actually, counting it as ingested helps indicate work was done.
+                if was_misattributed:
+                    report.ingested += 1
+                continue
 
             # Update guest visit timestamps
             reviewed_at = normalized["reviewed_at"]

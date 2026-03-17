@@ -109,8 +109,9 @@ async def list_locations(db: AsyncSession = Depends(get_db)):
             .limit(1)
         )).scalar()
 
-        google_count = google_gt if google_gt is not None else google_local
-        yelp_count = yelp_gt if yelp_gt is not None else yelp_local
+        # Use actual DB counts as the primary numbers
+        google_count = google_local
+        yelp_count = yelp_local
 
         # Guest count
         guest_count = (await db.execute(
@@ -139,6 +140,8 @@ async def list_locations(db: AsyncSession = Depends(get_db)):
             "google_reviews": google_count,
             "yelp_reviews": yelp_count,
             "total_reviews": google_count + yelp_count,
+            "google_platform_count": google_gt,
+            "yelp_platform_count": yelp_gt,
             "guest_count": guest_count,
             "google_last_synced": google_sync.isoformat() if google_sync else None,
             "yelp_last_synced": yelp_sync.isoformat() if yelp_sync else None,
@@ -384,6 +387,7 @@ def _check_google() -> dict:
         },
         "gemini": {
             "configured": bool(settings.GEMINI_API_KEY),
+            "model": settings.GEMINI_MODEL,
             "note": f"{live_usage['rpm']}/{live_usage['rpm_limit']} RPM used",
             "usage": live_usage,
             "console_url": "https://aistudio.google.com/app/plan_information",

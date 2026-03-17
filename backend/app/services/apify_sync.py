@@ -7,6 +7,7 @@ Uses Apify actors to fetch reviews without platform API limitations:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 
@@ -48,7 +49,12 @@ def _get_apify_tokens() -> list[str]:
     return tokens
 
 
-async def _run_apify_actor(actor_id: str, run_input: dict, timeout: int = 180) -> list[dict]:
+async def _run_apify_actor(
+    actor_id: str,
+    run_input: dict,
+    timeout: int = 120,
+    progress_callback=None,
+) -> list[dict]:
     """
     Run an Apify actor synchronously and return dataset items.
 
@@ -69,14 +75,14 @@ async def _run_apify_actor(actor_id: str, run_input: dict, timeout: int = 180) -
         }
         label = f"token #{i}/{len(tokens)} (...{token[-6:]})"
 
-        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout + 30)) as client:
-            # Start the actor run and wait for it to finish
+        async with httpx.AsyncClient(timeout=httpx.Timeout(300)) as client:
+            # Start the actor run WITHOUT waiting (fire and poll)
             try:
                 run_resp = await client.post(
                     f"{APIFY_BASE}/acts/{actor_id}/runs",
                     headers=headers,
                     json=run_input,
-                    params={"waitForFinish": timeout},
+                    params={"waitForFinish": 0},  # Don't wait — return immediately
                 )
             except httpx.HTTPError as exc:
                 last_error = exc
@@ -93,19 +99,42 @@ async def _run_apify_actor(actor_id: str, run_input: dict, timeout: int = 180) -
 
             run_resp.raise_for_status()
             run_data = run_resp.json().get("data", {})
-
+            run_id = run_data.get("id")
             status = run_data.get("status")
+
+            # Poll every 5 seconds until done (max ~3 minutes)
+            max_polls = 36  # 36 * 5s = 180s max
+            poll_count = 0
+            while status in ("READY", "RUNNING") and poll_count < max_polls:
+                poll_count += 1
+
+                # Report progress while waiting
+                if progress_callback:
+                    pct = min(10 + poll_count, 35)  # Gradual 10% → 35%
+                    elapsed = poll_count * 5
+                    progress_callback(pct, f"Scraping reviews... ({elapsed}s elapsed)")
+
+                await asyncio.sleep(5)
+
+                poll_resp = await client.get(f"{APIFY_BASE}/actor-runs/{run_id}", headers=headers)
+                poll_resp.raise_for_status()
+                run_data = poll_resp.json().get("data", {})
+                status = run_data.get("status")
+
             if status not in ("SUCCEEDED",):
                 raise RuntimeError(
-                    f"Apify actor {actor_id} finished with status: {status}. "
+                    f"Apify actor {actor_id} run {run_id} finished with status: {status}. "
                     f"Status message: {run_data.get('statusMessage', 'N/A')}"
                 )
+
+            if progress_callback:
+                progress_callback(38, "Downloading scraped data...")
 
             dataset_id = run_data.get("defaultDatasetId")
             if not dataset_id:
                 raise RuntimeError("No dataset ID in Apify run response.")
 
-            logger.info(f"Apify {label}: actor run succeeded, fetching dataset {dataset_id}")
+            logger.info(f"Apify {label}: actor run {run_id} succeeded, fetching dataset {dataset_id}")
 
             # Fetch the dataset items (same token that started the run)
             items_resp = await client.get(
@@ -122,7 +151,7 @@ async def _run_apify_actor(actor_id: str, run_input: dict, timeout: int = 180) -
     )
 
 
-async def apify_google_reviews(place_id_or_url: str, max_reviews: int = 100000) -> list[dict]:
+async def apify_google_reviews(place_id_or_url: str, max_reviews: int = 100000, progress_callback=None) -> list[dict]:
     """
     Fetch Google Maps reviews via Apify's Google Maps Reviews Scraper.
     Accepts either a Google Place ID (e.g. 'ChIJOfQAb0XJj4ARFG40QIgMJx4')
@@ -144,7 +173,7 @@ async def apify_google_reviews(place_id_or_url: str, max_reviews: int = 100000) 
             "reviewsSort": "newest",
         }
 
-    raw_items = await _run_apify_actor("compass~google-maps-reviews-scraper", run_input)
+    raw_items = await _run_apify_actor("compass~google-maps-reviews-scraper", run_input, progress_callback=progress_callback)
     logger.info(f"Apify Google: fetched {len(raw_items)} reviews for {place_id_or_url}")
 
     reviews = []
@@ -178,18 +207,24 @@ async def apify_google_reviews(place_id_or_url: str, max_reviews: int = 100000) 
     return reviews
 
 
-async def apify_yelp_reviews(yelp_url: str, max_reviews: int = 100000) -> list[dict]:
+async def apify_yelp_reviews(yelp_url: str, max_reviews: int = 100000, progress_callback=None) -> list[dict]:
     """
     Fetch Yelp reviews via Apify's Yelp Review Scraper.
     Returns normalized dicts ready for the existing ingestion pipeline.
     """
+    # Strip query params (Yelp Fusion API appends tracking params that confuse the scraper)
+    from urllib.parse import urlparse, urlunparse
+    parsed = urlparse(yelp_url)
+    clean_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+    
     run_input = {
-        "startUrls": [{"url": yelp_url}],
+        "startUrls": [{"url": clean_url}],
         "maxReviews": max_reviews,
-        "sort": "newest",
     }
 
-    raw_items = await _run_apify_actor("tri_angle~yelp-review-scraper", run_input)
+    # NOTE: yin~yelp-scraper is broken (CheerioCrawler silently drops startUrls, returns 0 reviews).
+    # tri_angle~yelp-review-scraper (151K+ runs) reliably scrapes Yelp reviews.
+    raw_items = await _run_apify_actor("tri_angle~yelp-review-scraper", run_input, progress_callback=progress_callback)
     logger.info(f"Apify Yelp: fetched {len(raw_items)} reviews for {yelp_url}")
 
     reviews = []

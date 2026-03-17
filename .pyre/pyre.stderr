@@ -113,3 +113,1498 @@ Traceback (most recent call last):
   File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
     raise configuration_module.InvalidConfiguration(
 pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-15 23:43:42,149 [PID 21024] DEBUG Using selector: KqueueSelector
+2026-03-15 23:43:42,149 [PID 21024] INFO Reading Pyre server configurations...
+2026-03-15 23:43:42,155 [PID 21024] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-15 23:43:42,932 [PID 21070] DEBUG Using selector: KqueueSelector
+2026-03-15 23:43:42,932 [PID 21070] INFO Reading Pyre server configurations...
+2026-03-15 23:43:42,937 [PID 21070] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-15 23:43:43,690 [PID 21074] DEBUG Using selector: KqueueSelector
+2026-03-15 23:43:43,690 [PID 21074] INFO Reading Pyre server configurations...
+2026-03-15 23:43:43,696 [PID 21074] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-15 23:43:44,501 [PID 21075] DEBUG Using selector: KqueueSelector
+2026-03-15 23:43:44,502 [PID 21075] INFO Reading Pyre server configurations...
+2026-03-15 23:43:44,507 [PID 21075] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-15 23:43:45,279 [PID 21076] DEBUG Using selector: KqueueSelector
+2026-03-15 23:43:45,279 [PID 21076] INFO Reading Pyre server configurations...
+2026-03-15 23:43:45,284 [PID 21076] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 02:07:47,531 [PID 41485] DEBUG Using selector: KqueueSelector
+2026-03-16 02:07:47,531 [PID 41485] INFO Reading Pyre server configurations...
+2026-03-16 02:07:47,538 [PID 41485] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 02:07:48,747 [PID 41593] DEBUG Using selector: KqueueSelector
+2026-03-16 02:07:48,748 [PID 41593] INFO Reading Pyre server configurations...
+2026-03-16 02:07:48,754 [PID 41593] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 02:07:49,622 [PID 41617] DEBUG Using selector: KqueueSelector
+2026-03-16 02:07:49,623 [PID 41617] INFO Reading Pyre server configurations...
+2026-03-16 02:07:49,628 [PID 41617] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 02:07:50,426 [PID 41618] DEBUG Using selector: KqueueSelector
+2026-03-16 02:07:50,427 [PID 41618] INFO Reading Pyre server configurations...
+2026-03-16 02:07:50,432 [PID 41618] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 02:07:51,222 [PID 41619] DEBUG Using selector: KqueueSelector
+2026-03-16 02:07:51,222 [PID 41619] INFO Reading Pyre server configurations...
+2026-03-16 02:07:51,227 [PID 41619] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:09:32,547 [PID 11458] DEBUG Using selector: KqueueSelector
+2026-03-16 05:09:32,548 [PID 11458] INFO Reading Pyre server configurations...
+2026-03-16 05:09:32,554 [PID 11458] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:09:33,678 [PID 11508] DEBUG Using selector: KqueueSelector
+2026-03-16 05:09:33,678 [PID 11508] INFO Reading Pyre server configurations...
+2026-03-16 05:09:33,685 [PID 11508] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:09:34,755 [PID 11709] DEBUG Using selector: KqueueSelector
+2026-03-16 05:09:34,755 [PID 11709] INFO Reading Pyre server configurations...
+2026-03-16 05:09:34,762 [PID 11709] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:09:35,700 [PID 11716] DEBUG Using selector: KqueueSelector
+2026-03-16 05:09:35,701 [PID 11716] INFO Reading Pyre server configurations...
+2026-03-16 05:09:35,707 [PID 11716] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:09:36,611 [PID 11719] DEBUG Using selector: KqueueSelector
+2026-03-16 05:09:36,611 [PID 11719] INFO Reading Pyre server configurations...
+2026-03-16 05:09:36,618 [PID 11719] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:14:55,604 [PID 17455] DEBUG Using selector: KqueueSelector
+2026-03-16 05:14:55,604 [PID 17455] INFO Reading Pyre server configurations...
+2026-03-16 05:14:55,611 [PID 17455] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:14:56,929 [PID 17691] DEBUG Using selector: KqueueSelector
+2026-03-16 05:14:56,930 [PID 17691] INFO Reading Pyre server configurations...
+2026-03-16 05:14:56,940 [PID 17691] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:14:58,102 [PID 17942] DEBUG Using selector: KqueueSelector
+2026-03-16 05:14:58,103 [PID 17942] INFO Reading Pyre server configurations...
+2026-03-16 05:14:58,109 [PID 17942] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:14:59,294 [PID 17954] DEBUG Using selector: KqueueSelector
+2026-03-16 05:14:59,294 [PID 17954] INFO Reading Pyre server configurations...
+2026-03-16 05:14:59,300 [PID 17954] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:15:00,367 [PID 17959] DEBUG Using selector: KqueueSelector
+2026-03-16 05:15:00,367 [PID 17959] INFO Reading Pyre server configurations...
+2026-03-16 05:15:00,373 [PID 17959] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:36:30,689 [PID 26019] DEBUG Using selector: KqueueSelector
+2026-03-16 05:36:30,689 [PID 26019] INFO Reading Pyre server configurations...
+2026-03-16 05:36:30,696 [PID 26019] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:36:31,902 [PID 26069] DEBUG Using selector: KqueueSelector
+2026-03-16 05:36:31,902 [PID 26069] INFO Reading Pyre server configurations...
+2026-03-16 05:36:31,908 [PID 26069] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:36:33,042 [PID 26384] DEBUG Using selector: KqueueSelector
+2026-03-16 05:36:33,043 [PID 26384] INFO Reading Pyre server configurations...
+2026-03-16 05:36:33,049 [PID 26384] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:36:33,999 [PID 26397] DEBUG Using selector: KqueueSelector
+2026-03-16 05:36:33,999 [PID 26397] INFO Reading Pyre server configurations...
+2026-03-16 05:36:34,005 [PID 26397] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:36:34,979 [PID 26400] DEBUG Using selector: KqueueSelector
+2026-03-16 05:36:34,979 [PID 26400] INFO Reading Pyre server configurations...
+2026-03-16 05:36:34,985 [PID 26400] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:37:27,149 [PID 26787] DEBUG Using selector: KqueueSelector
+2026-03-16 05:37:27,149 [PID 26787] INFO Reading Pyre server configurations...
+2026-03-16 05:37:27,157 [PID 26787] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:37:28,698 [PID 27367] DEBUG Using selector: KqueueSelector
+2026-03-16 05:37:28,698 [PID 27367] INFO Reading Pyre server configurations...
+2026-03-16 05:37:28,705 [PID 27367] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:37:29,956 [PID 27522] DEBUG Using selector: KqueueSelector
+2026-03-16 05:37:29,956 [PID 27522] INFO Reading Pyre server configurations...
+2026-03-16 05:37:29,964 [PID 27522] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:37:31,106 [PID 27555] DEBUG Using selector: KqueueSelector
+2026-03-16 05:37:31,107 [PID 27555] INFO Reading Pyre server configurations...
+2026-03-16 05:37:31,113 [PID 27555] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:37:32,328 [PID 27565] DEBUG Using selector: KqueueSelector
+2026-03-16 05:37:32,329 [PID 27565] INFO Reading Pyre server configurations...
+2026-03-16 05:37:32,335 [PID 27565] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:43:52,885 [PID 32275] DEBUG Using selector: KqueueSelector
+2026-03-16 05:43:52,886 [PID 32275] INFO Reading Pyre server configurations...
+2026-03-16 05:43:52,897 [PID 32275] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:43:54,186 [PID 32714] DEBUG Using selector: KqueueSelector
+2026-03-16 05:43:54,187 [PID 32714] INFO Reading Pyre server configurations...
+2026-03-16 05:43:54,193 [PID 32714] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:43:55,412 [PID 32754] DEBUG Using selector: KqueueSelector
+2026-03-16 05:43:55,413 [PID 32754] INFO Reading Pyre server configurations...
+2026-03-16 05:43:55,447 [PID 32754] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:43:56,486 [PID 32759] DEBUG Using selector: KqueueSelector
+2026-03-16 05:43:56,487 [PID 32759] INFO Reading Pyre server configurations...
+2026-03-16 05:43:56,493 [PID 32759] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:43:57,566 [PID 32760] DEBUG Using selector: KqueueSelector
+2026-03-16 05:43:57,566 [PID 32760] INFO Reading Pyre server configurations...
+2026-03-16 05:43:57,572 [PID 32760] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:46:08,891 [PID 33711] DEBUG Using selector: KqueueSelector
+2026-03-16 05:46:08,892 [PID 33711] INFO Reading Pyre server configurations...
+2026-03-16 05:46:08,898 [PID 33711] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:46:10,699 [PID 34352] DEBUG Using selector: KqueueSelector
+2026-03-16 05:46:10,700 [PID 34352] INFO Reading Pyre server configurations...
+2026-03-16 05:46:10,707 [PID 34352] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:46:11,958 [PID 34707] DEBUG Using selector: KqueueSelector
+2026-03-16 05:46:11,959 [PID 34707] INFO Reading Pyre server configurations...
+2026-03-16 05:46:11,966 [PID 34707] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:46:13,417 [PID 34736] DEBUG Using selector: KqueueSelector
+2026-03-16 05:46:13,418 [PID 34736] INFO Reading Pyre server configurations...
+2026-03-16 05:46:13,424 [PID 34736] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:46:14,630 [PID 34747] DEBUG Using selector: KqueueSelector
+2026-03-16 05:46:14,631 [PID 34747] INFO Reading Pyre server configurations...
+2026-03-16 05:46:14,640 [PID 34747] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:47:40,794 [PID 35527] DEBUG Using selector: KqueueSelector
+2026-03-16 05:47:40,795 [PID 35527] INFO Reading Pyre server configurations...
+2026-03-16 05:47:40,804 [PID 35527] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:47:42,435 [PID 35890] DEBUG Using selector: KqueueSelector
+2026-03-16 05:47:42,436 [PID 35890] INFO Reading Pyre server configurations...
+2026-03-16 05:47:42,453 [PID 35890] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:47:43,784 [PID 36266] DEBUG Using selector: KqueueSelector
+2026-03-16 05:47:43,784 [PID 36266] INFO Reading Pyre server configurations...
+2026-03-16 05:47:43,793 [PID 36266] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:47:45,145 [PID 36272] DEBUG Using selector: KqueueSelector
+2026-03-16 05:47:45,145 [PID 36272] INFO Reading Pyre server configurations...
+2026-03-16 05:47:45,153 [PID 36272] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 05:47:46,363 [PID 36279] DEBUG Using selector: KqueueSelector
+2026-03-16 05:47:46,364 [PID 36279] INFO Reading Pyre server configurations...
+2026-03-16 05:47:46,370 [PID 36279] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:14:51,021 [PID 53357] DEBUG Using selector: KqueueSelector
+2026-03-16 06:14:51,021 [PID 53357] INFO Reading Pyre server configurations...
+2026-03-16 06:14:51,028 [PID 53357] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:14:52,698 [PID 53688] DEBUG Using selector: KqueueSelector
+2026-03-16 06:14:52,700 [PID 53688] INFO Reading Pyre server configurations...
+2026-03-16 06:14:52,727 [PID 53688] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:14:54,198 [PID 54290] DEBUG Using selector: KqueueSelector
+2026-03-16 06:14:54,199 [PID 54290] INFO Reading Pyre server configurations...
+2026-03-16 06:14:54,208 [PID 54290] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:14:55,467 [PID 54320] DEBUG Using selector: KqueueSelector
+2026-03-16 06:14:55,467 [PID 54320] INFO Reading Pyre server configurations...
+2026-03-16 06:14:55,474 [PID 54320] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:14:56,698 [PID 54330] DEBUG Using selector: KqueueSelector
+2026-03-16 06:14:56,699 [PID 54330] INFO Reading Pyre server configurations...
+2026-03-16 06:14:56,709 [PID 54330] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:47:58,844 [PID 71583] DEBUG Using selector: KqueueSelector
+2026-03-16 06:47:58,845 [PID 71583] INFO Reading Pyre server configurations...
+2026-03-16 06:47:58,853 [PID 71583] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:48:00,124 [PID 71721] DEBUG Using selector: KqueueSelector
+2026-03-16 06:48:00,125 [PID 71721] INFO Reading Pyre server configurations...
+2026-03-16 06:48:00,132 [PID 71721] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:48:01,124 [PID 71741] DEBUG Using selector: KqueueSelector
+2026-03-16 06:48:01,125 [PID 71741] INFO Reading Pyre server configurations...
+2026-03-16 06:48:01,131 [PID 71741] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:48:01,967 [PID 71746] DEBUG Using selector: KqueueSelector
+2026-03-16 06:48:01,968 [PID 71746] INFO Reading Pyre server configurations...
+2026-03-16 06:48:01,973 [PID 71746] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 06:48:02,952 [PID 71747] DEBUG Using selector: KqueueSelector
+2026-03-16 06:48:02,953 [PID 71747] INFO Reading Pyre server configurations...
+2026-03-16 06:48:02,959 [PID 71747] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 20:42:01,016 [PID 47338] DEBUG Using selector: KqueueSelector
+2026-03-16 20:42:01,016 [PID 47338] INFO Reading Pyre server configurations...
+2026-03-16 20:42:01,023 [PID 47338] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 20:42:02,034 [PID 47388] DEBUG Using selector: KqueueSelector
+2026-03-16 20:42:02,034 [PID 47388] INFO Reading Pyre server configurations...
+2026-03-16 20:42:02,041 [PID 47388] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 20:42:02,998 [PID 47392] DEBUG Using selector: KqueueSelector
+2026-03-16 20:42:02,999 [PID 47392] INFO Reading Pyre server configurations...
+2026-03-16 20:42:03,004 [PID 47392] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 20:42:04,016 [PID 47397] DEBUG Using selector: KqueueSelector
+2026-03-16 20:42:04,016 [PID 47397] INFO Reading Pyre server configurations...
+2026-03-16 20:42:04,023 [PID 47397] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 20:42:05,050 [PID 47398] DEBUG Using selector: KqueueSelector
+2026-03-16 20:42:05,050 [PID 47398] INFO Reading Pyre server configurations...
+2026-03-16 20:42:05,057 [PID 47398] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 21:45:26,792 [PID 79980] DEBUG Using selector: KqueueSelector
+2026-03-16 21:45:26,793 [PID 79980] INFO Reading Pyre server configurations...
+2026-03-16 21:45:26,799 [PID 79980] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 21:45:27,781 [PID 80029] DEBUG Using selector: KqueueSelector
+2026-03-16 21:45:27,782 [PID 80029] INFO Reading Pyre server configurations...
+2026-03-16 21:45:27,789 [PID 80029] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 21:45:28,749 [PID 80032] DEBUG Using selector: KqueueSelector
+2026-03-16 21:45:28,750 [PID 80032] INFO Reading Pyre server configurations...
+2026-03-16 21:45:28,756 [PID 80032] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 21:45:29,644 [PID 80037] DEBUG Using selector: KqueueSelector
+2026-03-16 21:45:29,645 [PID 80037] INFO Reading Pyre server configurations...
+2026-03-16 21:45:29,651 [PID 80037] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.
+2026-03-16 21:45:30,648 [PID 80038] DEBUG Using selector: KqueueSelector
+2026-03-16 21:45:30,648 [PID 80038] INFO Reading Pyre server configurations...
+2026-03-16 21:45:30,655 [PID 80038] ERROR Uncaught error in persistent.run
+Traceback (most recent call last):
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 299, in run
+    return asyncio.get_event_loop().run_until_complete(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 642, in run_until_complete
+    return future.result()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/persistent.py", line 224, in run_persistent
+    initial_server_options = pyre_server_options.read_server_options(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 129, in read_server_options
+    return server_options_reader()
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 114, in read
+    return PyreServerOptions.create(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/pyre_server_options.py", line 93, in create
+    start_arguments = start.create_server_arguments(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/commands/start.py", line 311, in create_server_arguments
+    source_paths = backend_arguments.get_source_path_for_server(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 418, in get_source_path_for_server
+    return get_source_path(
+  File "/Users/Ed/Apps/SavorIQ/backend/venv/lib/python3.9/site-packages/pyre_check/client/backend_arguments.py", line 397, in get_source_path
+    raise configuration_module.InvalidConfiguration(
+pyre_check.client.configuration.exceptions.InvalidConfiguration: Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.

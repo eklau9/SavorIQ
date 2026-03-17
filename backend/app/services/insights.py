@@ -15,9 +15,8 @@ BRIEFING_PROMPT = """You are a strategic restaurant consultant. Analyze the prov
 
 - **Handling 3-Star Reviews**: Treat 3-star feedback as "neutral-to-positive" operational feedback. Use these to suggest "action" insights (e.g., "Guest mentioned inconsistent seasoning — consider a kitchen workshop").
 - **Handling 1-2 Star Reviews**: Treat these as "risks". They require immediate "risk" insights.
-- **Highlight ALL item names** in the summary AND in the insight descriptions using these markers:
-  - `++Item Name++` for positive items (e.g., top performers like **Espresso** or **Oat Milk Latte**).
-  - `--Item Name--` for negative/risk items (e.g., risks like **Cold Brew** or **Chicken Curry**).
+- **Highlight ALL menu item names** in the summary AND in the insight descriptions by wrapping them in backticks (e.g., `Espresso`, `Oat Milk Latte`). Do NOT use any other markers like ++ or --. Only use backticks.
+- **Do NOT put markers in insight titles**. Titles should be clean plain text with no backticks or special formatting.
 - **IMPORTANT**: Use simple, direct vocabulary. Avoid complex jargon.
 - Each insight MUST include a `steps` field containing 3-5 short, actionable bullets for the manager.
 
@@ -138,23 +137,30 @@ async def generate_manager_briefing(
                 
                 logger.warning(f"Manager briefing generation failed: {e}")
                 
-                # Check internal tracker to distinguish between burst (RPM) and daily (RPD)
-                from app.services.gemini_tracker import get_gemini_usage
+                from app.services.gemini_tracker import get_gemini_usage, calibrate_gemini_usage
                 usage = get_gemini_usage()
                 
-                is_rpd_limited = usage.get("rpd", 0) >= usage.get("rpd_limit", 1500)
+                is_429 = "429" in error_msg
+                is_daily_quota = "PerDay" in error_msg or "per_day" in error_msg.lower()
+                is_rpd_limited = usage.get("rpd", 0) >= usage.get("rpd_limit", 1000)
                 is_rpm_limited = usage.get("rpm", 0) >= usage.get("rpm_limit", 15)
                 
-                if is_rpd_limited:
+                if is_429 and (is_daily_quota or not is_rpm_limited):
+                    # Google says we're done for the day — sync tracker to match
+                    await calibrate_gemini_usage(usage.get("rpd_limit", 1000))
                     title = "Daily Quota Exhausted"
-                    description = "You've reached your 1,500 daily AI insight limit. Service will resume tomorrow."
+                    description = f"You've used your {usage.get('rpd_limit', 1000)} daily AI requests. Insights will resume tomorrow at midnight PT."
                 elif is_rpm_limited:
                     title = "Minute Burst Limit Hit"
                     description = "Too many requests at once. Please wait 60 seconds for the burst limit to reset."
+                elif is_429:
+                    # 429 but not clearly daily — still likely exhausted
+                    await calibrate_gemini_usage(usage.get("rpd_limit", 1000))
+                    title = "Daily Quota Exhausted"
+                    description = f"Google reports quota exceeded. Insights will resume tomorrow at midnight PT."
                 else:
-                    # If we got a 429 but tracker says we are fine, it might be an external limit or RPM
-                    title = "AI Engine Under Pressure"
-                    description = "Google is reporting high traffic. Insights will return shortly—try switching dates again in a minute."
+                    title = "AI Temporarily Unavailable"
+                    description = f"Gemini returned an error: {error_msg[:80]}. Try again in a moment."
                 
                 # Return a fallback briefing WITHOUT caching it
                 return ManagerBriefing(
@@ -164,7 +170,7 @@ async def generate_manager_briefing(
                             title=title,
                             description=description,
                             type="risk",
-                            steps=["Check User Center for live quota status", "Wait 60 seconds if it's a burst limit", "Review manual analytics below"]
+                            steps=["Check the Admin dashboard for live quota status", "Insights reset at midnight Pacific Time", "Review manual analytics below"]
                         )
                     ]
                 )

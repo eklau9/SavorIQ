@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Animated } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, ScrollView } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 interface StartupLoadingScreenProps {
     progress: number;
@@ -10,169 +10,202 @@ interface StartupLoadingScreenProps {
     estimatedSecondsRemaining?: number;
 }
 
-export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({
-    progress,
-    loadingStep,
-    estimatedSecondsRemaining,
-}) => {
-    const progressAnim = React.useRef(new Animated.Value(0)).current;
+const ShimmerBlock = ({ width, height, style, borderRadius = radius.sm }: any) => {
+    const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
-    React.useEffect(() => {
-        Animated.timing(progressAnim, {
-            toValue: progress,
-            duration: 500,
-            useNativeDriver: false,
-        }).start();
-    }, [progress]);
-
-    const formatTime = (seconds?: number) => {
-        if (!seconds || seconds <= 0) return null;
-        if (seconds < 60) return `${seconds}s remaining`;
-        const mins = Math.ceil(seconds / 60);
-        return `~${mins} ${mins === 1 ? 'min' : 'mins'} remaining`;
-    };
-
-    const widthInterpolation = progressAnim.interpolate({
-        inputRange: [0, 100],
-        outputRange: ['0%', '100%'],
-    });
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 0.7,
+                    duration: 800,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 0.3,
+                    duration: 800,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+    }, [pulseAnim]);
 
     return (
-        <View style={styles.container}>
-            <View style={styles.background}>
-                 <View style={styles.brandingContainer}>
-                    <Ionicons name="sparkles" size={64} color={colors.accent.gold} />
-                    <Text style={styles.brandTitle}>SavorIQ</Text>
-                    <Text style={styles.brandSubtitle}>Intelligence Hub</Text>
-                 </View>
-            </View>
+        <Animated.View
+            style={[
+                {
+                    width,
+                    height,
+                    backgroundColor: colors.bg.secondary,
+                    borderRadius,
+                    opacity: pulseAnim,
+                },
+                style,
+            ]}
+        />
+    );
+};
 
-            <View style={styles.cardContainer}>
-                <BlurView intensity={20} style={styles.card} tint="dark">
-                    <View style={styles.header}>
-                        <ActivityIndicator color={colors.accent.gold} style={{ marginRight: 10 }} />
-                        <Text style={styles.title}>Synchronizing Dashboard</Text>
-                    </View>
-                    
-                    <Text style={styles.status}>{loadingStep || 'Connecting to server...'}</Text>
-                    
-                    <View style={styles.progressContainer}>
-                        <View style={styles.progressBarBackground}>
-                            <Animated.View 
-                                style={[
-                                    styles.progressBarFill, 
-                                    { width: widthInterpolation }
-                                ]} 
-                            />
+export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = () => {
+    return (
+        <View style={s.container}>
+            <View style={s.content}>
+                {/* Header Section */}
+                <View style={s.headerRow}>
+                    <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
+                                <ShimmerBlock width={60} height={14} />
+                            </View>
+                            <ShimmerBlock width={40} height={14} />
                         </View>
-                        <View style={styles.progressHeader}>
-                            <Text style={styles.percentText}>{Math.floor(progress)}% Complete</Text>
-                            {estimatedSecondsRemaining ? (
-                                <Text style={styles.estimateText}>{formatTime(estimatedSecondsRemaining)}</Text>
-                            ) : null}
+                        <ShimmerBlock width={'70%'} height={38} style={{ marginTop: 2, marginBottom: 8 }} />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
+                            <ShimmerBlock width={120} height={20} borderRadius={radius.full} />
+                            <ShimmerBlock width={160} height={24} borderRadius={radius.sm} />
                         </View>
                     </View>
-                </BlurView>
-            </View>
+                </View>
 
-            <Text style={styles.footerText}>Optimizing intelligence engine for your restaurant...</Text>
+                {/* KPI Row */}
+                <View style={s.kpiRow}>
+                    {[1, 2, 3].map((i) => (
+                        <View key={i} style={s.kpiCard}>
+                            <ShimmerBlock width={16} height={16} style={{ marginBottom: 4 }} />
+                            <ShimmerBlock width={40} height={28} style={{ marginBottom: 4 }} />
+                            <ShimmerBlock width={50} height={12} />
+                        </View>
+                    ))}
+                </View>
+
+                {/* Manager Briefing Card */}
+                <View style={s.card}>
+                    <View style={s.cardHeader}>
+                        <Ionicons name="sparkles" size={18} color={colors.accent.gold} />
+                        <ShimmerBlock width={140} height={22} />
+                    </View>
+                    <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
+                        <ShimmerBlock width={'100%'} height={16} />
+                        <ShimmerBlock width={'90%'} height={16} />
+                        <ShimmerBlock width={'95%'} height={16} />
+                    </View>
+
+                    {/* Insights List */}
+                    {[1, 2, 3].map((i) => (
+                        <View key={i} style={s.insightRow}>
+                            <ShimmerBlock width={32} height={32} borderRadius={radius.sm} />
+                            <View style={s.insightContent}>
+                                <ShimmerBlock width={'60%'} height={18} style={{ marginBottom: 4 }} />
+                                <ShimmerBlock width={'100%'} height={14} style={{ marginBottom: 2 }} />
+                                <ShimmerBlock width={'80%'} height={14} />
+                            </View>
+                        </View>
+                    ))}
+                </View>
+
+                {/* Top Performing Items Skeleton */}
+                <View style={s.card}>
+                    <View style={s.cardHeader}>
+                        <Ionicons name="trending-up" size={18} color={colors.sentiment.positive} />
+                        <ShimmerBlock width={160} height={20} />
+                    </View>
+                    {[1, 2].map((i) => (
+                         <View key={i} style={s.itemRow}>
+                             <View style={{ flex: 1 }}>
+                                  <ShimmerBlock width={'70%'} height={18} style={{ marginBottom: 4 }} />
+                                  <ShimmerBlock width={'30%'} height={12} />
+                             </View>
+                             <View style={s.itemStats}>
+                                  <ShimmerBlock width={24} height={24} style={{ marginBottom: 2 }} />
+                                  <ShimmerBlock width={40} height={10} />
+                             </View>
+                             <View style={{ marginLeft: spacing.sm }}>
+                                  <ShimmerBlock width={60} height={20} borderRadius={radius.sm} />
+                             </View>
+                         </View>
+                    ))}
+                </View>
+                
+                 {/* At-Risk Items Skeleton */}
+                 <View style={s.card}>
+                    <View style={s.cardHeader}>
+                        <Ionicons name="trending-down" size={18} color={colors.accent.red} />
+                        <ShimmerBlock width={120} height={20} />
+                    </View>
+                    {[1].map((i) => (
+                         <View key={i} style={[s.itemRow, { borderBottomWidth: 0, paddingBottom: 0 }]} >
+                             <View style={{ flex: 1 }}>
+                                  <ShimmerBlock width={'80%'} height={18} style={{ marginBottom: 4 }} />
+                                  <ShimmerBlock width={'40%'} height={12} />
+                             </View>
+                             <View style={s.itemStats}>
+                                  <ShimmerBlock width={24} height={24} style={{ marginBottom: 2 }} />
+                                  <ShimmerBlock width={40} height={10} />
+                             </View>
+                             <View style={{ marginLeft: spacing.sm }}>
+                                  <ShimmerBlock width={60} height={20} borderRadius={radius.sm} />
+                             </View>
+                         </View>
+                    ))}
+                </View>
+            </View>
+            <View style={s.footerOverlay}>
+                  <Text style={s.footerText}>Optimizing intelligence engine for your restaurant...</Text>
+            </View>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bg.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacing.lg,
-    },
-    background: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
-        alignItems: 'center',
-        opacity: 0.05,
-    },
-    brandingContainer: {
-        alignItems: 'center',
-    },
-    brandTitle: {
-        color: colors.text.primary,
-        fontSize: 56,
-        fontWeight: '900',
-        letterSpacing: -2,
-        marginTop: spacing.md,
-    },
-    brandSubtitle: {
-        color: colors.accent.gold,
-        fontSize: fonts.sizes.sm,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 6,
-        marginTop: -spacing.xs,
-    },
-    cardContainer: {
-        width: '100%',
-        maxWidth: 400,
-        borderRadius: radius.xl,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: colors.border.default,
-        backgroundColor: colors.bg.secondary + '40',
-    },
-    card: {
-        padding: spacing.xl,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.xs,
-    },
-    title: {
-        fontSize: fonts.sizes.lg,
-        fontWeight: 'bold',
-        color: colors.text.primary,
-    },
-    status: {
-        fontSize: fonts.sizes.sm,
-        color: colors.text.secondary,
-        marginBottom: spacing.xl,
-    },
-    progressContainer: {
-        marginBottom: spacing.sm,
-    },
-    progressHeader: {
+const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg.primary },
+    content: { padding: spacing.md, paddingTop: 32, paddingBottom: 40 },
+    headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: spacing.sm,
+        alignItems: 'center',
+        paddingTop: 32,
+        marginBottom: spacing.md,
+        paddingHorizontal: spacing.xs,
     },
-    progressBarBackground: {
-        height: 8,
-        backgroundColor: colors.bg.secondary,
-        borderRadius: radius.full,
-        overflow: 'hidden',
+    kpiRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+    kpiCard: {
+        flex: 1, backgroundColor: colors.bg.card, borderRadius: radius.md,
+        padding: spacing.md, alignItems: 'center', gap: 4,
+        borderWidth: 1, borderColor: colors.border.subtle,
     },
-    progressBarFill: {
-        height: '100%',
-        backgroundColor: colors.accent.gold,
-        borderRadius: radius.full,
+    card: {
+        backgroundColor: colors.bg.card, borderRadius: radius.lg,
+        padding: spacing.md, marginBottom: spacing.md,
+        borderWidth: 1, borderColor: colors.border.subtle,
+        overflow: 'hidden'
     },
-    percentText: {
-        fontSize: fonts.sizes.xs,
-        fontWeight: '700',
-        color: colors.text.primary,
+    cardHeader: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        marginBottom: spacing.md, paddingBottom: spacing.sm,
+        borderBottomWidth: 1, borderBottomColor: colors.border.subtle,
     },
-    estimateText: {
-        fontSize: fonts.sizes.xs,
-        color: colors.text.muted,
+    insightRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+    insightContent: { flex: 1, justifyContent: 'center' },
+    itemRow: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        paddingVertical: spacing.sm,
+        borderBottomWidth: 1, borderBottomColor: colors.border.subtle,
+    },
+    itemStats: { alignItems: 'center' },
+    footerOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(5, 7, 10, 0.8)',
     },
     footerText: {
-        position: 'absolute',
-        bottom: 60,
         color: colors.text.muted,
         fontSize: fonts.sizes.xs,
         textAlign: 'center',
-        width: '100%',
     }
 });
