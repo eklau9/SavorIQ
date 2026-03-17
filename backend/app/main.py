@@ -86,14 +86,7 @@ app.include_router(admin.router)
 
 @app.get("/health")
 async def health():
-    routes = [r.path for r in app.routes if hasattr(r, 'path')]
-    return {
-        "status": "ok",
-        "service": settings.APP_NAME,
-        "version": "v5-debug",
-        "routes": routes,
-        "static_dir_exists": os.path.isdir(os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))),
-    }
+    return {"status": "ok", "service": settings.APP_NAME, "v": "6-FRESH"}
 
 
 @app.get("/debug-web")
