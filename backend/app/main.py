@@ -88,41 +88,40 @@ app.include_router(admin.router)
 async def health():
     return {"status": "ok", "service": settings.APP_NAME}
 
-# Serve the Expo web build if available
+# Serve the Expo web build if available, otherwise JSON root
+import mimetypes
 STATIC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
 _index_html = os.path.join(STATIC_DIR, "index.html")
+_has_web_app = os.path.isfile(_index_html)
+print(f"INFO: Static dir={STATIC_DIR}, has_web_app={_has_web_app}")
 
-if os.path.isfile(_index_html):
-    import mimetypes
-    print(f"INFO: Serving web app from {STATIC_DIR}")
 
-    @app.get("/")
-    async def serve_index():
+@app.get("/")
+async def serve_root():
+    if _has_web_app:
         return FileResponse(_index_html, media_type="text/html")
+    return {"message": "SavorIQ API is running", "health_check": "/health"}
 
-    # Catch-all MUST be registered last — serves files or SPA fallback
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        """Serve static file if it exists, otherwise SPA fallback to index.html."""
-        file_path = os.path.join(STATIC_DIR, full_path)
-        if os.path.isfile(file_path):
-            content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
-            return FileResponse(file_path, media_type=content_type)
-        # Expo static export: check for route.html
-        html_path = file_path + ".html"
-        if os.path.isfile(html_path):
-            return FileResponse(html_path, media_type="text/html")
-        # Check for index.html in subdirectory
-        index_path = os.path.join(file_path, "index.html")
-        if os.path.isfile(index_path):
-            return FileResponse(index_path, media_type="text/html")
-        return FileResponse(_index_html, media_type="text/html")
-else:
-    print(f"INFO: No web app found at {STATIC_DIR}, serving API only")
 
-    @app.get("/")
-    async def root():
-        return {
-            "message": "SavorIQ API is running",
-            "health_check": "/health",
-        }
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve static file if exists, otherwise SPA fallback to index.html."""
+    if not _has_web_app:
+        # No web app — let FastAPI return its default 404
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
+    file_path = os.path.join(STATIC_DIR, full_path)
+    if os.path.isfile(file_path):
+        content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+        return FileResponse(file_path, media_type=content_type)
+    # Expo static export: route.html
+    html_path = file_path + ".html"
+    if os.path.isfile(html_path):
+        return FileResponse(html_path, media_type="text/html")
+    # Subdirectory index.html
+    index_path = os.path.join(file_path, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path, media_type="text/html")
+    return FileResponse(_index_html, media_type="text/html")
+
