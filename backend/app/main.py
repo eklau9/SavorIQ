@@ -96,25 +96,19 @@ if os.path.isfile(_index_html):
     import mimetypes
     print(f"INFO: Serving web app from {STATIC_DIR}")
 
-    # Mount each subdirectory that exists as a static mount
-    for subdir in ["_expo", "assets", "static"]:
-        subdir_path = os.path.join(STATIC_DIR, subdir)
-        if os.path.isdir(subdir_path):
-            app.mount(f"/{subdir}", StaticFiles(directory=subdir_path), name=f"static_{subdir}")
-            print(f"INFO:   Mounted /{subdir} -> {subdir_path}")
-
     @app.get("/")
     async def serve_index():
-        return FileResponse(_index_html)
+        return FileResponse(_index_html, media_type="text/html")
 
+    # Catch-all MUST be registered last — serves files or SPA fallback
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        """SPA fallback — serve static file if it exists, otherwise index.html."""
+        """Serve static file if it exists, otherwise SPA fallback to index.html."""
         file_path = os.path.join(STATIC_DIR, full_path)
         if os.path.isfile(file_path):
             content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
             return FileResponse(file_path, media_type=content_type)
-        # Check for .html extension (Expo static export creates route.html files)
+        # Expo static export: check for route.html
         html_path = file_path + ".html"
         if os.path.isfile(html_path):
             return FileResponse(html_path, media_type="text/html")
