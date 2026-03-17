@@ -4,19 +4,24 @@ import Constants from 'expo-constants';
 
 // Use env var if set (deployed builds), otherwise: local for simulator/web, Railway for production
 const getInitialApiBase = () => {
-    // 1. Explicit env var (highest priority)
+    // 1. For web: if running on a deployed domain (not localhost), use same origin
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const host = window.location.hostname;
+        if (host !== 'localhost' && host !== '127.0.0.1') {
+            return window.location.origin;
+        }
+    }
+
+    // 2. Explicit env var (highest priority for native builds)
     if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
 
-    // 2. Localhost for development (web/simulator)
-    // We check __DEV__ (global in Expo/React Native)
+    // 3. Localhost for development (web/simulator)
     if (__DEV__) {
-        // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues (::1) 
-        // which can cause "Failed to fetch" if the server is only listening on IPv4.
         return 'http://127.0.0.1:8000';
     }
 
-    // 3. Fallback to Railway Production
-    return 'https://savoriq-api-production.up.railway.app';
+    // 4. Fallback to Railway Production
+    return 'https://savoriq-production.up.railway.app';
 };
 
 const DEFAULT_API_BASE = getInitialApiBase();
