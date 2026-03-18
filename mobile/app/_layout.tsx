@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { RestaurantProvider } from '@/lib/RestaurantContext';
+import { DataProvider } from '@/lib/DataContext';
 import { colors } from '@/lib/theme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -47,20 +48,22 @@ export default function RootLayout() {
 
   return (
     <RestaurantProvider>
-      <ThemeProvider value={savoriqTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="guest/[id]"
-            options={{
-              presentation: 'modal',
-              headerStyle: { backgroundColor: colors.bg.secondary },
-              headerTintColor: colors.text.primary,
-              title: 'Guest Profile',
-            }}
-          />
-        </Stack>
-      </ThemeProvider>
+      <DataProvider>
+        <ThemeProvider value={savoriqTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="guest/[id]"
+              options={{
+                presentation: 'modal',
+                headerStyle: { backgroundColor: colors.bg.secondary },
+                headerTintColor: colors.text.primary,
+                title: 'Guest Profile',
+              }}
+            />
+          </Stack>
+        </ThemeProvider>
+      </DataProvider>
     </RestaurantProvider>
   );
 }

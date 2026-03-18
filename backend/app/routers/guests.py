@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Guest, InterceptAction, Order, Restaurant, Review
+from app.models import Guest, InterceptAction, MenuItem, Order, Restaurant, Review
 from app.schemas import GuestPulse, GuestRead, GuestPrioritized, ReviewRead, RestaurantRead
 from app.services.cache import api_cache
 
@@ -349,8 +349,14 @@ async def get_guest_pulse(
         for b, scores in bucket_data.items()
     ]
 
+    # Build guest response with computed avg_rating
+    guest_data = GuestRead.model_validate(guest)
+    if visit_count > 0:
+        guest_data.avg_rating = round(sum(r.rating for r in active_reviews) / visit_count, 1)
+        guest_data.visit_count = visit_count
+
     return GuestPulse(
-        guest=GuestRead.model_validate(guest),
+        guest=guest_data,
         favorite_items=favorite_items,
         visit_count=visit_count,
         review_engagement_score=round(engagement_score, 2),

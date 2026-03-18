@@ -44,6 +44,10 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             setRestaurants([]);
         } finally {
             setLoading(false);
+            // Dismiss the HTML splash once React app is usable
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('savoriq-ready'));
+            }
         }
     };
 

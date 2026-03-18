@@ -270,6 +270,35 @@ async def ingest_reviews(
             logger.info(f"Pruned {len(to_prune)} deleted reviews for {restaurant_id} on {platform.value}")
 
     await db.flush()
+
+    # ── Tier Recalculation for affected guests ──
+    # Compute tiers based on review counts for all guests that were touched
+    touched_guest_ids = list({g.id for g in guest_cache.values()})
+    if touched_guest_ids:
+        now = datetime.utcnow()
+        for guest in guest_cache.values():
+            review_count_result = await db.execute(
+                select(func.count(Review.id)).where(
+                    Review.guest_id == guest.id,
+                    Review.restaurant_id == restaurant_id,
+                    Review.is_deleted_on_platform == False,
+                )
+            )
+            review_count = review_count_result.scalar() or 0
+
+            if review_count >= 3:
+                guest.tier = "vip"
+            elif review_count >= 2:
+                guest.tier = "regular"
+            elif guest.last_visit and (now - guest.last_visit).days > 180:
+                guest.tier = "slipping"
+            elif guest.first_visit and (now - guest.first_visit).days <= 30:
+                guest.tier = "new"
+            else:
+                guest.tier = "new"
+
+        await db.flush()
+
     return report
 
 

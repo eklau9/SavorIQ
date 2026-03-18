@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, FlatList, StyleSheet, RefreshControl,
-    ActivityIndicator, TouchableOpacity,
+    ActivityIndicator, TouchableOpacity, TextInput,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,34 +18,54 @@ const tierColors: Record<string, string> = {
     slipping: colors.accent.red,
 };
 
+const ratingColor = (rating: number) => {
+    if (rating <= 2) return colors.accent.red;
+    if (rating <= 3.5) return colors.accent.gold;
+    return colors.accent.green;
+};
+
 export default function GuestsScreen() {
     const { activeId, loading: contextLoading } = useRestaurant();
-    const { guests: globalGuests, refreshAll, loading: dataLoading } = useData();
+    const { guests: globalGuests, refreshAll, loading: dataLoading, timeRange, setTimeRange } = useData();
     const router = useRouter();
     const [guests, setGuests] = useState<Guest[]>([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [filterTier, setFilterTier] = useState<string | undefined>();
-    const [sortBy, setSortBy] = useState<'recent' | 'rating' | 'reviews'>('recent');
+    const [sortField, setSortField] = useState<'date' | 'rating'>('date');
+    const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+    const [searchText, setSearchText] = useState('');
+
+    const sortDescription = sortField === 'date'
+        ? (sortDir === 'desc' ? 'Newest first' : 'Oldest first')
+        : (sortDir === 'desc' ? 'Highest rated' : 'Lowest rated');
 
     // 1. Local Filtering Logic (Instant Feedback)
     useEffect(() => {
         if (!activeId || globalGuests.length === 0) return;
 
+        const now = new Date();
         const filtered = globalGuests.filter(g => {
             const matchesTier = !filterTier || g.tier === filterTier;
-            return matchesTier;
+            const matchesSearch = !searchText || g.name.toLowerCase().includes(searchText.toLowerCase());
+            const matchesTime = !timeRange || (g.last_visit && (now.getTime() - new Date(g.last_visit).getTime()) <= timeRange * 86400000);
+            return matchesTier && matchesSearch && matchesTime;
         });
 
         // Apply local sorting
         const sorted = [...filtered].sort((a, b) => {
-            if (sortBy === 'rating') return (b.avg_rating || 0) - (a.avg_rating || 0);
-            if (sortBy === 'reviews') return (b.visit_count || 0) - (a.visit_count || 0);
-            return new Date(b.last_visit || b.created_at).getTime() - new Date(a.last_visit || a.created_at).getTime();
+            if (sortField === 'rating') {
+                return sortDir === 'desc'
+                    ? (b.avg_rating || 0) - (a.avg_rating || 0)
+                    : (a.avg_rating || 0) - (b.avg_rating || 0);
+            }
+            const aDate = new Date(a.last_visit || a.created_at).getTime();
+            const bDate = new Date(b.last_visit || b.created_at).getTime();
+            return sortDir === 'desc' ? bDate - aDate : aDate - bDate;
         });
 
         setGuests(sorted);
-    }, [activeId, globalGuests, filterTier, sortBy]);
+    }, [activeId, globalGuests, filterTier, sortField, sortDir, searchText, timeRange]);
 
     // 2. Background Refresh Logic
     const loadData = useCallback(async (isSilent = false) => {
@@ -62,7 +82,6 @@ export default function GuestsScreen() {
         try {
             const data = await fetchGuests({
                 tier: filterTier,
-                sort_by: sortBy,
                 limit: 100
             });
             setGuests(data);
@@ -72,7 +91,7 @@ export default function GuestsScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [activeId, filterTier, sortBy, guests.length]);
+    }, [activeId, filterTier, guests.length]);
 
     // Use a ref to track if we've already done an initial refresh for this focus session
     const isInitialMount = React.useRef(true);
@@ -83,24 +102,16 @@ export default function GuestsScreen() {
                 return;
             }
 
-            // Only trigger a private load if filters are active during focus.
-            // Global data is handled by the DataContext on restaurant switch.
-            // For GuestsScreen, filters are `filterTier` and `sortBy`.
-            if (filterTier || sortBy !== 'recent') {
-                loadData();
-            } else if (isInitialMount.current && !dataLoading) {
-                // If no filters are active, and it's the initial mount for this focus session,
-                // and global data is not already loading, then refresh all global data.
+            // Only refresh global data on initial mount, never on filter change
+            if (isInitialMount.current && !dataLoading) {
                 refreshAll();
                 isInitialMount.current = false;
             }
 
             return () => {
-                // Optional: reset if we want to refresh every single time it regains focus
-                // but for 1000+ items, it's better to be conservative.
                 isInitialMount.current = true;
             };
-        }, [activeId, contextLoading, filterTier, sortBy, dataLoading]) // Removed refreshAll and loadData to be safe
+        }, [activeId, contextLoading, dataLoading])
     );
 
     const onRefresh = async () => {
@@ -114,12 +125,21 @@ export default function GuestsScreen() {
     };
 
     const isLoading = contextLoading || (loading && guests.length === 0) || (dataLoading && !filterTier && globalGuests.length === 0);
-    const displayGuests = filterTier ? guests : globalGuests;
+    const displayGuests = (filterTier || searchText || timeRange) ? guests : globalGuests;
 
     const renderGuest = ({ item }: { item: Guest }) => (
         <TouchableOpacity
             style={s.guestCard}
-            onPress={() => router.push(`/guest/${item.id}`)}
+            onPress={() => router.push({
+                pathname: '/guest/[id]' as any,
+                params: {
+                    id: item.id,
+                    name: item.name,
+                    tier: item.tier,
+                    avg_rating: String(item.avg_rating ?? ''),
+                    visit_count: String(item.visit_count ?? 0),
+                },
+            })}
             activeOpacity={0.7}
         >
             <View style={s.avatarCircle}>
@@ -127,16 +147,25 @@ export default function GuestsScreen() {
             </View>
             <View style={s.guestInfo}>
                 <Text style={s.guestName}>{item.name}</Text>
-                <Text style={s.guestMeta}>
-                    {item.visit_count || 0} review{item.visit_count !== 1 ? 's' : ''}
-                    {item.avg_rating ? ` · ★ ${item.avg_rating.toFixed(1)}` : ''}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={s.guestMeta}>
+                        {item.visit_count || 0} review{item.visit_count !== 1 ? 's' : ''}
+                        {item.avg_rating ? ' · ' : ''}
+                    </Text>
+                    {item.avg_rating ? (
+                        <Text style={[s.guestMeta, { color: ratingColor(item.avg_rating) }]}>
+                            ★ {item.avg_rating.toFixed(1)}
+                        </Text>
+                    ) : null}
+                </View>
             </View>
-            <View style={[s.tierBadge, { backgroundColor: (tierColors[item.tier] || colors.text.muted) + '20' }]}>
-                <Text style={[s.tierText, { color: tierColors[item.tier] || colors.text.muted }]}>
-                    {item.tier.toUpperCase()}
-                </Text>
-            </View>
+            {item.tier !== 'new' && (
+                <View style={[s.tierBadge, { backgroundColor: (tierColors[item.tier] || colors.text.muted) + '20' }]}>
+                    <Text style={[s.tierText, { color: tierColors[item.tier] || colors.text.muted }]}>
+                        {item.tier === 'vip' ? 'VIP' : item.tier.charAt(0).toUpperCase() + item.tier.slice(1)}
+                    </Text>
+                </View>
+            )}
             <Ionicons name="chevron-forward" size={18} color={colors.text.muted} />
         </TouchableOpacity>
     );
@@ -147,8 +176,36 @@ export default function GuestsScreen() {
                 <NoRestaurantSelected />
             ) : (
                 <>
-                    {/* Tier Filters */}
-                    <View style={s.filterContainer}>
+                    {/* Page Header — matches Dashboard alignment */}
+                    <View style={s.pageHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
+                            <Text style={s.brandLabel}>SavorIQ</Text>
+                        </View>
+                        <Text style={s.pageTitle}>Guests</Text>
+                    </View>
+
+                    {/* Filter Bar — matches Reviews layout */}
+                    <View style={s.filterBar}>
+                        {/* Search */}
+                        <View style={s.searchBox}>
+                            <Ionicons name="search" size={18} color={colors.text.muted} />
+                            <TextInput
+                                style={s.searchInput}
+                                placeholder="Search guests..."
+                                placeholderTextColor={colors.text.muted}
+                                value={searchText}
+                                onChangeText={setSearchText}
+                                returnKeyType="search"
+                            />
+                            {searchText ? (
+                                <TouchableOpacity onPress={() => setSearchText('')}>
+                                    <Ionicons name="close-circle" size={18} color={colors.text.muted} />
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+
+                        {/* Tier filters LEFT, sort RIGHT */}
                         <View style={s.filterRow}>
                             {['all', 'vip', 'regular', 'new', 'slipping'].map((t) => (
                                 <TouchableOpacity
@@ -159,30 +216,68 @@ export default function GuestsScreen() {
                                     <Text style={[s.filterChipText,
                                     filterTier === (t === 'all' ? undefined : t) && s.filterChipTextActive,
                                     ]}>
-                                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                                        {t === 'vip' ? 'VIP' : t.charAt(0).toUpperCase() + t.slice(1)}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
-
-                        <View style={s.sortRow}>
-                            <Ionicons name="swap-vertical" size={14} color={colors.text.muted} style={{ marginRight: 4 }} />
-                            <Text style={s.sortLabel}>Sort by:</Text>
-                            {(['recent', 'rating', 'reviews'] as const).map((s_opt) => (
+                            <View style={{ flex: 1 }} />
+                            {[
+                                { label: '1MO', value: 30 },
+                                { label: '3MO', value: 90 },
+                                { label: '6MO', value: 180 },
+                                { label: '1Y', value: 365 },
+                                { label: 'ALL', value: null },
+                            ].map((range) => (
                                 <TouchableOpacity
-                                    key={s_opt}
-                                    style={[s.sortChip, sortBy === s_opt && s.sortChipActive]}
-                                    onPress={() => setSortBy(s_opt)}
+                                    key={range.label}
+                                    style={[s.filterChip, timeRange === range.value && s.filterChipActive]}
+                                    onPress={() => setTimeRange(range.value)}
                                 >
-                                    <Text style={[s.sortChipText, sortBy === s_opt && s.sortChipTextActive]}>
-                                        {s_opt.charAt(0).toUpperCase() + s_opt.slice(1)}
+                                    <Text style={[s.filterChipText,
+                                        timeRange === range.value && s.filterChipTextActive,
+                                    ]}>
+                                        {range.label}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
 
-                    <Text style={s.countText}>{displayGuests.length} guests</Text>
+                    {/* Stats + Sort */}
+                    <View style={s.statsBar}>
+                        <Text style={s.statText}>{displayGuests.length} guests</Text>
+                        <Text style={s.statDivider}> · </Text>
+                        <Text style={[s.statText, { color: colors.accent.gold }]}>{sortDescription}</Text>
+                        <View style={{ flex: 1 }} />
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                            <TouchableOpacity
+                                style={[s.sortButton, sortField === 'date' && s.sortButtonActive]}
+                                onPress={() => {
+                                    if (sortField === 'date') setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+                                    else { setSortField('date'); setSortDir('desc'); }
+                                }}
+                            >
+                                <Ionicons name="calendar-outline" size={12} color={sortField === 'date' ? colors.accent.gold : colors.text.muted} />
+                                <Text style={[s.sortButtonText, sortField === 'date' && s.sortButtonTextActive]}>Date</Text>
+                                {sortField === 'date' && (
+                                    <Ionicons name={sortDir === 'desc' ? 'arrow-down' : 'arrow-up'} size={10} color={colors.accent.gold} />
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[s.sortButton, sortField === 'rating' && s.sortButtonActive]}
+                                onPress={() => {
+                                    if (sortField === 'rating') setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+                                    else { setSortField('rating'); setSortDir('desc'); }
+                                }}
+                            >
+                                <Ionicons name="star-outline" size={12} color={sortField === 'rating' ? colors.accent.gold : colors.text.muted} />
+                                <Text style={[s.sortButtonText, sortField === 'rating' && s.sortButtonTextActive]}>Rating</Text>
+                                {sortField === 'rating' && (
+                                    <Ionicons name={sortDir === 'desc' ? 'arrow-down' : 'arrow-up'} size={10} color={colors.accent.gold} />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
                     {isLoading ? (
                         <View style={s.center}>
@@ -212,40 +307,61 @@ export default function GuestsScreen() {
 
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg.primary },
+    pageHeader: {
+        paddingHorizontal: spacing.md, paddingTop: 32, marginBottom: spacing.sm,
+    },
+    brandLabel: { color: colors.accent.gold, fontSize: 12, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 1 },
+    pageTitle: { color: colors.text.primary, fontSize: 32, fontWeight: '800' as const, letterSpacing: -0.5 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
     list: { padding: spacing.md, paddingBottom: 40 },
 
-    filterContainer: {
-        padding: spacing.md, paddingBottom: 0, gap: spacing.sm,
+    filterBar: { padding: spacing.md, gap: spacing.sm },
+    searchBox: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        backgroundColor: colors.bg.input, borderRadius: radius.md,
+        paddingHorizontal: spacing.md, height: 44,
+        borderWidth: 1, borderColor: colors.border.default,
     },
+    searchInput: { flex: 1, color: colors.text.primary, fontSize: fonts.sizes.md },
     filterRow: {
-        flexDirection: 'row', gap: spacing.xs,
+        flexDirection: 'row', gap: spacing.sm,
     },
     filterChip: {
-        paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.full,
+        paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full,
         backgroundColor: colors.bg.card, borderWidth: 1, borderColor: colors.border.subtle,
     },
     filterChipActive: { backgroundColor: colors.accent.gold + '20', borderColor: colors.accent.gold },
-    filterChipText: { color: colors.text.muted, fontSize: fonts.sizes.xs, fontWeight: '500' },
+    filterChipText: { color: colors.text.muted, fontSize: fonts.sizes.sm, fontWeight: '500' },
     filterChipTextActive: { color: colors.accent.gold },
 
-    sortRow: {
-        flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
-        marginTop: spacing.xs,
+    statsBar: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingHorizontal: spacing.md, paddingBottom: spacing.sm,
     },
-    sortLabel: { color: colors.text.muted, fontSize: 12, marginRight: 4 },
-    sortChip: {
-        paddingHorizontal: 8, paddingVertical: 4,
+    statText: { color: colors.text.secondary, fontSize: fonts.sizes.sm },
+    statDivider: { color: colors.text.muted, fontSize: fonts.sizes.sm },
+    sortButton: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: radius.full,
+        backgroundColor: colors.bg.card,
+        borderWidth: 1,
+        borderColor: colors.border.subtle,
     },
-    sortChipActive: {
-        borderBottomWidth: 2, borderBottomColor: colors.accent.gold,
+    sortButtonActive: {
+        backgroundColor: colors.accent.gold + '15',
+        borderColor: colors.accent.gold + '40',
     },
-    sortChipText: { color: colors.text.secondary, fontSize: 12 },
-    sortChipTextActive: { color: colors.accent.gold, fontWeight: '600' },
-
-    countText: {
-        color: colors.text.muted, fontSize: fonts.sizes.xs,
-        paddingHorizontal: spacing.md, paddingTop: spacing.sm,
+    sortButtonText: {
+        color: colors.text.muted,
+        fontSize: fonts.sizes.xs,
+        fontWeight: '600' as const,
+    },
+    sortButtonTextActive: {
+        color: colors.accent.gold,
     },
 
     guestCard: {

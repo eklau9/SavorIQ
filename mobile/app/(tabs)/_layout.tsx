@@ -98,15 +98,18 @@ export default function TabLayout() {
           paddingTop: 8,
         },
         headerStyle: {
-          backgroundColor: colors.bg.secondary,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border.subtle,
+          backgroundColor: colors.bg.primary,
+          borderBottomWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          height: 100,
         },
         headerTintColor: colors.text.primary,
         headerTitleStyle: {
           fontWeight: '700',
           fontSize: 18,
         },
+        headerTitleAlign: 'left' as const,
         headerRight: () => (
           <TouchableOpacity
             style={styles.headerLocation}
@@ -135,6 +138,7 @@ export default function TabLayout() {
         name="inbox"
         options={{
           title: 'Inbox',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications" size={size} color={color} />
           ),
@@ -144,6 +148,7 @@ export default function TabLayout() {
         name="guests"
         options={{
           title: 'Guests',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people" size={size} color={color} />
           ),
@@ -153,6 +158,7 @@ export default function TabLayout() {
         name="reviews"
         options={{
           title: 'Reviews',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
@@ -170,11 +176,7 @@ export default function TabLayout() {
     </Tabs >
   );
 
-  return (
-    <DataProvider>
-      {content}
-    </DataProvider>
-  );
+  return content;
 }
 
 const styles = StyleSheet.create({
