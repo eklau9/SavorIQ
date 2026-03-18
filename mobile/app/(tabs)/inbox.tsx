@@ -111,6 +111,15 @@ export default function InboxScreen() {
                 <NoRestaurantSelected />
             ) : (
                 <>
+                    {/* Page Header — matches Dashboard alignment */}
+                    <View style={s.pageHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
+                            <Text style={s.brandLabel}>SavorIQ</Text>
+                        </View>
+                        <Text style={s.pageTitle}>Inbox</Text>
+                    </View>
+
                     <Text style={s.subtitle}>
                         {globalPriorities.length} guest{globalPriorities.length !== 1 ? 's' : ''} need attention
                     </Text>
@@ -145,6 +154,11 @@ export default function InboxScreen() {
 
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg.primary },
+    pageHeader: {
+        paddingHorizontal: spacing.md, paddingTop: 32, marginBottom: spacing.sm,
+    },
+    brandLabel: { color: colors.accent.gold, fontSize: 12, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 1 },
+    pageTitle: { color: colors.text.primary, fontSize: 32, fontWeight: '800' as const, letterSpacing: -0.5 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     list: { padding: spacing.md, paddingBottom: 40 },
 

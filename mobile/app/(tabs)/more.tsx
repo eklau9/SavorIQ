@@ -199,16 +199,13 @@ export default function MoreScreen() {
             {/* Premium Header */}
             <View style={s.headerRow}>
                 <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
                             <Text style={[s.welcomeText, { color: colors.accent.gold }]}>
                                 SavorIQ
                             </Text>
                         </View>
-                        <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
-                            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Text>
                     </View>
                     <Text style={[s.activeLocText, { fontSize: 32, lineHeight: 38, letterSpacing: -0.5, fontWeight: '800' }]}>
                         More
@@ -408,7 +405,7 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingTop: 32,
-        paddingHorizontal: spacing.xs,
+        paddingHorizontal: 0,
         marginBottom: spacing.md,
     },
     welcomeText: {

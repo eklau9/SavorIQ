@@ -88,7 +88,7 @@ const DataContext = createContext<DataContextType>({
     estimatedSecondsRemaining: 0,
     error: null,
     briefingLoaded: false,
-    timeRange: 90,
+    timeRange: 30,
     setTimeRange: () => {},
     refreshAll: async (days?: number | null) => { },
     skipLoading: () => {},
@@ -108,11 +108,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [estimatedSecondsRemaining, setEstimatedSecondsRemaining] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [briefingLoaded, setBriefingLoaded] = useState(false);
-    const [timeRange, setTimeRange] = useState<number | null>(90);
+    const [timeRange, setTimeRange] = useState<number | null>(30);
 
     const abortControllerRef = useRef<AbortController | null>(null);
     const dashboardCache = useRef<Record<string, DeepAnalytics>>({});
     const lastFetchedParams = useRef<{ id: string | null, days: number | null }>({ id: null, days: null });
+    const bgDataLoaded = useRef(false);
+
+    // Lazily fetch reviews, guests, priorities, etc. — called once per session
+    const fetchBackgroundData = useCallback(() => {
+        if (bgDataLoaded.current || !activeId) return;
+        bgDataLoaded.current = true;
+
+        const withTimeout = (promise: Promise<any>, ms = 15000) =>
+            Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Background fetch timed out')), ms))
+            ]);
+
+        Promise.allSettled([
+            withTimeout(fetchGuests({})).then(setGuests),
+            withTimeout(fetchAllReviews({})).then(setReviews),
+            withTimeout(fetchReviewStats()).then(setReviewStats),
+            withTimeout(fetchGuestPriorities()).then(setPriorities),
+            withTimeout(fetchOperationsAnalytics()).then(setOperations),
+        ]);
+    }, [activeId]);
     const currentDaysRef = useRef<number | null | undefined>(undefined);
     const coldLoadRef = useRef(true); // True until first successful load
     const diskCacheHydrated = useRef(false);
@@ -138,6 +159,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                         setBriefingLoaded(true);
                     }
                     console.log('[DataContext] Hydrated all 5 frames from disk cache — skipping Gemini');
+                    // Still need to fetch reviews, guests, priorities from backend
+                    fetchBackgroundData();
                 } else {
                     console.log('[DataContext] Partial disk cache — will fetch missing briefings');
                 }
@@ -145,11 +168,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         })();
     }, [activeId]);
 
+    const timeRangeRef = useRef<number | null>(timeRange);
+    useEffect(() => { timeRangeRef.current = timeRange; }, [timeRange]);
+
     const refreshAll = useCallback(async (days?: number | null) => {
         if (!activeId) return;
 
-        const cacheKey = days ? String(days) : 'all';
-        currentDaysRef.current = days;
+        // Default to current timeRange when called without arguments
+        // (e.g., from Inbox focus, pull-to-refresh, action handlers)
+        // undefined = "use current filter", null = "ALL time", number = specific days
+        const effectiveDays: number | null = days === undefined ? timeRangeRef.current : days;
+        const cacheKey = effectiveDays ? String(effectiveDays) : 'all';
+        currentDaysRef.current = effectiveDays;
 
         // 1. Instant Cache HIT - Show data immediately
         const cached = dashboardCache.current[cacheKey];
@@ -162,14 +192,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 if (Platform.OS === 'web' && typeof window !== 'undefined') {
                     window.dispatchEvent(new Event('savoriq-ready'));
                 }
+                fetchBackgroundData(); // Ensure reviews, guests, etc. are loaded
                 return;
             }
             // Cache has analytics but no briefing — show data, retry briefing only (lightweight)
             setLoading(false);
-            fetchBriefing(days).then((briefing) => {
+            fetchBackgroundData(); // Ensure reviews, guests, etc. are loaded
+            fetchBriefing(effectiveDays).then((briefing) => {
                 const updated = { ...dashboardCache.current[cacheKey], briefing };
                 dashboardCache.current[cacheKey] = updated;
-                if (currentDaysRef.current === days) {
+                if (currentDaysRef.current === effectiveDays) {
                     setDashboardData(updated);
                 }
                 setBriefingLoaded(true);
@@ -217,7 +249,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
             // Fetch critical dashboard data with a 15s timeout
             const deepData = await Promise.race([
-                fetchDeepAnalytics(days, controller.signal),
+                fetchDeepAnalytics(effectiveDays, controller.signal),
                 new Promise<never>((_, reject) => 
                     setTimeout(() => reject(new Error('Dashboard load timed out. Please try refreshing.')), 15000)
                 )
@@ -225,7 +257,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const freshData = { ...deepData, briefing: null };
             
             // Update active view if still on this frame
-            if (currentDaysRef.current === days) {
+            if (currentDaysRef.current === effectiveDays) {
                 setDashboardData(freshData);
             }
             // Update cache
@@ -241,7 +273,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
             // Fetch briefing in background — dashboard shows inline spinner until it resolves
             const briefingPromise = Promise.race([
-                fetchBriefing(days, controller.signal),
+                fetchBriefing(effectiveDays, controller.signal),
                 new Promise<never>((_, reject) =>
                     setTimeout(() => reject(new Error('Briefing timed out')), 30000)
                 )
@@ -250,7 +282,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 dashboardCache.current[cacheKey] = updated;
                 
                 // Only update state if this frame is still active
-                if (currentDaysRef.current === days) {
+                if (currentDaysRef.current === effectiveDays) {
                     setDashboardData(updated);
                 }
                 setBriefingLoaded(true);
@@ -262,7 +294,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     console.warn('Briefing fetch failed:', e);
                     // DON'T cache the fallback — leave briefing as null so it retries next time
                     // Just update the UI to show the error message
-                    if (currentDaysRef.current === days) {
+                    if (currentDaysRef.current === effectiveDays) {
                         setDashboardData(prev => prev ? { ...prev, briefing: {
                             summary: "Briefing temporarily unavailable. Pull to refresh to retry.",
                             insights: []
@@ -290,6 +322,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             ];
 
             Promise.allSettled(bgOps);
+            bgDataLoaded.current = true;
 
             // Prefetch other frames in the background (don't block splash)
             if (abortControllerRef.current === controller) {
@@ -313,7 +346,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             coldLoadRef.current = false;
             
             if (abortControllerRef.current === controller) {
-                lastFetchedParams.current = { id: activeId, days: days || null };
+                lastFetchedParams.current = { id: activeId, days: effectiveDays || null };
 
                 // Dismiss web splash once everything is ready
                 if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -414,6 +447,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             dashboardCache.current = {};
             lastFetchedParams.current = { id: null, days: null };
             diskCacheHydrated.current = false;
+            bgDataLoaded.current = false;
         }
     }, [activeId]);
 

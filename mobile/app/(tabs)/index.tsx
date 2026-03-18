@@ -10,6 +10,7 @@ import {
   Modal,
   Pressable,
   Animated,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter, Stack } from 'expo-router';
@@ -67,7 +68,7 @@ const renderFormattedText = (text: string, sentimentType?: string) => {
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { activeName, activeId } = useRestaurant();
+  const { activeName, activeId, loading: restaurantLoading } = useRestaurant();
   const { 
     dashboardData: data, 
     loading, 
@@ -83,31 +84,15 @@ export default function DashboardScreen() {
   } = useData();
   const [refreshing, setRefreshing] = useState(false);
   const [showIntegrityModal, setShowIntegrityModal] = useState(false);
-  const [showIntelBadge, setShowIntelBadge] = useState(false);
-  const intelBadgeAnim = useRef(new Animated.Value(0)).current;
-  const prevBriefingLoaded = useRef(briefingLoaded);
+  const [skipped, setSkipped] = useState(false);
+  const intelReady = briefingLoaded && !!data;
 
-  // Show intelligence-ready badge when briefing finishes loading
-  useEffect(() => {
-    if (briefingLoaded && !prevBriefingLoaded.current && data) {
-      setShowIntelBadge(true);
-      Animated.timing(intelBadgeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-      // Auto-hide after 4 seconds
-      const timer = setTimeout(() => {
-        Animated.timing(intelBadgeAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }).start(() => setShowIntelBadge(false));
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-    prevBriefingLoaded.current = briefingLoaded;
-  }, [briefingLoaded, data, intelBadgeAnim]);
+  const handleSkip = useCallback(() => {
+    setSkipped(true);
+    skipLoading();
+  }, [skipLoading]);
+
+  // No need for showIntelBadge state - badge is always visible now
 
   // Trigger refresh when timeRange changes
   useEffect(() => {
@@ -127,13 +112,16 @@ export default function DashboardScreen() {
     alert('Access key cleared. Please reload the app.');
   };
 
-  if (loading && !data && activeId) {
+  // Show shimmer skeleton while waiting for first data load
+  // Shimmer stays visible until data actually arrives — skip only affects bg fetch priority
+  const isInitialLoad = !data && !error && (restaurantLoading || activeId);
+  if (isInitialLoad) {
     return (
       <StartupLoadingScreen 
         progress={progress} 
         loadingStep={loadingStep} 
         estimatedSecondsRemaining={estimatedSecondsRemaining}
-        onSkip={skipLoading}
+        onSkip={!skipped ? handleSkip : undefined}
       />
     );
   }
@@ -174,55 +162,74 @@ export default function DashboardScreen() {
         />
       }
     >
-      {!activeId ? (
+      {!activeId && !restaurantLoading ? (
         <NoRestaurantSelected />
       ) : (
         <>
           <Stack.Screen options={{ headerShown: false }} />
           
-          {/* Intelligence Ready Badge */}
-          {showIntelBadge && (
-            <Animated.View style={[s.intelBadge, { opacity: intelBadgeAnim, transform: [{ translateY: intelBadgeAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }] }]}>
-              <Ionicons name="checkmark-circle" size={14} color={colors.sentiment.positive} />
-              <Text style={s.intelBadgeText}>Intelligence Ready</Text>
-            </Animated.View>
-          )}
 
           {/* Header Action */}
           <View style={s.headerRow}>
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
                   <Text style={[s.welcomeText, { color: colors.accent.gold }]}>
                     SavorIQ
                   </Text>
                 </View>
-                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
-                  {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                <Text style={[s.activeLocText, { fontSize: 32, lineHeight: 38, letterSpacing: -0.5, fontWeight: '800', flex: 1 }]}>
+                  {activeName}
+                </Text>
+                <Text style={{ color: colors.text.secondary, fontSize: 20, fontWeight: '700', letterSpacing: -0.3, marginLeft: 8 }}>
+                  {new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
                 </Text>
               </View>
-              <Text style={[s.activeLocText, { fontSize: 32, lineHeight: 38, letterSpacing: -0.5, fontWeight: '800' }]}>
-                {activeName}
-              </Text>
               
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
-                {/* Productivity Alert Badge */}
-                {data?.top_performers?.some(i => i.is_suggested) ? (
-                  <TouchableOpacity 
-                    style={s.integrityBadge}
-                    onPress={() => setShowIntegrityModal(true)}
+                {/* Badge Row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+                  {data?.top_performers?.some(i => i.is_suggested) && (
+                    <TouchableOpacity 
+                      style={s.integrityBadge}
+                      onPress={() => setShowIntegrityModal(true)}
+                    >
+                      <Ionicons name="shield-checkmark" size={12} color={colors.accent.gold} />
+                      <Text style={s.integrityText}>AI Integrity Mode</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[s.intelBadge, !intelReady && s.intelBadgeLoading]}
+                    onPress={() => {
+                      if (!intelReady) {
+                        Alert.alert(
+                          'Loading Intelligence',
+                          'Reviews and analytics are still being processed. This usually takes a few seconds.',
+                          [{ text: 'OK' }]
+                        );
+                      }
+                    }}
+                    activeOpacity={intelReady ? 1 : 0.7}
                   >
-                    <Ionicons name="shield-checkmark" size={12} color={colors.accent.gold} />
-                    <Text style={s.integrityText}>AI Integrity Mode</Text>
+                    <Ionicons
+                      name={intelReady ? 'checkmark-circle' : 'ellipsis-horizontal-circle'}
+                      size={12}
+                      color={intelReady ? colors.sentiment.positive : colors.text.muted}
+                    />
+                    <Text style={[s.intelBadgeText, !intelReady && s.intelBadgeTextLoading]}>
+                      {intelReady ? 'Intelligence Ready' : 'Syncing...'}
+                    </Text>
                   </TouchableOpacity>
-                ) : <View />}
+                </View>
 
                 {/* Time Filter Chips */}
                 <View style={s.filterRow}>
                    {[
-                    { label: '30D', val: 30 },
-                    { label: '90D', val: 90 },
+                    { label: '1MO', val: 30 },
+                    { label: '3MO', val: 90 },
                     { label: '6MO', val: 180 },
                     { label: '1Y', val: 365 },
                     { label: 'ALL', val: null }
@@ -542,7 +549,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 32,
     marginBottom: spacing.md,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: 0,
   },
   welcomeText: { color: colors.text.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   activeLocText: { color: colors.text.primary, fontSize: 32, fontWeight: '800', marginTop: 2 },
@@ -630,8 +637,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: colors.accent.gold + '20',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
     borderRadius: radius.full,
     marginTop: 8,
     alignSelf: 'flex-start',
@@ -640,10 +647,9 @@ const s = StyleSheet.create({
   },
   integrityText: {
     color: colors.accent.gold,
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: fonts.sizes.sm,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   retryBtnText: { color: colors.text.primary, fontWeight: '600' },
   filterRow: {
@@ -652,20 +658,20 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   filterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    backgroundColor: colors.bg.secondary,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.card,
     borderWidth: 1,
-    borderColor: colors.border.default,
+    borderColor: colors.border.subtle,
   },
   filterChipActive: {
     backgroundColor: colors.accent.gold + '20',
     borderColor: colors.accent.gold,
   },
   filterChipText: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: fonts.sizes.sm,
+    fontWeight: '500' as const,
     color: colors.text.muted,
   },
   filterChipTextActive: {
@@ -748,19 +754,26 @@ const s = StyleSheet.create({
   intelBadge: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    alignSelf: 'center' as const,
-    gap: 6,
+    gap: 4,
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: radius.full,
     backgroundColor: colors.sentiment.positive + '15',
+    marginTop: 8,
+    alignSelf: 'flex-start' as const,
     borderWidth: 1,
     borderColor: colors.sentiment.positive + '30',
-    marginBottom: spacing.xs,
   },
   intelBadgeText: {
     color: colors.sentiment.positive,
-    fontSize: fonts.sizes.xs,
+    fontSize: fonts.sizes.sm,
     fontWeight: '600' as const,
+  },
+  intelBadgeLoading: {
+    backgroundColor: colors.text.muted + '15',
+    borderColor: colors.text.muted + '30',
+  },
+  intelBadgeTextLoading: {
+    color: colors.text.muted,
   },
 });

@@ -22,6 +22,8 @@ export default function ReviewsScreen() {
     const [search, setSearch] = useState(incomingSearch || '');
     const [sentiment, setSentiment] = useState<string | undefined>(incomingSentiment);
     const [platform, setPlatform] = useState<string | undefined>();
+    const [dateSort, setDateSort] = useState<'desc' | 'asc'>('desc');
+    const [ratingSort, setRatingSort] = useState<'desc' | 'asc' | null>('asc');
 
     // Sync search state with incoming route parameters
     useEffect(() => {
@@ -68,6 +70,18 @@ export default function ReviewsScreen() {
             return matchesPlatform && matchesSentiment && matchesSearch && matchesDate;
         });
 
+        // Apply sort: rating is primary when active, date is always secondary
+        filtered.sort((a, b) => {
+            if (ratingSort) {
+                const rDiff = ratingSort === 'desc' ? b.rating - a.rating : a.rating - b.rating;
+                if (rDiff !== 0) return rDiff;
+            }
+            const dDiff = dateSort === 'desc'
+                ? new Date(b.reviewed_at).getTime() - new Date(a.reviewed_at).getTime()
+                : new Date(a.reviewed_at).getTime() - new Date(b.reviewed_at).getTime();
+            return dDiff;
+        });
+
         setReviews(filtered);
 
         // Calculate basic stats locally for instant update
@@ -84,7 +98,7 @@ export default function ReviewsScreen() {
         } else if (!finalSearch && !platform && !sentiment) {
             setStats(globalStats);
         }
-    }, [activeId, globalReviews, search, platform, sentiment, timeRange, globalStats]);
+    }, [activeId, globalReviews, search, platform, sentiment, timeRange, globalStats, dateSort, ratingSort]);
 
     const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
 
@@ -160,6 +174,15 @@ export default function ReviewsScreen() {
                 <NoRestaurantSelected />
             ) : (
                 <>
+                    {/* Page Header — matches Dashboard alignment */}
+                    <View style={s.pageHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <Ionicons name="sparkles-outline" size={14} color={colors.accent.gold} />
+                            <Text style={s.brandLabel}>SavorIQ</Text>
+                        </View>
+                        <Text style={s.pageTitle}>Reviews</Text>
+                    </View>
+
                     {/* Search + Filters */}
                     <View style={s.filterBar}>
                         <View style={s.searchBox}>
@@ -179,26 +202,28 @@ export default function ReviewsScreen() {
                             ) : null}
                         </View>
                         <View style={s.platformRow}>
-                            {['all', 'google', 'yelp'].map((p) => (
+                            {[
+                                { label: 'Google', value: 'google' },
+                                { label: 'Yelp', value: 'yelp' },
+                                { label: 'All', value: undefined },
+                            ].map((p) => (
                                 <TouchableOpacity
-                                    key={p}
-                                    style={[s.platformChip, platform === (p === 'all' ? undefined : p) && s.platformChipActive]}
-                                    onPress={() => setPlatform(p === 'all' ? undefined : p)}
+                                    key={p.label}
+                                    style={[s.platformChip, platform === p.value && s.platformChipActive]}
+                                    onPress={() => setPlatform(p.value)}
                                 >
                                     <Text style={[s.platformChipText,
-                                    platform === (p === 'all' ? undefined : p) && s.platformChipTextActive,
-                                    ]}>
-                                        {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
-                                    </Text>
+                                    platform === p.value && s.platformChipTextActive,
+                                    ]}>{p.label}</Text>
                                 </TouchableOpacity>
                             ))}
                             <View style={{ flex: 1 }} />
                             {[
-                                { label: '30D', value: 30 },
-                                { label: '90D', value: 90 },
+                                { label: '1MO', value: 30 },
+                                { label: '3MO', value: 90 },
                                 { label: '6MO', value: 180 },
                                 { label: '1Y', value: 365 },
-                                { label: 'ALL', value: undefined },
+                                { label: 'ALL', value: null },
                             ].map((range) => (
                                 <TouchableOpacity
                                     key={range.label}
@@ -227,16 +252,43 @@ export default function ReviewsScreen() {
                         </View>
                     )}
 
-                    {/* Stats Bar */}
-                    {stats && (
-                        <View style={s.statsBar}>
-                            <Text style={s.statText}>{stats.total} reviews</Text>
-                            <Text style={s.statDivider}>·</Text>
-                            <Text style={[s.statText, { color: colors.accent.gold }]}>
-                                {stats.avg_rating?.toFixed(1)} ★
-                            </Text>
+                    {/* Stats Bar + Sort */}
+                    <View style={s.statsBar}>
+                        {stats && (
+                            <>
+                                <Text style={s.statText}>{stats.total} reviews</Text>
+                                <Text style={s.statDivider}>·</Text>
+                                <Text style={[s.statText, { color: colors.accent.gold }]}>
+                                    {stats.avg_rating?.toFixed(1)} ★
+                                </Text>
+                            </>
+                        )}
+                        <View style={{ flex: 1 }} />
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                            <TouchableOpacity
+                                style={[s.sortButton, s.sortButtonActive]}
+                                onPress={() => setDateSort(dateSort === 'desc' ? 'asc' : 'desc')}
+                            >
+                                <Ionicons name="calendar-outline" size={12} color={colors.accent.gold} />
+                                <Text style={[s.sortButtonText, s.sortButtonTextActive]}>Date</Text>
+                                <Ionicons name={dateSort === 'desc' ? 'arrow-down' : 'arrow-up'} size={10} color={colors.accent.gold} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[s.sortButton, ratingSort && s.sortButtonActive]}
+                                onPress={() => {
+                                    if (!ratingSort) setRatingSort('desc');
+                                    else if (ratingSort === 'desc') setRatingSort('asc');
+                                    else setRatingSort(null);
+                                }}
+                            >
+                                <Ionicons name="star-outline" size={12} color={ratingSort ? colors.accent.gold : colors.text.muted} />
+                                <Text style={[s.sortButtonText, ratingSort && s.sortButtonTextActive]}>Rating</Text>
+                                {ratingSort && (
+                                    <Ionicons name={ratingSort === 'desc' ? 'arrow-down' : 'arrow-up'} size={10} color={colors.accent.gold} />
+                                )}
+                            </TouchableOpacity>
                         </View>
-                    )}
+                    </View>
 
                     {/* Reviews List */}
                     {contextLoading && reviews.length === 0 ? (
@@ -267,6 +319,11 @@ export default function ReviewsScreen() {
 
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg.primary },
+    pageHeader: {
+        paddingHorizontal: spacing.md, paddingTop: 32, marginBottom: spacing.sm,
+    },
+    brandLabel: { color: colors.accent.gold, fontSize: 12, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 1 },
+    pageTitle: { color: colors.text.primary, fontSize: 32, fontWeight: '800' as const, letterSpacing: -0.5 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
     list: { padding: spacing.md, paddingBottom: 40 },
 
@@ -321,4 +378,27 @@ const s = StyleSheet.create({
     },
     activeFilterText: { color: colors.text.secondary, fontSize: fonts.sizes.xs },
     bold: { fontWeight: '700', textTransform: 'uppercase', color: colors.accent.gold },
+    sortButton: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: radius.full,
+        backgroundColor: colors.bg.card,
+        borderWidth: 1,
+        borderColor: colors.border.subtle,
+    },
+    sortButtonActive: {
+        backgroundColor: colors.accent.gold + '15',
+        borderColor: colors.accent.gold + '40',
+    },
+    sortButtonText: {
+        color: colors.text.muted,
+        fontSize: fonts.sizes.xs,
+        fontWeight: '600' as const,
+    },
+    sortButtonTextActive: {
+        color: colors.accent.gold,
+    },
 });
