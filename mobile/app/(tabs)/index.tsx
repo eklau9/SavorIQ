@@ -181,32 +181,31 @@ export default function DashboardScreen() {
               </View>
               
               <View style={{ marginTop: 8 }}>
-                {/* Time Filter Chips — horizontally scrollable */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }}>
+                {/* Time Selector — compact underlined tabs */}
+                <View style={{ flexDirection: 'row', gap: 16, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.border.subtle, paddingBottom: 6 }}>
                    {[
-                    { label: '1MO', val: 30 },
-                    { label: '3MO', val: 90 },
-                    { label: '6MO', val: 180 },
+                    { label: '1M', val: 30 },
+                    { label: '3M', val: 90 },
+                    { label: '6M', val: 180 },
                     { label: '1Y', val: 365 },
-                    { label: 'ALL', val: null }
+                    { label: 'All', val: null }
                   ].map((chip) => (
                     <TouchableOpacity
                       key={chip.label}
                       onPress={() => setTimeRange(chip.val)}
-                      style={[
-                        s.filterChip,
-                        timeRange === chip.val && s.filterChipActive
-                      ]}
+                      style={{ paddingBottom: 4, borderBottomWidth: timeRange === chip.val ? 2 : 0, borderBottomColor: colors.accent.gold, marginBottom: -7 }}
                     >
-                      <Text style={[
-                        s.filterChipText,
-                        timeRange === chip.val && s.filterChipTextActive
-                      ]}>
+                      <Text style={{
+                        fontSize: 13,
+                        fontWeight: timeRange === chip.val ? '700' : '500',
+                        color: timeRange === chip.val ? colors.accent.gold : colors.text.muted,
+                        letterSpacing: 0.3,
+                      }}>
                         {chip.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </View>
 
                 {/* Badge Row — below filters */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

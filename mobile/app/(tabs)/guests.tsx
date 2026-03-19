@@ -161,28 +161,31 @@ export default function GuestsScreen() {
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
-                        {/* Time filters */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                        {/* Time selector — compact underlined tabs */}
+                        <View style={{ flexDirection: 'row', gap: 16, borderBottomWidth: 1, borderBottomColor: colors.border.subtle, paddingBottom: 6 }}>
                             {[
-                                { label: '1MO', value: 30 },
-                                { label: '3MO', value: 90 },
-                                { label: '6MO', value: 180 },
+                                { label: '1M', value: 30 },
+                                { label: '3M', value: 90 },
+                                { label: '6M', value: 180 },
                                 { label: '1Y', value: 365 },
-                                { label: 'ALL', value: null },
+                                { label: 'All', value: null },
                             ].map((range) => (
                                 <TouchableOpacity
                                     key={range.label}
-                                    style={[s.filterChip, timeRange === range.value && s.filterChipActive]}
                                     onPress={() => setTimeRange(range.value)}
+                                    style={{ paddingBottom: 4, borderBottomWidth: timeRange === range.value ? 2 : 0, borderBottomColor: colors.accent.gold, marginBottom: -7 }}
                                 >
-                                    <Text style={[s.filterChipText,
-                                        timeRange === range.value && s.filterChipTextActive,
-                                    ]}>
+                                    <Text style={{
+                                        fontSize: 13,
+                                        fontWeight: timeRange === range.value ? '700' : '500',
+                                        color: timeRange === range.value ? colors.accent.gold : colors.text.muted,
+                                        letterSpacing: 0.3,
+                                    }}>
                                         {range.label}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </ScrollView>
+                        </View>
                     </View>
 
                     {/* Stats + Sort */}
