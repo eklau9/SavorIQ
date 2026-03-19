@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-    View, Text, FlatList, StyleSheet,
+    View, Text, FlatList, StyleSheet, ScrollView,
     ActivityIndicator, TouchableOpacity, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -145,8 +145,8 @@ export default function GuestsScreen() {
                             ) : null}
                         </View>
 
-                        {/* Tier filters LEFT, sort RIGHT */}
-                        <View style={s.filterRow}>
+                        {/* Tier filters */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                             {['all', 'vip', 'regular', 'new', 'slipping'].map((t) => (
                                 <TouchableOpacity
                                     key={t}
@@ -160,8 +160,9 @@ export default function GuestsScreen() {
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
-                        <View style={s.filterRow}>
+                        </ScrollView>
+                        {/* Time filters */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                             {[
                                 { label: '1MO', value: 30 },
                                 { label: '3MO', value: 90 },
@@ -181,7 +182,7 @@ export default function GuestsScreen() {
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
+                        </ScrollView>
                     </View>
 
                     {/* Stats + Sort */}

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-    View, Text, FlatList, StyleSheet,
+    View, Text, FlatList, StyleSheet, ScrollView,
     ActivityIndicator, TextInput, TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -214,7 +214,7 @@ export default function ReviewsScreen() {
                                 </TouchableOpacity>
                             ) : null}
                         </View>
-                        <View style={s.platformRow}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                             {[
                                 { label: 'Google', value: 'google' },
                                 { label: 'Yelp', value: 'yelp' },
@@ -230,8 +230,8 @@ export default function ReviewsScreen() {
                                     ]}>{p.label}</Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
-                        <View style={s.platformRow}>
+                        </ScrollView>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                             {[
                                 { label: '1MO', value: 30 },
                                 { label: '3MO', value: 90 },
@@ -251,7 +251,7 @@ export default function ReviewsScreen() {
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </View>
+                        </ScrollView>
                     </View>
 
                     {/* Active Filter Indicator */}

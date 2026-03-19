@@ -181,8 +181,8 @@ export default function DashboardScreen() {
               </View>
               
               <View style={{ marginTop: 8 }}>
-                {/* Time Filter Chips — full width row */}
-                <View style={[s.filterRow, { marginBottom: 8 }]}>
+                {/* Time Filter Chips — horizontally scrollable */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }}>
                    {[
                     { label: '1MO', val: 30 },
                     { label: '3MO', val: 90 },
@@ -206,7 +206,7 @@ export default function DashboardScreen() {
                       </Text>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
 
                 {/* Badge Row — below filters */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
