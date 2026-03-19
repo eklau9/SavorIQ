@@ -21,3 +21,6 @@ out/
 *.swp
 .DS_Store
 *.coverage
+
+# Built by Docker — no need to commit
+backend/static/
