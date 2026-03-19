@@ -231,6 +231,7 @@ export default function ReviewsScreen() {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                        <Text style={{ color: colors.text.muted, fontSize: 11, fontWeight: '600', marginBottom: 6, letterSpacing: 0.5 }}>📅 Time Period</Text>
                         <View style={s.platformRow}>
                             {[
                                 { label: '1MO', value: 30 },

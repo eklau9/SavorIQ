@@ -182,6 +182,7 @@ export default function DashboardScreen() {
               
               <View style={{ marginTop: 8 }}>
                 {/* Time Filter Chips — full width row */}
+                <Text style={{ color: colors.text.muted, fontSize: 11, fontWeight: '600', marginBottom: 6, letterSpacing: 0.5 }}>📅 Time Period</Text>
                 <View style={[s.filterRow, { marginBottom: 8 }]}>
                    {[
                     { label: '1MO', val: 30 },
