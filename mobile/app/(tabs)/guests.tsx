@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-    View, Text, FlatList, StyleSheet, ScrollView,
+    View, Text, FlatList, StyleSheet,
     ActivityIndicator, TouchableOpacity, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -145,8 +145,8 @@ export default function GuestsScreen() {
                             ) : null}
                         </View>
 
-                        {/* Tier filters */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                        {/* Tier filters (left) + Time selector (right) */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             {['all', 'vip', 'regular', 'new', 'slipping'].map((t) => (
                                 <TouchableOpacity
                                     key={t}
@@ -160,9 +160,7 @@ export default function GuestsScreen() {
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </ScrollView>
-                        {/* Time selector — compact underlined tabs */}
-                        <View style={{ flexDirection: 'row', gap: 16, borderBottomWidth: 1, borderBottomColor: colors.border.subtle, paddingBottom: 6 }}>
+                            <View style={{ flex: 1 }} />
                             {[
                                 { label: '1M', value: 30 },
                                 { label: '3M', value: 90 },
@@ -173,7 +171,7 @@ export default function GuestsScreen() {
                                 <TouchableOpacity
                                     key={range.label}
                                     onPress={() => setTimeRange(range.value)}
-                                    style={{ paddingBottom: 4, borderBottomWidth: timeRange === range.value ? 2 : 0, borderBottomColor: colors.accent.gold, marginBottom: -7 }}
+                                    style={{ paddingBottom: 2 }}
                                 >
                                     <Text style={{
                                         fontSize: 13,
