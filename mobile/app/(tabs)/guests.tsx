@@ -267,7 +267,7 @@ const s = StyleSheet.create({
         flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap',
     },
     filterChip: {
-        paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full,
+        paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.full,
         backgroundColor: colors.bg.card, borderWidth: 1, borderColor: colors.border.subtle,
     },
     filterChipActive: { backgroundColor: colors.accent.gold + '20', borderColor: colors.accent.gold },
