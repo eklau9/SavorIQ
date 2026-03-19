@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-    View, Text, FlatList, StyleSheet, RefreshControl,
+    View, Text, FlatList, StyleSheet,
     ActivityIndicator, TouchableOpacity, TextInput,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
@@ -29,8 +29,6 @@ export default function GuestsScreen() {
     const { guests: globalGuests, refreshAll, loading: dataLoading, timeRange, setTimeRange } = useData();
     const router = useRouter();
     const [guests, setGuests] = useState<Guest[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
     const [filterTier, setFilterTier] = useState<string | undefined>();
     const [sortField, setSortField] = useState<'date' | 'rating'>('date');
     const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
@@ -40,7 +38,7 @@ export default function GuestsScreen() {
         ? (sortDir === 'desc' ? 'Newest first' : 'Oldest first')
         : (sortDir === 'desc' ? 'Highest rated' : 'Lowest rated');
 
-    // 1. Local Filtering Logic (Instant Feedback)
+    // Local Filtering Logic (Instant Feedback)
     useEffect(() => {
         if (!activeId || globalGuests.length === 0) return;
 
@@ -52,7 +50,6 @@ export default function GuestsScreen() {
             return matchesTier && matchesSearch && matchesTime;
         });
 
-        // Apply local sorting
         const sorted = [...filtered].sort((a, b) => {
             if (sortField === 'rating') {
                 return sortDir === 'desc'
@@ -67,64 +64,7 @@ export default function GuestsScreen() {
         setGuests(sorted);
     }, [activeId, globalGuests, filterTier, sortField, sortDir, searchText, timeRange]);
 
-    // 2. Background Refresh Logic
-    const loadData = useCallback(async (isSilent = false) => {
-        if (!activeId) {
-            setLoading(false);
-            setRefreshing(false);
-            return;
-        }
-
-        // Only show spinner if we have no data at all
-        const shouldShowLoading = !isSilent && guests.length === 0;
-        if (shouldShowLoading) setLoading(true);
-
-        try {
-            const data = await fetchGuests({
-                tier: filterTier,
-                limit: 100
-            });
-            setGuests(data);
-        } catch (e) {
-            console.error('Guests load error:', e);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [activeId, filterTier, guests.length]);
-
-    // Use a ref to track if we've already done an initial refresh for this focus session
-    const isInitialMount = React.useRef(true);
-
-    useFocusEffect(
-        useCallback(() => {
-            if (!activeId || contextLoading) {
-                return;
-            }
-
-            // Only refresh global data on initial mount, never on filter change
-            if (isInitialMount.current && !dataLoading) {
-                refreshAll();
-                isInitialMount.current = false;
-            }
-
-            return () => {
-                isInitialMount.current = true;
-            };
-        }, [activeId, contextLoading, dataLoading])
-    );
-
-    const onRefresh = async () => {
-        setRefreshing(true);
-        if (!filterTier) {
-            await refreshAll();
-        } else {
-            await loadData();
-        }
-        setRefreshing(false);
-    };
-
-    const isLoading = contextLoading || (loading && guests.length === 0) || (dataLoading && !filterTier && globalGuests.length === 0);
+    const isLoading = contextLoading || (dataLoading && !filterTier && globalGuests.length === 0);
     const displayGuests = (filterTier || searchText || timeRange) ? guests : globalGuests;
 
     const renderGuest = ({ item }: { item: Guest }) => (
@@ -289,9 +229,6 @@ export default function GuestsScreen() {
                             renderItem={renderGuest}
                             keyExtractor={(item) => String(item.id)}
                             contentContainerStyle={s.list}
-                            refreshControl={
-                                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.gold} />
-                            }
                             ListEmptyComponent={
                                 <View style={s.center}>
                                     <Text style={s.emptyText}>No guests found</Text>

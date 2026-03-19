@@ -230,9 +230,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     // If bg data was also cached, skip ALL fetches
                     if (bgCache) {
                         setLoading(false);
-                        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                            window.dispatchEvent(new Event('savoriq-ready'));
-                        }
+                        // Delay splash dismissal so the branded loading screen
+                        // is visible briefly even on cache hits
+                        setTimeout(() => {
+                            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                                window.dispatchEvent(new Event('savoriq-ready'));
+                            }
+                        }, 800);
                         setCacheReady(true);
                         return; // Fully cached — zero API calls!
                     }
@@ -366,21 +370,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 coldLoadRef.current = false;
                 // Persist to disk after briefing loads
                 if (activeId) saveCacheToDisk(activeId, dashboardCache.current);
+                // Dismiss splash now that briefing is complete
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('savoriq-ready'));
+                }
             }).catch((e: any) => {
                 if (e.name !== 'AbortError') {
                     console.warn('Briefing fetch failed:', e);
-                    // DON'T cache the fallback — leave briefing as null so it retries next time
-                    // Just update the UI to show the error message
                     if (currentDaysRef.current === effectiveDays) {
                         setDashboardData(prev => prev ? { ...prev, briefing: {
-                            summary: "Briefing temporarily unavailable. Pull to refresh to retry.",
+                            summary: "AI Briefing is temporarily paused due to API limits. Go to More → Review Sync to refresh, or try a different time range.",
                             insights: [],
                             review_count_note: null,
                         }} : null);
                     }
                 }
-                setBriefingLoaded(true);
+                // Don't mark briefingLoaded on failure — badge stays 'Syncing...' until real data arrives
                 coldLoadRef.current = false;
+                // Dismiss splash even on briefing failure
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('savoriq-ready'));
+                }
             });
 
             // Fetch other background metrics with timeouts to prevent hanging
@@ -447,11 +457,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             
             if (abortControllerRef.current === controller) {
                 lastFetchedParams.current = { id: activeId, days: effectiveDays || null };
-
-                // Dismiss web splash once everything is ready
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                    window.dispatchEvent(new Event('savoriq-ready'));
-                }
 
                 // On warm refresh (not cold load), prefetch in background
                 if (!coldLoadRef.current) {
@@ -529,9 +534,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // Dismiss web splash on cache hits too
     useEffect(() => {
         if (dashboardData && !loading) {
-            if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                window.dispatchEvent(new Event('savoriq-ready'));
-            }
+            // Brief delay so the splash screen is visible on cache hits
+            const timer = setTimeout(() => {
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('savoriq-ready'));
+                }
+            }, 800);
+            return () => clearTimeout(timer);
         }
     }, [dashboardData, loading]);
 
@@ -553,6 +562,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const skipLoading = useCallback(() => {
         setLoading(false);
+        // Dismiss splash immediately when user taps Skip
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('savoriq-ready'));
+        }
     }, []);
 
     return (
