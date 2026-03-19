@@ -108,6 +108,13 @@ async def debug_web():
 
 # Serve the Expo web build if available, otherwise JSON root
 import mimetypes
+from urllib.parse import unquote
+
+# Register font MIME types
+mimetypes.add_type("font/ttf", ".ttf")
+mimetypes.add_type("font/woff", ".woff")
+mimetypes.add_type("font/woff2", ".woff2")
+
 STATIC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "static"))
 _index_html = os.path.join(STATIC_DIR, "index.html")
 _has_web_app = os.path.isfile(_index_html)
@@ -125,11 +132,17 @@ async def serve_root():
 async def serve_spa(full_path: str):
     """Serve static file if exists, otherwise SPA fallback to index.html."""
     if not _has_web_app:
-        # No web app — let FastAPI return its default 404
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
-    file_path = os.path.join(STATIC_DIR, full_path)
+    # Decode URL-encoded characters (e.g., %40 → @) for paths like @expo/vector-icons
+    decoded_path = unquote(full_path)
+    file_path = os.path.normpath(os.path.join(STATIC_DIR, decoded_path))
+    
+    # Security: prevent path traversal
+    if not file_path.startswith(STATIC_DIR):
+        return FileResponse(_index_html, media_type="text/html")
+    
     if os.path.isfile(file_path):
         content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
         return FileResponse(file_path, media_type=content_type)
@@ -142,4 +155,5 @@ async def serve_spa(full_path: str):
     if os.path.isfile(index_path):
         return FileResponse(index_path, media_type="text/html")
     return FileResponse(_index_html, media_type="text/html")
+
 
