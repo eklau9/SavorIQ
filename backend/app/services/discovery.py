@@ -71,3 +71,66 @@ async def discover_menu_items(reviews: List[str]) -> List[dict]:
     except Exception as e:
         logger.error(f"Menu discovery failed: {e}")
         return []
+
+
+VISION_PROMPT = """You are a restaurant menu extraction expert. I will provide you with a photo of a restaurant menu.
+
+Your task is to extract EVERY menu item visible in the image.
+
+For each item:
+1. "name": The exact item name as shown on the menu (preserve original spelling/casing).
+2. "category": Either "food" or "drink".
+3. "price": The price as a number (e.g., 15.99). Use null if not visible.
+4. "keywords": 3-5 lowercase aliases that a customer might use in a review to refer to this item.
+   Example: for "Spicy Pork Belly BBQ" → "pork belly, pork, spicy pork, bbq pork"
+
+Return ONLY valid JSON array:
+[
+  {
+    "name": "Item Name",
+    "category": "food",
+    "price": 15.99,
+    "keywords": "alias1, alias2, alias3"
+  }
+]
+
+IMPORTANT: Extract ALL items. Do not skip any. Include appetizers, mains, sides, desserts, drinks, everything visible."""
+
+
+async def extract_menu_from_image(image_base64: str) -> List[dict]:
+    """Uses Gemini Vision to extract menu items from a photo of a menu."""
+    try:
+        import google.generativeai as genai
+        import base64
+
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("Gemini API key not configured")
+
+        record_gemini_request()
+
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        model = genai.GenerativeModel(settings.GEMINI_MODEL)
+
+        # Decode the base64 image
+        image_data = base64.b64decode(image_base64)
+
+        response = await model.generate_content_async([
+            VISION_PROMPT,
+            {"mime_type": "image/jpeg", "data": image_data}
+        ])
+        text = response.text.strip()
+
+        # Extract JSON
+        if "```" in text:
+            json_match = re.search(r'```(?:json)?\s*(.*?)```', text, re.DOTALL)
+            if json_match:
+                text = json_match.group(1).strip()
+
+        discovered = json.loads(text)
+        logger.info(f"Vision extracted {len(discovered)} items from menu photo.")
+        return discovered
+
+    except Exception as e:
+        logger.error(f"Menu photo extraction failed: {e}")
+        raise
+

@@ -6,7 +6,7 @@ import re
 import sqlalchemy
 from fastapi import APIRouter, Depends, Header, Query
 from typing import Optional
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -413,8 +413,35 @@ async def get_manager_briefing_handler(
     x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Generate a strategic AI briefing for the manager."""
+    """Generate a strategic AI briefing for the manager.
+    
+    For days <= 180 (6MO): sends ALL reviews in range to Gemini with index citation.
+    For days > 180 or None (ALL): reuses the 6MO briefing (no extra Gemini call).
+    """
+    # For 1Y and ALL: reuse the 6MO briefing to save tokens
+    if days is None or days > 180:
+        suffix_6mo = "days_180"
+        cached_6mo = api_cache.get(x_restaurant_id, "manager_briefing", suffix=suffix_6mo)
+        if cached_6mo is not None:
+            return cached_6mo
+        # If 6MO briefing not cached yet, generate it
+        return await _generate_briefing_for_days(180, x_restaurant_id, db)
+    
     suffix = f"days_{days}" if days else ""
+    cached = api_cache.get(x_restaurant_id, "manager_briefing", suffix=suffix)
+    if cached is not None:
+        return cached
+    
+    return await _generate_briefing_for_days(days, x_restaurant_id, db)
+
+
+async def _generate_briefing_for_days(
+    days: int,
+    x_restaurant_id: str,
+    db: AsyncSession,
+) -> ManagerBriefing:
+    """Internal: generate briefing for a specific day range."""
+    suffix = f"days_{days}"
     cached = api_cache.get(x_restaurant_id, "manager_briefing", suffix=suffix)
     if cached is not None:
         return cached
@@ -422,20 +449,19 @@ async def get_manager_briefing_handler(
     # Fetch fresh deep analytics
     deep = await get_deep_analytics(days, x_restaurant_id, db)
     
-    # Also fetch recent review texts for context
+    # Fetch review IDs + content (no limit — TPM guard is in insights.py)
     from datetime import datetime, timedelta
-    cutoff = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff = datetime.utcnow() - timedelta(days=days)
     
     recent_reviews_stmt = (
-        select(Review.content)
+        select(Review.id, Review.content)
         .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+        .where(Review.reviewed_at >= cutoff)
         .order_by(Review.reviewed_at.desc())
-        .limit(20)
     )
-    if cutoff:
-        recent_reviews_stmt = recent_reviews_stmt.where(Review.reviewed_at >= cutoff)
         
-    recent_reviews = (await db.execute(recent_reviews_stmt)).scalars().all()
+    rows = (await db.execute(recent_reviews_stmt)).all()
+    recent_reviews = [{"id": str(row.id), "text": row.content} for row in rows]
 
     from app.services.insights import generate_manager_briefing
     briefing = await generate_manager_briefing(
@@ -447,6 +473,121 @@ async def get_manager_briefing_handler(
 
     api_cache.set(x_restaurant_id, "manager_briefing", briefing, suffix=suffix, ttl=7200)
     return briefing
+
+
+@router.get("/historical-trends")
+async def get_historical_trends(
+    days: Optional[int] = Query(None),
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Historical trends for 1Y/ALL views — pure SQL, zero Gemini cost.
+    
+    Returns quarterly rating averages, monthly review volume, and sentiment shifts.
+    """
+    suffix = f"days_{days}" if days else "all"
+    cached = api_cache.get(x_restaurant_id, "historical_trends", suffix=suffix)
+    if cached is not None:
+        return cached
+
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=days) if days else None
+
+    # 1. Quarterly rating averages
+    quarterly_stmt = (
+        select(
+            func.to_char(Review.reviewed_at, 'YYYY-"Q"Q').label("quarter"),
+            func.avg(Review.rating).label("avg_rating"),
+            func.count(Review.id).label("review_count"),
+        )
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+        .group_by(text('1'))
+        .order_by(text('1'))
+    )
+    if cutoff:
+        quarterly_stmt = quarterly_stmt.where(Review.reviewed_at >= cutoff)
+    
+    quarterly_rows = (await db.execute(quarterly_stmt)).all()
+    quarterly_ratings = [
+        {
+            "quarter": row.quarter,
+            "avg_rating": round(float(row.avg_rating), 2),
+            "review_count": row.review_count,
+        }
+        for row in quarterly_rows
+    ]
+
+    # 2. Monthly review volume
+    monthly_stmt = (
+        select(
+            func.to_char(Review.reviewed_at, 'YYYY-MM').label("month"),
+            func.count(Review.id).label("review_count"),
+            func.avg(Review.rating).label("avg_rating"),
+        )
+        .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
+        .group_by(text('1'))
+        .order_by(text('1'))
+    )
+    if cutoff:
+        monthly_stmt = monthly_stmt.where(Review.reviewed_at >= cutoff)
+    
+    monthly_rows = (await db.execute(monthly_stmt)).all()
+    monthly_volume = [
+        {
+            "month": row.month,
+            "review_count": row.review_count,
+            "avg_rating": round(float(row.avg_rating), 2),
+        }
+        for row in monthly_rows
+    ]
+
+    # 3. Sentiment shifts (compare last 6 months vs prior 6 months)
+    now = datetime.utcnow()
+    six_months_ago = now - timedelta(days=180)
+    twelve_months_ago = now - timedelta(days=365)
+
+    async def avg_sentiment_for_range(start, end):
+        stmt = (
+            select(
+                SentimentScore.bucket,
+                func.avg(SentimentScore.score).label("avg_score"),
+            )
+            .join(Review, SentimentScore.review_id == Review.id)
+            .where(
+                Review.restaurant_id == x_restaurant_id,
+                Review.is_deleted_on_platform == False,
+                Review.reviewed_at >= start,
+                Review.reviewed_at < end,
+            )
+            .group_by(SentimentScore.bucket)
+        )
+        rows = (await db.execute(stmt)).all()
+        return {row.bucket: round(float(row.avg_score), 3) for row in rows}
+
+    recent_sentiment = await avg_sentiment_for_range(six_months_ago, now)
+    prior_sentiment = await avg_sentiment_for_range(twelve_months_ago, six_months_ago)
+
+    sentiment_shifts = []
+    for bucket in ["food", "drink", "ambiance"]:
+        current = recent_sentiment.get(bucket)
+        previous = prior_sentiment.get(bucket)
+        shift = None
+        if current is not None and previous is not None:
+            shift = round(current - previous, 3)
+        sentiment_shifts.append({
+            "bucket": bucket,
+            "current": current,
+            "previous": previous,
+            "shift": shift,
+        })
+
+    result = {
+        "quarterly_ratings": quarterly_ratings,
+        "monthly_volume": monthly_volume,
+        "sentiment_shifts": sentiment_shifts,
+    }
+    api_cache.set(x_restaurant_id, "historical_trends", result, suffix=suffix, ttl=7200)
+    return result
 
 
 @router.get("/operations", response_model=OperationsAnalytics)

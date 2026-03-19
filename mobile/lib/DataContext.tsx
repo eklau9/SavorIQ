@@ -13,13 +13,16 @@ import {
     GuestPrioritized,
     fetchOperationsAnalytics,
     OperationsAnalytics,
-    fetchBriefing
+    fetchBriefing,
+    fetchHistoricalTrends,
+    HistoricalTrends,
 } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRestaurant } from './RestaurantContext';
 
 // AsyncStorage cache helpers
 const CACHE_KEY_PREFIX = 'savoriq_dashboard_cache_';
+const BG_CACHE_KEY_PREFIX = 'savoriq_bgdata_cache_';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 async function saveCacheToDisk(restaurantId: string, cache: Record<string, DeepAnalytics>) {
@@ -51,8 +54,41 @@ async function loadCacheFromDisk(restaurantId: string): Promise<Record<string, D
 async function clearDiskCache(restaurantId: string) {
     try {
         await AsyncStorage.removeItem(CACHE_KEY_PREFIX + restaurantId);
+        await AsyncStorage.removeItem(BG_CACHE_KEY_PREFIX + restaurantId);
     } catch (e) {
         // ignore
+    }
+}
+
+// Background data cache (guests, reviews, stats, priorities, operations)
+async function saveBgCacheToDisk(restaurantId: string, data: {
+    guests: Guest[]; reviews: Review[]; reviewStats: ReviewStats | null;
+    priorities: GuestPrioritized[]; operations: OperationsAnalytics | null;
+}) {
+    try {
+        const payload = { timestamp: Date.now(), data };
+        await AsyncStorage.setItem(BG_CACHE_KEY_PREFIX + restaurantId, JSON.stringify(payload));
+    } catch (e) {
+        console.warn('Failed to save bg cache to disk:', e);
+    }
+}
+
+async function loadBgCacheFromDisk(restaurantId: string): Promise<{
+    guests: Guest[]; reviews: Review[]; reviewStats: ReviewStats | null;
+    priorities: GuestPrioritized[]; operations: OperationsAnalytics | null;
+} | null> {
+    try {
+        const raw = await AsyncStorage.getItem(BG_CACHE_KEY_PREFIX + restaurantId);
+        if (!raw) return null;
+        const { timestamp, data } = JSON.parse(raw);
+        if (Date.now() - timestamp > CACHE_TTL_MS) {
+            await AsyncStorage.removeItem(BG_CACHE_KEY_PREFIX + restaurantId);
+            return null;
+        }
+        return data;
+    } catch (e) {
+        console.warn('Failed to load bg cache from disk:', e);
+        return null;
     }
 }
 
@@ -63,6 +99,7 @@ interface DataContextType {
     reviewStats: ReviewStats | null;
     operations: OperationsAnalytics | null;
     priorities: GuestPrioritized[];
+    historicalTrends: HistoricalTrends | null;
     loading: boolean;
     progress: number;
     loadingStep: string;
@@ -73,6 +110,7 @@ interface DataContextType {
     setTimeRange: (range: number | null) => void;
     refreshAll: (days?: number | null) => Promise<void>;
     skipLoading: () => void;
+    cacheReady: boolean;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -82,6 +120,7 @@ const DataContext = createContext<DataContextType>({
     reviewStats: null,
     operations: null,
     priorities: [],
+    historicalTrends: null,
     loading: false,
     progress: 0,
     loadingStep: '',
@@ -92,6 +131,7 @@ const DataContext = createContext<DataContextType>({
     setTimeRange: () => {},
     refreshAll: async (days?: number | null) => { },
     skipLoading: () => {},
+    cacheReady: false,
 });
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -102,6 +142,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
     const [operations, setOperations] = useState<OperationsAnalytics | null>(null);
     const [priorities, setPriorities] = useState<GuestPrioritized[]>([]);
+    const [historicalTrends, setHistoricalTrends] = useState<HistoricalTrends | null>(null);
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [loadingStep, setLoadingStep] = useState('');
@@ -109,11 +150,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [error, setError] = useState<string | null>(null);
     const [briefingLoaded, setBriefingLoaded] = useState(false);
     const [timeRange, setTimeRange] = useState<number | null>(30);
+    const [cacheReady, setCacheReady] = useState(false);
 
     const abortControllerRef = useRef<AbortController | null>(null);
     const dashboardCache = useRef<Record<string, DeepAnalytics>>({});
     const lastFetchedParams = useRef<{ id: string | null, days: number | null }>({ id: null, days: null });
     const bgDataLoaded = useRef(false);
+
+    // Fetch historical trends when switching to 1Y/ALL
+    useEffect(() => {
+        if (!activeId) return;
+        if (timeRange === 365 || timeRange === null) {
+            fetchHistoricalTrends(timeRange).then(trends => {
+                setHistoricalTrends(trends);
+            }).catch(e => {
+                console.warn('Historical trends fetch failed:', e);
+            });
+        } else {
+            setHistoricalTrends(null);
+        }
+    }, [timeRange, activeId]);
 
     // Lazily fetch reviews, guests, priorities, etc. — called once per session
     const fetchBackgroundData = useCallback(() => {
@@ -144,14 +200,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         diskCacheHydrated.current = true;
         
         (async () => {
+            // Load dashboard cache
             const diskCache = await loadCacheFromDisk(activeId);
+            // Load background data cache (guests, reviews, etc.)
+            const bgCache = await loadBgCacheFromDisk(activeId);
+
+            if (bgCache) {
+                setGuests(bgCache.guests || []);
+                setReviews(bgCache.reviews || []);
+                setReviewStats(bgCache.reviewStats);
+                setPriorities(bgCache.priorities || []);
+                setOperations(bgCache.operations);
+                bgDataLoaded.current = true;
+                console.log('[DataContext] Hydrated bg data from disk cache — no API calls needed');
+            }
+
             if (diskCache) {
                 dashboardCache.current = diskCache;
-                // Check if all 5 frames have briefings
                 const ALL_KEYS = ['30', '90', '180', '365', 'all'];
                 const allLoaded = ALL_KEYS.every(k => diskCache[k]?.briefing);
                 if (allLoaded) {
-                    // Everything is cached on disk — skip Gemini calls entirely
                     coldLoadRef.current = false;
                     const currentKey = timeRange ? String(timeRange) : 'all';
                     if (diskCache[currentKey]) {
@@ -159,12 +227,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                         setBriefingLoaded(true);
                     }
                     console.log('[DataContext] Hydrated all 5 frames from disk cache — skipping Gemini');
-                    // Still need to fetch reviews, guests, priorities from backend
+                    // If bg data was also cached, skip ALL fetches
+                    if (bgCache) {
+                        setLoading(false);
+                        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                            window.dispatchEvent(new Event('savoriq-ready'));
+                        }
+                        setCacheReady(true);
+                        return; // Fully cached — zero API calls!
+                    }
                     fetchBackgroundData();
                 } else {
                     console.log('[DataContext] Partial disk cache — will fetch missing briefings');
                 }
             }
+            setCacheReady(true);
         })();
     }, [activeId]);
 
@@ -297,7 +374,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     if (currentDaysRef.current === effectiveDays) {
                         setDashboardData(prev => prev ? { ...prev, briefing: {
                             summary: "Briefing temporarily unavailable. Pull to refresh to retry.",
-                            insights: []
+                            insights: [],
+                            review_count_note: null,
                         }} : null);
                     }
                 }
@@ -313,16 +391,38 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 ]);
             };
 
+            // Track bg data via refs so we can save to disk after all complete
+            const bgResults = {
+                guests: [] as Guest[],
+                reviews: [] as Review[],
+                reviewStats: null as ReviewStats | null,
+                priorities: [] as GuestPrioritized[],
+                operations: null as OperationsAnalytics | null,
+            };
+
             const bgOps = [
-                withTimeout(fetchGuests({}, controller.signal)).then(setGuests),
-                withTimeout(fetchAllReviews({}, controller.signal)).then(setReviews),
-                withTimeout(fetchReviewStats(undefined, controller.signal)).then(setReviewStats),
-                withTimeout(fetchGuestPriorities(controller.signal)).then(setPriorities),
-                withTimeout(fetchOperationsAnalytics(controller.signal)).then(setOperations),
+                withTimeout(fetchGuests({}, controller.signal)).then(d => { setGuests(d); bgResults.guests = d; }),
+                withTimeout(fetchAllReviews({}, controller.signal)).then(d => { setReviews(d); bgResults.reviews = d; }),
+                withTimeout(fetchReviewStats(undefined, controller.signal)).then(d => { setReviewStats(d); bgResults.reviewStats = d; }),
+                withTimeout(fetchGuestPriorities(controller.signal)).then(d => { setPriorities(d); bgResults.priorities = d; }),
+                withTimeout(fetchOperationsAnalytics(controller.signal)).then(d => { setOperations(d); bgResults.operations = d; }),
             ];
 
-            Promise.allSettled(bgOps);
+            Promise.allSettled(bgOps).then(() => {
+                if (activeId) saveBgCacheToDisk(activeId, bgResults);
+            });
             bgDataLoaded.current = true;
+
+            // Fetch historical trends for 1Y/ALL (pure SQL, no Gemini cost)
+            if (effectiveDays === null || effectiveDays >= 365) {
+                fetchHistoricalTrends(effectiveDays).then(trends => {
+                    setHistoricalTrends(trends);
+                }).catch(e => {
+                    console.warn('Historical trends fetch failed:', e);
+                });
+            } else {
+                setHistoricalTrends(null);
+            }
 
             // Prefetch other frames in the background (don't block splash)
             if (abortControllerRef.current === controller) {
@@ -463,6 +563,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             reviewStats,
             operations,
             priorities,
+            historicalTrends,
             loading,
             progress,
             loadingStep,
@@ -473,6 +574,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             timeRange,
             setTimeRange,
             skipLoading,
+            cacheReady,
         }}>
             {children}
         </DataContext.Provider>

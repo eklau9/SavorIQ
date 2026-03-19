@@ -273,6 +273,12 @@ export default function MoreScreen() {
             <View style={s.section}>
                 <Text style={s.sectionTitle}>Tools</Text>
                 <MenuItem
+                    icon="restaurant"
+                    label="Upload Menu"
+                    subtitle="Snap a photo for exact item tracking"
+                    onPress={() => router.push('/menu-upload')}
+                />
+                <MenuItem
                     icon="sync"
                     label="Review Sync"
                     subtitle="Fetch new reviews from Google & Yelp"

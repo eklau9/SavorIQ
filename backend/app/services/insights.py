@@ -19,6 +19,8 @@ BRIEFING_PROMPT = """You are a strategic restaurant consultant. Analyze the prov
 - **Do NOT put markers in insight titles**. Titles should be clean plain text with no backticks or special formatting.
 - **IMPORTANT**: Use simple, direct vocabulary. Avoid complex jargon.
 - Each insight MUST include a `steps` field containing 3-5 short, actionable bullets for the manager.
+- Each insight MUST include a `keywords` field: 2-4 short phrases that appear VERBATIM in the actual review texts provided. These are used to search and filter which reviews relate to this insight. Use lowercase. Pick distinctive words/phrases guests actually wrote (e.g., "reservation", "cold food", "wasabi", "minimum order").
+- Each insight MUST include a `review_indices` field: a list of review index numbers (from the numbered reviews below) that this insight is based on. Include ALL reviews that contributed to this insight. Use the index numbers provided.
 
 Return ONLY valid JSON in this exact format:
 {
@@ -28,13 +30,17 @@ Return ONLY valid JSON in this exact format:
       "title": "The Espresso Bloom",
       "description": "Your espresso is a top-tier performer; consider featuring it in a brunch promotion.",
       "type": "win",
-      "steps": ["Feature in weekly newsletter", "Add as 'Staff Pick' on menu", "Post a demo video on Instagram"]
+      "steps": ["Feature in weekly newsletter", "Add as 'Staff Pick' on menu", "Post a demo video on Instagram"],
+      "keywords": ["espresso", "coffee", "brunch"],
+      "review_indices": [0, 3, 7, 12]
     },
     {
       "title": "Service Speed",
       "description": "Guests are mentioning slow service on Friday nights; look into staffing levels.",
       "type": "risk",
-      "steps": ["Review Friday shift schedules", "Optimize kitchen-to-table workflow", "Cross-train staff for busy peaks"]
+      "steps": ["Review Friday shift schedules", "Optimize kitchen-to-table workflow", "Cross-train staff for busy peaks"],
+      "keywords": ["slow service", "waited", "friday"],
+      "review_indices": [1, 5, 9]
     }
   ]
 }
@@ -50,19 +56,44 @@ _briefing_cache: dict[str, ManagerBriefing] = {}
 # Concurrency locks: maps data_hash -> asyncio.Lock
 _briefing_locks: dict[str, asyncio.Lock] = {}
 
+# TPM guard: max reviews to send before hitting free-tier token limits
+MAX_REVIEWS_FOR_GEMINI = 1300  # ~200K tokens at ~150 tokens/review
+
+
 async def generate_manager_briefing(
     bucket_sentiment: list[BucketSentiment],
     top_performers: list[ItemPerformance],
     risks: list[ItemPerformance],
-    recent_reviews: list[str]
+    recent_reviews: list[dict],  # [{id: str, text: str}, ...]
 ) -> ManagerBriefing:
-    """Uses Gemini to generate a strategic briefing for the restaurant owner."""
+    """Uses Gemini to generate a strategic briefing for the restaurant owner.
     
+    recent_reviews: list of dicts with 'id' and 'text' keys.
+    """
+    
+    review_count_note = None
+    total_available = len(recent_reviews)
+    
+    # TPM guard: cap reviews if they exceed safe token limit
+    if total_available > MAX_REVIEWS_FOR_GEMINI:
+        recent_reviews = recent_reviews[:MAX_REVIEWS_FOR_GEMINI]
+        review_count_note = f"Based on {MAX_REVIEWS_FOR_GEMINI:,} of {total_available:,} most recent reviews"
+        logger.info(f"TPM guard: capped reviews from {total_available} to {MAX_REVIEWS_FOR_GEMINI}")
+
+    # Build indexed review list for Gemini
+    indexed_reviews = [
+        {"idx": i, "text": r["text"]}
+        for i, r in enumerate(recent_reviews)
+    ]
+    
+    # Map from index -> review ID for later lookup
+    idx_to_id = {i: r["id"] for i, r in enumerate(recent_reviews)}
+
     data_context = {
         "bucket_sentiment": [b.model_dump() for b in bucket_sentiment],
         "top_performers": [i.model_dump() for i in top_performers],
         "risks": [i.model_dump() for i in risks],
-        "recent_feedback_snippets": recent_reviews[:10]  # Limit context
+        "recent_feedback_snippets": indexed_reviews,
     }
 
     # 1. Check data version (Data-aware caching)
@@ -119,9 +150,27 @@ async def generate_manager_briefing(
 
                 payload = json.loads(text)
                 
+                # Map review_indices back to actual review IDs
+                insights = []
+                for i in payload.get("insights", []):
+                    review_indices = i.get("review_indices", [])
+                    review_ids = [
+                        idx_to_id[idx] for idx in review_indices
+                        if idx in idx_to_id
+                    ]
+                    insights.append(ManagerInsight(
+                        title=i.get("title", ""),
+                        description=i.get("description", ""),
+                        type=i.get("type", "action"),
+                        steps=i.get("steps", []),
+                        keywords=i.get("keywords", []),
+                        review_ids=review_ids,
+                    ))
+                
                 result = ManagerBriefing(
                     summary=payload.get("summary", "No summary available."),
-                    insights=[ManagerInsight(**i) for i in payload.get("insights", [])]
+                    insights=insights,
+                    review_count_note=review_count_note,
                 )
                 # Success! Break out of retry loop
                 break

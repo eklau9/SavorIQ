@@ -182,11 +182,14 @@ export interface ManagerInsight {
     description: string;
     type: string;
     steps: string[];
+    keywords: string[];
+    review_ids: string[];
 }
 
 export interface ManagerBriefing {
     summary: string;
     insights: ManagerInsight[];
+    review_count_note: string | null;
 }
 
 export interface UnmatchedMention {
@@ -217,6 +220,19 @@ export async function fetchBriefing(days?: number | null, signal?: AbortSignal):
     const params = new URLSearchParams();
     if (days) params.set('days', String(days));
     const url = `/api/analytics/briefing${params.toString() ? '?' + params.toString() : ''}`;
+    return apiFetch(url, {}, signal);
+}
+
+export interface HistoricalTrends {
+    quarterly_ratings: { quarter: string; avg_rating: number; review_count: number }[];
+    monthly_volume: { month: string; review_count: number; avg_rating: number }[];
+    sentiment_shifts: { bucket: string; current: number | null; previous: number | null; shift: number | null }[];
+}
+
+export async function fetchHistoricalTrends(days?: number | null, signal?: AbortSignal): Promise<HistoricalTrends> {
+    const params = new URLSearchParams();
+    if (days) params.set('days', String(days));
+    const url = `/api/analytics/historical-trends${params.toString() ? '?' + params.toString() : ''}`;
     return apiFetch(url, {}, signal);
 }
 
@@ -495,3 +511,42 @@ export interface SystemHealth {
 export async function fetchAdminHealth(): Promise<SystemHealth> {
     return apiFetch<SystemHealth>('/api/admin/health');
 }
+
+// ── Menu Photo Upload ──────────────────────────────────────────────
+
+export interface ExtractedMenuItem {
+    name: string;
+    category: string;
+    price: number | null;
+    keywords: string;
+}
+
+export interface SavedMenuItem {
+    id: string;
+    name: string;
+    category: string;
+    keywords: string;
+    is_active: boolean;
+    created_at: string;
+}
+
+export async function extractMenuFromPhoto(imageBase64: string): Promise<ExtractedMenuItem[]> {
+    return apiFetch<ExtractedMenuItem[]>('/api/menu/extract-from-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_base64: imageBase64 }),
+    });
+}
+
+export async function bulkAddMenuItems(items: ExtractedMenuItem[]): Promise<SavedMenuItem[]> {
+    return apiFetch<SavedMenuItem[]>('/api/menu/bulk-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+    });
+}
+
+export async function fetchMenuItems(): Promise<SavedMenuItem[]> {
+    return apiFetch<SavedMenuItem[]>('/api/menu');
+}
+

@@ -4,7 +4,7 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  RefreshControl,
+
   ActivityIndicator,
   TouchableOpacity,
   Modal,
@@ -81,8 +81,10 @@ export default function DashboardScreen() {
     setTimeRange,
     skipLoading,
     briefingLoaded,
+    cacheReady,
+    historicalTrends,
   } = useData();
-  const [refreshing, setRefreshing] = useState(false);
+
   const [showIntegrityModal, setShowIntegrityModal] = useState(false);
   const [skipped, setSkipped] = useState(false);
   const intelReady = briefingLoaded && !!data;
@@ -94,18 +96,14 @@ export default function DashboardScreen() {
 
   // No need for showIntelBadge state - badge is always visible now
 
-  // Trigger refresh when timeRange changes
+  // Switch dashboard data when timeRange changes (reads from in-memory cache, no API calls)
   useEffect(() => {
-    if (activeId) {
+    if (activeId && cacheReady) {
       refreshAll(timeRange);
     }
-  }, [timeRange, activeId, refreshAll]);
+  }, [timeRange, activeId, cacheReady]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refreshAll();
-    setRefreshing(false);
-  };
+
 
   const handleResetKey = async () => {
     await AsyncStorage.removeItem('accessKey');
@@ -154,13 +152,6 @@ export default function DashboardScreen() {
     <ScrollView
       style={s.container}
       contentContainerStyle={s.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={colors.accent.gold}
-        />
-      }
     >
       {!activeId && !restaurantLoading ? (
         <NoRestaurantSelected />
@@ -292,22 +283,25 @@ export default function DashboardScreen() {
             ) : (
               <>
                 <Text style={s.briefingSummary}>{renderFormattedText(data.briefing.summary)}</Text>
+                {data.briefing.review_count_note && (
+                  <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, marginBottom: spacing.sm, fontStyle: 'italic' }}>
+                    {data.briefing.review_count_note}
+                  </Text>
+                )}
                 {data.briefing.insights.map((insight, idx) => {
-                  // Extract menu item names from description for search
-                  const itemMatches = insight.description.match(/`([^`]+)`|\+\+([^+]+)\+\+|--([^-]+)--/g);
-                  let searchTerm = '';
-                  if (itemMatches && itemMatches.length > 0) {
-                    // Use the first mentioned item name
-                    searchTerm = itemMatches[0].replace(/`|\+\+|--/g, '').trim();
-                  } else {
-                    // Fallback: use first 3 words from title (skip generic words)
-                    searchTerm = insight.title.split(/\s+/).slice(0, 3).join(' ');
-                  }
+                  // Use review IDs if available (exact citation), fall back to keyword search
+                  const hasReviewIds = insight.review_ids && insight.review_ids.length > 0;
+                  const searchTerms = (insight.keywords && insight.keywords.length > 0)
+                    ? insight.keywords.join('|')
+                    : '';
+                  const navParams = hasReviewIds
+                    ? `ids=${encodeURIComponent(insight.review_ids.join(','))}${timeRange ? `&days=${timeRange}` : ''}`
+                    : `${searchTerms ? `search=${encodeURIComponent(searchTerms)}&` : ''}${timeRange ? `days=${timeRange}` : ''}`;
                   return (
                   <TouchableOpacity
                     key={idx}
                     style={s.insightRow}
-                    onPress={() => router.push(`/reviews?search=${encodeURIComponent(searchTerm)}${timeRange ? `&days=${timeRange}` : ''}`)}
+                    onPress={() => router.push(`/reviews?${navParams}` as any)}
                     activeOpacity={0.7}
                   >
                     <View style={[
@@ -335,6 +329,78 @@ export default function DashboardScreen() {
               </>
             )}
           </View>
+
+          {/* Historical Trends — visible on 1Y and ALL only */}
+          {(timeRange === 365 || timeRange === null) && historicalTrends && (
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <Ionicons name="analytics" size={18} color={colors.accent.blue} />
+                <Text style={s.cardTitle}>Historical Trends</Text>
+              </View>
+
+              {/* Sentiment Shifts */}
+              {historicalTrends.sentiment_shifts.length > 0 && (
+                <View style={{ marginBottom: spacing.md }}>
+                  <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, fontWeight: '600', marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 }}>Sentiment Shift (6mo vs prior 6mo)</Text>
+                  {historicalTrends.sentiment_shifts.map((s_item, idx) => {
+                    const isUp = s_item.shift !== null && s_item.shift > 0;
+                    const isDown = s_item.shift !== null && s_item.shift < 0;
+                    const shiftColor = isUp ? colors.sentiment.positive : isDown ? colors.sentiment.negative : colors.text.muted;
+                    const bucketIcon = s_item.bucket === 'food' ? 'restaurant' : s_item.bucket === 'drink' ? 'wine' : 'leaf';
+                    return (
+                      <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: idx < historicalTrends.sentiment_shifts.length - 1 ? 1 : 0, borderBottomColor: colors.border.subtle }}>
+                        <Ionicons name={bucketIcon as any} size={16} color={shiftColor} style={{ marginRight: 10 }} />
+                        <Text style={{ color: colors.text.primary, fontSize: fonts.sizes.sm, flex: 1, textTransform: 'capitalize' }}>{s_item.bucket}</Text>
+                        <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, marginRight: 8 }}>{s_item.previous !== null ? s_item.previous.toFixed(2) : '—'}</Text>
+                        <Ionicons name={isUp ? 'arrow-up' : isDown ? 'arrow-down' : 'remove'} size={12} color={shiftColor} />
+                        <Text style={{ color: shiftColor, fontSize: fonts.sizes.sm, fontWeight: '700', marginLeft: 4, minWidth: 45, textAlign: 'right' }}>{s_item.current !== null ? s_item.current.toFixed(2) : '—'}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Quarterly Ratings */}
+              {historicalTrends.quarterly_ratings.length > 0 && (
+                <View style={{ marginBottom: spacing.md }}>
+                  <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, fontWeight: '600', marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 }}>Quarterly Ratings</Text>
+                  {historicalTrends.quarterly_ratings.slice(-6).map((q, idx) => {
+                    const ratingColor = q.avg_rating >= 4.0 ? colors.sentiment.positive : q.avg_rating >= 3.0 ? colors.accent.gold : colors.sentiment.negative;
+                    const barWidth = Math.min(100, (q.avg_rating / 5) * 100);
+                    return (
+                      <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                        <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, width: 60 }}>{q.quarter}</Text>
+                        <View style={{ flex: 1, height: 6, backgroundColor: colors.border.subtle, borderRadius: 3, marginHorizontal: 8 }}>
+                          <View style={{ width: `${barWidth}%`, height: 6, backgroundColor: ratingColor, borderRadius: 3 }} />
+                        </View>
+                        <Text style={{ color: ratingColor, fontSize: fonts.sizes.xs, fontWeight: '700', width: 30, textAlign: 'right' }}>{q.avg_rating.toFixed(1)}</Text>
+                        <Text style={{ color: colors.text.muted, fontSize: 10, width: 40, textAlign: 'right' }}>({q.review_count})</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Monthly Volume */}
+              {historicalTrends.monthly_volume.length > 0 && (
+                <View>
+                  <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, fontWeight: '600', marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 }}>Monthly Review Volume</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 60, gap: 2 }}>
+                    {historicalTrends.monthly_volume.slice(-12).map((m, idx) => {
+                      const maxCount = Math.max(...historicalTrends.monthly_volume.slice(-12).map(v => v.review_count));
+                      const barHeight = maxCount > 0 ? (m.review_count / maxCount) * 50 : 0;
+                      return (
+                        <View key={idx} style={{ flex: 1, alignItems: 'center' }}>
+                          <View style={{ width: '80%', height: barHeight, backgroundColor: colors.accent.blue + '60', borderRadius: 2, minHeight: 2 }} />
+                          <Text style={{ color: colors.text.muted, fontSize: 7, marginTop: 2 }}>{m.month.slice(5)}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Top Performing Items */}
           {(!data || data.top_performers.length > 0) && (
@@ -370,43 +436,6 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          {/* Customer Mentions — items not on the menu */}
-          {(!data || (data.unmatched_mentions && data.unmatched_mentions.length > 0)) && (
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <Ionicons name="chatbubble-ellipses" size={18} color={colors.accent.blue} />
-                <Text style={s.cardTitle}>Customer Mentions (Not on Menu)</Text>
-              </View>
-              {!data ? (
-                <ActivityIndicator color={colors.accent.blue} style={{ marginVertical: 10 }} />
-              ) : (
-                data.unmatched_mentions.map((mention, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={s.itemRow}
-                    onPress={() => router.push(`/reviews?search=${encodeURIComponent(mention.term)}`)}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.itemName}>{mention.term}</Text>
-                    </View>
-                    <View style={s.itemStats}>
-                      <Text style={s.itemMentions}>{mention.mention_count}</Text>
-                      <Text style={s.itemMentionLabel}>mentions</Text>
-                    </View>
-                    <View style={[s.sentimentBadge, {
-                      backgroundColor: colors.accent.blue + '20',
-                    }]}>
-                      <Text style={[s.sentimentText, {
-                        color: colors.accent.blue,
-                      }]}>
-                        Unmatched
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
         </>
       )}
     </ScrollView>

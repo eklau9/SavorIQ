@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-    View, Text, FlatList, StyleSheet, RefreshControl,
+    View, Text, FlatList, StyleSheet,
     ActivityIndicator, TextInput, TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -12,28 +12,36 @@ import { fetchAllReviews, fetchReviewStats, Review, ReviewStats } from '@/lib/ap
 import NoRestaurantSelected from '@/components/NoRestaurantSelected';
 
 export default function ReviewsScreen() {
-    const { search: incomingSearch, sentiment: incomingSentiment, days: incomingDays } = useLocalSearchParams<{ search?: string; sentiment?: string; days?: string }>();
+    const { search: incomingSearch, sentiment: incomingSentiment, days: incomingDays, ids: incomingIds } = useLocalSearchParams<{ search?: string; sentiment?: string; days?: string; ids?: string }>();
     const { activeId, loading: contextLoading } = useRestaurant();
     const { reviews: globalReviews, reviewStats: globalStats, refreshAll, timeRange, setTimeRange } = useData();
 
     const [reviews, setReviews] = useState<Review[]>([]);
     const [stats, setStats] = useState<ReviewStats | null>(null);
-    const [refreshing, setRefreshing] = useState(false);
+
     const [search, setSearch] = useState(incomingSearch || '');
     const [sentiment, setSentiment] = useState<string | undefined>(incomingSentiment);
     const [platform, setPlatform] = useState<string | undefined>();
     const [dateSort, setDateSort] = useState<'desc' | 'asc'>('desc');
     const [ratingSort, setRatingSort] = useState<'desc' | 'asc' | null>('asc');
+    const [filterIds, setFilterIds] = useState<string[] | null>(
+        incomingIds ? incomingIds.split(',').map(id => decodeURIComponent(id)) : null
+    );
 
     // Sync search state with incoming route parameters
     useEffect(() => {
         if (incomingSearch !== undefined) {
             setSearch(incomingSearch || '');
+            setFilterIds(null); // Clear ID filter when switching to keyword search
         }
         if (incomingSentiment !== undefined) {
             setSentiment(incomingSentiment);
         }
-    }, [incomingSearch, incomingSentiment]);
+        if (incomingIds !== undefined) {
+            setFilterIds(incomingIds ? incomingIds.split(',').map(id => decodeURIComponent(id)) : null);
+            setSearch(''); // Clear text search when using ID filter
+        }
+    }, [incomingSearch, incomingSentiment, incomingIds]);
 
     // Sync days filter with incoming route parameter (from insight tap)
     useEffect(() => {
@@ -49,16 +57,25 @@ export default function ReviewsScreen() {
         const finalSearch = search.trim().toLowerCase();
 
         const filtered = globalReviews.filter(r => {
+            // If filtering by specific review IDs (from insight tap), use that exclusively
+            if (filterIds && filterIds.length > 0) {
+                return filterIds.includes(r.id);
+            }
+            
             const matchesPlatform = !platform || r.platform === platform;
             const matchesSentiment = !sentiment || (
                 sentiment === 'positive' ? r.rating >= 4 :
                     sentiment === 'negative' ? r.rating <= 2 :
                         true
             );
-            const matchesSearch = !finalSearch || (
-                (r.author_name?.toLowerCase().includes(finalSearch)) ||
-                (r.content?.toLowerCase().includes(finalSearch))
-            );
+            const matchesSearch = !finalSearch || (() => {
+                const text = ((r.author_name || '') + ' ' + (r.content || '')).toLowerCase();
+                if (finalSearch.includes('|')) {
+                    // OR search: match if any keyword is found
+                    return finalSearch.split('|').some(term => term.trim() && text.includes(term.trim()));
+                }
+                return text.includes(finalSearch);
+            })();
             // Date filter: only show reviews within the timeRange
             let matchesDate = true;
             if (timeRange && r.reviewed_at) {
@@ -98,15 +115,11 @@ export default function ReviewsScreen() {
         } else if (!finalSearch && !platform && !sentiment) {
             setStats(globalStats);
         }
-    }, [activeId, globalReviews, search, platform, sentiment, timeRange, globalStats, dateSort, ratingSort]);
+    }, [activeId, globalReviews, search, platform, sentiment, timeRange, globalStats, dateSort, ratingSort, filterIds]);
 
     const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
 
-    const onRefresh = async () => {
-        setRefreshing(true);
-        await refreshAll();
-        setRefreshing(false);
-    };
+
 
     const toggleExpand = (id: string) => {
         setExpandedReviews(prev => ({ ...prev, [id]: !prev[id] }));
@@ -252,6 +265,19 @@ export default function ReviewsScreen() {
                         </View>
                     )}
 
+                    {/* Insight Review ID Filter Indicator */}
+                    {filterIds && filterIds.length > 0 && (
+                        <View style={s.activeFilterBar}>
+                            <Ionicons name="sparkles" size={14} color={colors.accent.gold} />
+                            <Text style={s.activeFilterText}>
+                                Showing <Text style={s.bold}>{reviews.length}</Text> reviews related to this insight
+                            </Text>
+                            <TouchableOpacity onPress={() => setFilterIds(null)}>
+                                <Text style={{ color: colors.accent.gold, fontSize: fonts.sizes.xs, fontWeight: '700' }}>Show All</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     {/* Stats Bar + Sort */}
                     <View style={s.statsBar}>
                         {stats && (
@@ -308,9 +334,6 @@ export default function ReviewsScreen() {
                             renderItem={renderReview}
                             keyExtractor={(item) => String(item.id)}
                             contentContainerStyle={s.list}
-                            refreshControl={
-                                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.gold} />
-                            }
                             ListEmptyComponent={
                                 <View style={s.center}>
                                     <Text style={s.emptyText}>No reviews found</Text>

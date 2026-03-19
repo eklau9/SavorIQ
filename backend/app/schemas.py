@@ -338,11 +338,14 @@ class ManagerInsight(BaseModel):
     description: str
     type: str  # "win", "risk", "action"
     steps: list[str] = []
+    keywords: list[str] = []  # search terms from actual review text for filtering
+    review_ids: list[str] = []  # exact review IDs Gemini based this insight on
 
 
 class ManagerBriefing(BaseModel):
     summary: str
     insights: list[ManagerInsight]
+    review_count_note: str | None = None  # e.g. "Based on 1,300 of 2,100 reviews"
 
 
 class UnmatchedMention(BaseModel):

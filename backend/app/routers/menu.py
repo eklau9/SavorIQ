@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy import select
+from pydantic import BaseModel
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 
 from app.database import get_db
 from app.models import MenuItem
@@ -64,3 +66,81 @@ async def deactivate_menu_item(
         raise HTTPException(status_code=404, detail="Menu item not found")
     item.is_active = False
     await db.flush()
+
+
+# ── Photo Upload & Extraction ────────────────────────────────────────────
+
+class PhotoExtractRequest(BaseModel):
+    image_base64: str  # Base64-encoded image data (no data:image prefix)
+
+
+class ExtractedMenuItem(BaseModel):
+    name: str
+    category: str  # "food" or "drink"
+    price: Optional[float] = None
+    keywords: str
+
+
+class BulkAddRequest(BaseModel):
+    items: List[ExtractedMenuItem]
+
+
+@router.post("/extract-from-photo", response_model=List[ExtractedMenuItem])
+async def extract_from_photo(
+    payload: PhotoExtractRequest,
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+):
+    """Extract menu items from a photo using Gemini Vision.
+    
+    Returns extracted items for user review/confirmation before saving.
+    """
+    from app.services.discovery import extract_menu_from_image
+
+    raw_items = await extract_menu_from_image(payload.image_base64)
+
+    # Normalize the results
+    items = []
+    for item in raw_items:
+        category = item.get("category", "food").lower()
+        if category not in ("food", "drink"):
+            category = "food"
+        items.append(ExtractedMenuItem(
+            name=item.get("name", "Unknown"),
+            category=category,
+            price=item.get("price"),
+            keywords=item.get("keywords", item.get("name", "").lower()),
+        ))
+
+    return items
+
+
+@router.post("/bulk-add", response_model=List[MenuItemRead])
+async def bulk_add_menu_items(
+    payload: BulkAddRequest,
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save confirmed menu items. Clears existing items and replaces with the new set."""
+    # Clear existing menu items for this restaurant
+    await db.execute(
+        delete(MenuItem).where(MenuItem.restaurant_id == x_restaurant_id)
+    )
+
+    saved = []
+    for item_data in payload.items:
+        category = item_data.category.lower()
+        if category not in ("food", "drink"):
+            category = "food"
+        item = MenuItem(
+            restaurant_id=x_restaurant_id,
+            name=item_data.name,
+            category=category,
+            keywords=item_data.keywords,
+        )
+        db.add(item)
+        await db.flush()
+        await db.refresh(item)
+        saved.append(item)
+
+    return saved
+
