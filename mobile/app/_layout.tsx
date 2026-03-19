@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { RestaurantProvider } from '@/lib/RestaurantContext';
 import { DataProvider } from '@/lib/DataContext';
 import { colors } from '@/lib/theme';
@@ -32,6 +33,7 @@ const savoriqTheme = {
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    ...Ionicons.font,
   });
 
   useEffect(() => {

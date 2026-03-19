@@ -40,19 +40,67 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             }
         } catch (e) {
             console.warn('Failed to load restaurants:', e);
-            // Don't leave it in a loading state if it fails
             setRestaurants([]);
         } finally {
             setLoading(false);
-            // Dismiss the HTML splash once React app is usable
             if (typeof window !== 'undefined') {
                 window.dispatchEvent(new Event('savoriq-ready'));
             }
         }
     };
 
+    // Load restaurants on mount with retry + exponential backoff + cleanup
     useEffect(() => {
-        loadRestaurants();
+        let cancelled = false;
+        let retryTimeout: ReturnType<typeof setTimeout>;
+
+        const load = async (attempt = 0) => {
+            if (cancelled) return;
+            setLoading(true);
+            try {
+                const stored = await AsyncStorage.getItem('activeRestaurantId');
+                const list = await fetchRestaurants();
+                if (cancelled) return;
+
+                setRestaurants(list);
+
+                if (list.length === 0 && attempt < 3) {
+                    const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+                    console.log(`[RestaurantContext] No restaurants returned, retrying in ${delay / 1000}s (attempt ${attempt + 1}/3)...`);
+                    retryTimeout = setTimeout(() => load(attempt + 1), delay);
+                    return;
+                }
+
+                if (stored && list.find((r) => r.id === stored)) {
+                    setActiveId(stored);
+                } else if (list.length > 0) {
+                    setActiveId(list[0].id);
+                    await setActiveRestaurantId(list[0].id);
+                }
+            } catch (e) {
+                if (cancelled) return;
+                console.warn(`[RestaurantContext] Fetch failed (attempt ${attempt + 1}/3):`, e);
+                if (attempt < 3) {
+                    const delay = Math.pow(2, attempt) * 1000;
+                    retryTimeout = setTimeout(() => load(attempt + 1), delay);
+                    return;
+                }
+                setRestaurants([]);
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new Event('savoriq-ready'));
+                    }
+                }
+            }
+        };
+
+        load();
+        return () => {
+            cancelled = true;
+            clearTimeout(retryTimeout);
+        };
     }, []);
 
     const switchRestaurant = async (id: string) => {
