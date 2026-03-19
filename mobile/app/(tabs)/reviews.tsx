@@ -230,7 +230,8 @@ export default function ReviewsScreen() {
                                     ]}>{p.label}</Text>
                                 </TouchableOpacity>
                             ))}
-                            <View style={{ flex: 1 }} />
+                        </View>
+                        <View style={s.platformRow}>
                             {[
                                 { label: '1MO', value: 30 },
                                 { label: '3MO', value: 90 },

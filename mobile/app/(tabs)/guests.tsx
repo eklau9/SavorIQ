@@ -160,7 +160,8 @@ export default function GuestsScreen() {
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                            <View style={{ flex: 1 }} />
+                        </View>
+                        <View style={s.filterRow}>
                             {[
                                 { label: '1MO', value: 30 },
                                 { label: '3MO', value: 90 },
