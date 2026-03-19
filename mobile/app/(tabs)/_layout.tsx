@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ActivityIndicator, Platform } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
@@ -15,6 +15,16 @@ export default function TabLayout() {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
+
+  // Dismiss HTML splash when access gate or loading spinner shows
+  // (splash should only appear AFTER login via React StartupLoadingScreen)
+  useEffect(() => {
+    if (hasKey === false || hasKey === null) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('savoriq-ready'));
+      }
+    }
+  }, [hasKey]);
 
   useEffect(() => {
     checkKey();

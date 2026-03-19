@@ -180,9 +180,36 @@ export default function DashboardScreen() {
                 </Text>
               </View>
               
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
-                {/* Badge Row */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+              <View style={{ marginTop: 8 }}>
+                {/* Time Filter Chips — full width row */}
+                <View style={[s.filterRow, { marginBottom: 8 }]}>
+                   {[
+                    { label: '1MO', val: 30 },
+                    { label: '3MO', val: 90 },
+                    { label: '6MO', val: 180 },
+                    { label: '1Y', val: 365 },
+                    { label: 'ALL', val: null }
+                  ].map((chip) => (
+                    <TouchableOpacity
+                      key={chip.label}
+                      onPress={() => setTimeRange(chip.val)}
+                      style={[
+                        s.filterChip,
+                        timeRange === chip.val && s.filterChipActive
+                      ]}
+                    >
+                      <Text style={[
+                        s.filterChipText,
+                        timeRange === chip.val && s.filterChipTextActive
+                      ]}>
+                        {chip.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Badge Row — below filters */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {data?.top_performers?.some(i => i.is_suggested) && (
                     <TouchableOpacity 
                       style={s.integrityBadge}
@@ -214,33 +241,6 @@ export default function DashboardScreen() {
                       {intelReady ? 'Intelligence Ready' : 'Syncing...'}
                     </Text>
                   </TouchableOpacity>
-                </View>
-
-                {/* Time Filter Chips */}
-                <View style={s.filterRow}>
-                   {[
-                    { label: '1MO', val: 30 },
-                    { label: '3MO', val: 90 },
-                    { label: '6MO', val: 180 },
-                    { label: '1Y', val: 365 },
-                    { label: 'ALL', val: null }
-                  ].map((chip) => (
-                    <TouchableOpacity
-                      key={chip.label}
-                      onPress={() => setTimeRange(chip.val)}
-                      style={[
-                        s.filterChip,
-                        timeRange === chip.val && s.filterChipActive
-                      ]}
-                    >
-                      <Text style={[
-                        s.filterChipText,
-                        timeRange === chip.val && s.filterChipTextActive
-                      ]}>
-                        {chip.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
                 </View>
               </View>
             </View>

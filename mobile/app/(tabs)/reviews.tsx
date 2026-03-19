@@ -366,7 +366,7 @@ const s = StyleSheet.create({
     },
     searchInput: { flex: 1, color: colors.text.primary, fontSize: fonts.sizes.md },
 
-    platformRow: { flexDirection: 'row', gap: spacing.sm },
+    platformRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
     platformChip: {
         paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full,
         backgroundColor: colors.bg.card, borderWidth: 1, borderColor: colors.border.subtle,

@@ -261,7 +261,7 @@ const s = StyleSheet.create({
     },
     searchInput: { flex: 1, color: colors.text.primary, fontSize: fonts.sizes.md },
     filterRow: {
-        flexDirection: 'row', gap: spacing.sm,
+        flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap',
     },
     filterChip: {
         paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full,

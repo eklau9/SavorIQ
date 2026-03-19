@@ -193,6 +193,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const currentDaysRef = useRef<number | null | undefined>(undefined);
     const coldLoadRef = useRef(true); // True until first successful load
     const diskCacheHydrated = useRef(false);
+    const prevActiveId = useRef<string | null>(null);
 
     // Hydrate in-memory cache from AsyncStorage on mount
     useEffect(() => {
@@ -230,13 +231,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     // If bg data was also cached, skip ALL fetches
                     if (bgCache) {
                         setLoading(false);
-                        // Delay splash dismissal so the branded loading screen
-                        // is visible briefly even on cache hits
-                        setTimeout(() => {
-                            if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                                window.dispatchEvent(new Event('savoriq-ready'));
-                            }
-                        }, 800);
+                        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                            window.dispatchEvent(new Event('savoriq-ready'));
+                        }
                         setCacheReady(true);
                         return; // Fully cached — zero API calls!
                     }
@@ -534,30 +531,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // Dismiss web splash on cache hits too
     useEffect(() => {
         if (dashboardData && !loading) {
-            // Brief delay so the splash screen is visible on cache hits
-            const timer = setTimeout(() => {
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                    window.dispatchEvent(new Event('savoriq-ready'));
-                }
-            }, 800);
-            return () => clearTimeout(timer);
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('savoriq-ready'));
+            }
         }
     }, [dashboardData, loading]);
 
-    // Reset data when restaurant changes
+    // Reset data when restaurant changes (not just on null)
     useEffect(() => {
-        if (!activeId) {
+        if (prevActiveId.current !== null && prevActiveId.current !== activeId) {
             setDashboardData(null);
             setGuests([]);
             setReviews([]);
             setReviewStats(null);
             setOperations(null);
             setBriefingLoaded(false);
+            setLoading(true);
+            setCacheReady(false);
             dashboardCache.current = {};
             lastFetchedParams.current = { id: null, days: null };
             diskCacheHydrated.current = false;
             bgDataLoaded.current = false;
         }
+        prevActiveId.current = activeId;
     }, [activeId]);
 
     const skipLoading = useCallback(() => {
