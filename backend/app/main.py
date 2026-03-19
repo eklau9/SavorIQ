@@ -128,6 +128,35 @@ async def serve_root():
     return {"message": "SavorIQ API is running", "health_check": "/health"}
 
 
+# Admin dashboard
+ADMIN_DIR = os.path.join(STATIC_DIR, "admin")
+_admin_index = os.path.join(ADMIN_DIR, "index.html")
+_has_admin = os.path.isfile(_admin_index)
+print(f"INFO: Admin dir={ADMIN_DIR}, has_admin={_has_admin}")
+
+
+@app.get("/admin")
+async def serve_admin_root():
+    """Redirect /admin to /admin/ for consistent routing."""
+    if not _has_admin:
+        return JSONResponse(status_code=404, content={"detail": "Admin not deployed"})
+    return FileResponse(_admin_index, media_type="text/html")
+
+
+@app.get("/admin/{full_path:path}")
+async def serve_admin(full_path: str):
+    """Serve admin static files with SPA fallback."""
+    if not _has_admin:
+        return JSONResponse(status_code=404, content={"detail": "Admin not deployed"})
+    file_path = os.path.normpath(os.path.join(ADMIN_DIR, full_path))
+    if not file_path.startswith(ADMIN_DIR):
+        return FileResponse(_admin_index, media_type="text/html")
+    if os.path.isfile(file_path):
+        content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+        return FileResponse(file_path, media_type=content_type)
+    return FileResponse(_admin_index, media_type="text/html")
+
+
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     """Serve static file if exists, otherwise SPA fallback to index.html."""
