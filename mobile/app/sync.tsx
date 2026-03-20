@@ -29,9 +29,11 @@ import { calculateDistance } from '../lib/geo';
 import { SyncConfirmOverlay } from '@/components/SyncConfirmOverlay';
 import { SyncProgressOverlay } from '@/components/SyncProgressOverlay';
 import { SyncReportOverlay } from '@/components/SyncReportOverlay';
+import { useRestaurant } from '@/lib/RestaurantContext';
 
 export default function SyncScreen() {
     const router = useRouter();
+    const { loadRestaurants } = useRestaurant();
     const [name, setName] = useState('');
     const [location, setLocation] = useState('');
     const [searching, setSearching] = useState(false);
@@ -329,6 +331,9 @@ export default function SyncScreen() {
                         // Polling failed — don't crash, just continue with simulated progress
                     }
                 }
+
+                // Refresh restaurant list so the new restaurant appears in More tab
+                await loadRestaurants();
 
                 // Fetch real per-platform results from sync_logs DB
                 try {

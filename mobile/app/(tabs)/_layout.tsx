@@ -10,19 +10,41 @@ import { useRestaurant } from '@/lib/RestaurantContext';
 import { DataProvider } from '@/lib/DataContext';
 
 // ─── State Machine ────────────────────────────────────────────────────
-// Flow: GATE → AUTHENTICATING → READY
-//       (cached key) → READY
-type AppState = 'GATE' | 'AUTHENTICATING' | 'READY';
+// Flow: LOADING → READY  (if cached key is valid)
+//       LOADING → GATE → AUTHENTICATING → READY
+type AppState = 'LOADING' | 'GATE' | 'AUTHENTICATING' | 'READY';
 
 export default function TabLayout() {
   const router = useRouter();
   const { activeName, activeId } = useRestaurant();
 
-  const [appState, setAppState] = useState<AppState>('GATE');
+  const [appState, setAppState] = useState<AppState>('LOADING');
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
 
-  // Access key gate always shown — no auto-skip
+  // Check for cached access key on mount — auto-skip gate if valid
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cached = await AsyncStorage.getItem('accessKey');
+        if (cancelled) return;
+        if (cached) {
+          // Validate the cached key by attempting a fetch
+          await setAccessKey(cached);
+          await fetchRestaurants();
+          if (!cancelled) setAppState('READY');
+        } else {
+          if (!cancelled) setAppState('GATE');
+        }
+      } catch (e) {
+        // Cached key is invalid — clear it and show gate
+        await AsyncStorage.removeItem('accessKey');
+        if (!cancelled) setAppState('GATE');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // ─── AUTHENTICATING: Validate the key ──────────────────────────────
   const handleSubmit = async () => {
@@ -46,6 +68,15 @@ export default function TabLayout() {
   };
 
   // ─── Render based on state ─────────────────────────────────────────
+
+  // LOADING: Checking cached key
+  if (appState === 'LOADING') {
+    return (
+      <View style={styles.gateContainer}>
+        <ActivityIndicator size="large" color={colors.accent.gold} />
+      </View>
+    );
+  }
 
   // GATE / AUTHENTICATING: Access key input
   if (appState === 'GATE' || appState === 'AUTHENTICATING') {
