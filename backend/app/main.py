@@ -65,6 +65,7 @@ async def access_control_middleware(request: Request, call_next):
         or path.startswith("/admin")
         or path.startswith("/debug")
     )
+    print(f"[AUTH] path={path!r} skip={skip_auth} method={request.method}")  # debug
     if skip_auth:
         return await call_next(request)
     
