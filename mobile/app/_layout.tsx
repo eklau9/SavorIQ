@@ -50,7 +50,6 @@ export default function RootLayout() {
 
   return (
     <RestaurantProvider>
-      <DataProvider>
         <ThemeProvider value={savoriqTheme}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -65,7 +64,6 @@ export default function RootLayout() {
             />
           </Stack>
         </ThemeProvider>
-      </DataProvider>
     </RestaurantProvider>
   );
 }

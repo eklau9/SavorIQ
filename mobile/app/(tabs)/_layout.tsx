@@ -173,8 +173,9 @@ export default function TabLayout() {
     );
   }
 
-  // READY: Main app with tabs + data provider
+  // READY: Main app with tabs + data provider (only loads after auth)
   return (
+    <DataProvider>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.accent.gold,
@@ -263,6 +264,7 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </DataProvider>
   );
 }
 
