@@ -18,7 +18,7 @@ export default function TabLayout() {
   const router = useRouter();
   const { activeName, activeId } = useRestaurant();
 
-  const [appState, setAppState] = useState<AppState>('CHECKING');
+  const [appState, setAppState] = useState<AppState>('SPLASH');
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
 
@@ -27,27 +27,21 @@ export default function TabLayout() {
   const splashScale = useRef(new Animated.Value(0.9)).current;
 
   // ─── CHECKING: Look for stored access key on mount ─────────────────
+  const hasKeyRef = useRef<boolean | null>(null);
+
+  // ─── SPLASH: Always show first. Check key in background. ───────────
   useEffect(() => {
-    (async () => {
-      // Dismiss any HTML splash (web only)
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('savoriq-ready'));
-      }
+    // Dismiss any HTML splash (web only)
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('savoriq-ready'));
+    }
 
-      const key = await AsyncStorage.getItem('accessKey');
-      if (key) {
-        // Key exists — skip gate, go straight to splash
-        setAppState('SPLASH');
-      } else {
-        setAppState('GATE');
-      }
-    })();
-  }, []);
+    // Check for stored key while splash is showing
+    AsyncStorage.getItem('accessKey').then(key => {
+      hasKeyRef.current = !!key;
+    });
 
-  // ─── SPLASH: Animate in, hold, then transition to READY ────────────
-  useEffect(() => {
-    if (appState !== 'SPLASH') return;
-
+    // Animate splash in
     Animated.parallel([
       Animated.timing(splashOpacity, {
         toValue: 1,
@@ -62,19 +56,19 @@ export default function TabLayout() {
       }),
     ]).start();
 
+    // After hold, fade out and transition based on key status
     const timer = setTimeout(() => {
-      // Fade out, then transition
       Animated.timing(splashOpacity, {
         toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }).start(() => {
-        setAppState('READY');
+        setAppState(hasKeyRef.current ? 'READY' : 'GATE');
       });
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [appState, splashOpacity, splashScale]);
+  }, [splashOpacity, splashScale]);
 
   // ─── AUTHENTICATING: Validate the key ──────────────────────────────
   const handleSubmit = async () => {
@@ -87,8 +81,8 @@ export default function TabLayout() {
       await setAccessKey(inputKey.trim());
       await fetchRestaurants();
 
-      // Success → branded splash
-      setAppState('SPLASH');
+      // Success → go straight to dashboard
+      setAppState('READY');
     } catch (e) {
       console.error('Key validation failed:', e);
       setError(true);
@@ -98,15 +92,6 @@ export default function TabLayout() {
   };
 
   // ─── Render based on state ─────────────────────────────────────────
-
-  // CHECKING: Initial spinner while reading AsyncStorage
-  if (appState === 'CHECKING') {
-    return (
-      <View style={[styles.gateContainer, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.accent.gold} />
-      </View>
-    );
-  }
 
   // GATE / AUTHENTICATING: Access key input
   if (appState === 'GATE' || appState === 'AUTHENTICATING') {
