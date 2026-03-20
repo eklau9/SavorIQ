@@ -256,9 +256,10 @@ export default function SyncScreen() {
             { pct: 88, at: 300, msg: 'Finalizing sync...' },
         ];
         const startTime = Date.now();
+        let simStopped = false;
         const simIntervalRef = setInterval(() => {
+            if (simStopped) return;
             const elapsed = (Date.now() - startTime) / 1000;
-            // Find the highest phase we've passed
             let simPct = 0;
             let simMsg = 'Initializing sync...';
             for (const phase of SYNC_PHASES) {
@@ -267,13 +268,8 @@ export default function SyncScreen() {
                     simMsg = phase.msg;
                 }
             }
-            // Only update if simulated progress is AHEAD of what polling returned
             setProgressPercent(prev => Math.max(prev, simPct));
-            setSyncStatusText(prev => {
-                // Don't overwrite real backend status if polling is working
-                if (prev.includes('batch') || prev.includes('Ingesting')) return prev;
-                return simMsg;
-            });
+            setSyncStatusText(simMsg);
         }, 1000);
 
         try {
@@ -311,6 +307,7 @@ export default function SyncScreen() {
                         lastProgress = progress;
                         if (progress?.percent >= 100) {
                             clearInterval(simIntervalRef);
+                            simStopped = true;
                             setProgressPercent(100);
                             setSyncStatusText('Sync Complete!');
                             loadStatus();
@@ -319,8 +316,12 @@ export default function SyncScreen() {
                         if (progress?.status?.startsWith('Sync failed')) {
                             throw new Error(progress.status);
                         }
-                        // Update from real backend progress
+                        // Once real backend progress arrives, kill simulated progress
                         if (progress?.percent > 0) {
+                            if (!simStopped) {
+                                clearInterval(simIntervalRef);
+                                simStopped = true;
+                            }
                             setProgressPercent(prev => Math.max(prev, progress.percent));
                             setSyncStatusText(progress.status || 'Syncing...');
                         }
