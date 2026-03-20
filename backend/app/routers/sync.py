@@ -310,6 +310,19 @@ async def search_business(
         except Exception as e:
             logger.error(f"Google search failed: {e}")
 
+    # 1b. Location-aware Yelp fallback: if no location/GPS was provided and Google
+    # returned results, re-search Yelp using the first Google result's coordinates.
+    # This ensures both platforms search the same geographic area.
+    if google_results and not yelp_results and not location and lat is None:
+        first_g = google_results[0]
+        g_lat, g_lng = first_g.get("latitude"), first_g.get("longitude")
+        if g_lat and g_lng:
+            try:
+                logger.info(f"Yelp fallback: re-searching near Google result ({g_lat}, {g_lng})")
+                yelp_results = await yelp_search(name, lat=g_lat, lng=g_lng)
+            except Exception as e:
+                logger.error(f"Yelp fallback search failed: {e}")
+
     # 2. Attach sync status to all raw results
     async def attach_sync_status(item, platform):
         # Normalize: Google uses 'place_url', Yelp uses 'url'. 
