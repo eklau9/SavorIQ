@@ -214,8 +214,8 @@ export default function ReviewsScreen() {
                                 </TouchableOpacity>
                             ) : null}
                         </View>
-                        {/* Platform filters (left) + Time selector (right) */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {/* Platform filters — row 1 */}
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
                             {[
                                 { label: 'Google', value: 'google' },
                                 { label: 'Yelp', value: 'yelp' },
@@ -231,7 +231,9 @@ export default function ReviewsScreen() {
                                     ]}>{p.label}</Text>
                                 </TouchableOpacity>
                             ))}
-                            <View style={{ flex: 1 }} />
+                        </View>
+                        {/* Time selector — row 2, right-aligned */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 16, paddingTop: 4 }}>
                             {[
                                 { label: '1M', value: 30 },
                                 { label: '3M', value: 90 },

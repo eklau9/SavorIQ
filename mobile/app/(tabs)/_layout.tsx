@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ActivityIndicator, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
@@ -9,54 +9,98 @@ import { setAccessKey, fetchRestaurants } from '@/lib/api';
 import { useRestaurant } from '@/lib/RestaurantContext';
 import { DataProvider } from '@/lib/DataContext';
 
+// ─── State Machine ────────────────────────────────────────────────────
+// Replaces boolean flags with explicit, predictable states.
+// Flow: CHECKING → GATE → AUTHENTICATING → SPLASH → READY
+type AppState = 'CHECKING' | 'GATE' | 'AUTHENTICATING' | 'SPLASH' | 'READY';
+
 export default function TabLayout() {
   const router = useRouter();
   const { activeName, activeId } = useRestaurant();
-  const [hasKey, setHasKey] = useState<boolean | null>(null);
+
+  const [appState, setAppState] = useState<AppState>('CHECKING');
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
 
-  // Dismiss HTML splash when access gate or loading spinner shows
-  // (splash should only appear AFTER login via React StartupLoadingScreen)
+  // Splash animation
+  const splashOpacity = useRef(new Animated.Value(0)).current;
+  const splashScale = useRef(new Animated.Value(0.9)).current;
+
+  // ─── CHECKING: Look for stored access key on mount ─────────────────
   useEffect(() => {
-    if (hasKey === false || hasKey === null) {
+    (async () => {
+      // Dismiss any HTML splash (web only)
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('savoriq-ready'));
       }
-    }
-  }, [hasKey]);
 
-  useEffect(() => {
-    checkKey();
+      const key = await AsyncStorage.getItem('accessKey');
+      if (key) {
+        // Key exists — skip gate, go straight to splash
+        setAppState('SPLASH');
+      } else {
+        setAppState('GATE');
+      }
+    })();
   }, []);
 
-  const checkKey = async () => {
-    const key = await AsyncStorage.getItem('accessKey');
-    setHasKey(!!key);
-  };
+  // ─── SPLASH: Animate in, hold, then transition to READY ────────────
+  useEffect(() => {
+    if (appState !== 'SPLASH') return;
 
+    Animated.parallel([
+      Animated.timing(splashOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(splashScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const timer = setTimeout(() => {
+      // Fade out, then transition
+      Animated.timing(splashOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setAppState('READY');
+      });
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [appState, splashOpacity, splashScale]);
+
+  // ─── AUTHENTICATING: Validate the key ──────────────────────────────
   const handleSubmit = async () => {
     if (!inputKey.trim()) return;
     setError(false);
-    setHasKey(null); // Show loading
+    setAppState('AUTHENTICATING');
+
     try {
-      // Temporarily set the key in a way the API client can use it for verification
       await AsyncStorage.setItem('accessKey', inputKey.trim());
       await setAccessKey(inputKey.trim());
-
-      // Try to fetch something to verify the key
       await fetchRestaurants();
 
-      setHasKey(true);
+      // Success → branded splash
+      setAppState('SPLASH');
     } catch (e) {
       console.error('Key validation failed:', e);
       setError(true);
-      setHasKey(false);
+      setAppState('GATE');
       await AsyncStorage.removeItem('accessKey');
     }
   };
 
-  if (hasKey === null) {
+  // ─── Render based on state ─────────────────────────────────────────
+
+  // CHECKING: Initial spinner while reading AsyncStorage
+  if (appState === 'CHECKING') {
     return (
       <View style={[styles.gateContainer, { justifyContent: 'center' }]}>
         <ActivityIndicator size="large" color={colors.accent.gold} />
@@ -64,7 +108,8 @@ export default function TabLayout() {
     );
   }
 
-  if (!hasKey) {
+  // GATE / AUTHENTICATING: Access key input
+  if (appState === 'GATE' || appState === 'AUTHENTICATING') {
     return (
       <View style={styles.gateContainer}>
         <View style={styles.gateCard}>
@@ -83,19 +128,52 @@ export default function TabLayout() {
             }}
             secureTextEntry
             autoFocus
+            editable={appState !== 'AUTHENTICATING'}
           />
 
           {error && <Text style={styles.errorText}>Invalid key. Please try again.</Text>}
 
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Enter Dashboard</Text>
+          <TouchableOpacity
+            style={[styles.button, appState === 'AUTHENTICATING' && { opacity: 0.6 }]}
+            onPress={handleSubmit}
+            disabled={appState === 'AUTHENTICATING'}
+          >
+            {appState === 'AUTHENTICATING' ? (
+              <ActivityIndicator color={colors.bg.primary} />
+            ) : (
+              <Text style={styles.buttonText}>Enter Dashboard</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  const content = (
+  // SPLASH: Branded loading screen with logo + restaurant name
+  if (appState === 'SPLASH') {
+    return (
+      <View style={styles.splashContainer}>
+        <Animated.View style={[styles.splashContent, { opacity: splashOpacity, transform: [{ scale: splashScale }] }]}>
+          <View style={styles.splashLogoRow}>
+            <Ionicons name="sparkles" size={28} color={colors.accent.gold} />
+          </View>
+          <Text style={styles.splashBrand}>SavorIQ</Text>
+          <Text style={styles.splashSubtitle}>Intelligence for your restaurant</Text>
+          {activeName ? (
+            <Text style={styles.splashLocation}>{activeName}</Text>
+          ) : null}
+          <ActivityIndicator
+            size="small"
+            color={colors.accent.gold}
+            style={{ marginTop: spacing.xl }}
+          />
+        </Animated.View>
+      </View>
+    );
+  }
+
+  // READY: Main app with tabs + data provider
+  return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.accent.gold,
@@ -183,13 +261,12 @@ export default function TabLayout() {
           ),
         }}
       />
-    </Tabs >
+    </Tabs>
   );
-
-  return content;
 }
 
 const styles = StyleSheet.create({
+  // ─── Gate (access key entry) ─────────────────────────────────────
   gateContainer: {
     flex: 1,
     backgroundColor: colors.bg.primary,
@@ -250,6 +327,45 @@ const styles = StyleSheet.create({
     fontSize: fonts.sizes.sm,
     marginBottom: spacing.md,
   },
+
+  // ─── Branded Splash ──────────────────────────────────────────────
+  splashContainer: {
+    flex: 1,
+    backgroundColor: colors.bg.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  splashContent: {
+    alignItems: 'center',
+  },
+  splashLogoRow: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: colors.accent.gold + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  splashBrand: {
+    color: colors.accent.gold,
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  splashSubtitle: {
+    color: colors.text.muted,
+    fontSize: fonts.sizes.md,
+    marginTop: spacing.xs,
+  },
+  splashLocation: {
+    color: colors.text.secondary,
+    fontSize: fonts.sizes.lg,
+    fontWeight: '600',
+    marginTop: spacing.lg,
+  },
+
+  // ─── Header location pill ────────────────────────────────────────
   headerLocation: {
     flexDirection: 'row',
     alignItems: 'center',

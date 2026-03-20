@@ -288,18 +288,19 @@ export default function MoreScreen() {
                 <MenuItem icon="bar-chart" label="Operations Analytics" subtitle="Revenue & performance metrics" />
             </View>
 
-            {/* Operator Tools (Dev Only) */}
-            {__DEV__ && (
-                <View style={s.section}>
-                    <Text style={s.sectionTitle}>Operator Tools</Text>
-                    <MenuItem
-                        icon="construct"
-                        label="Admin Dashboard"
-                        subtitle="Monitor API Quotas & System Status"
-                        onPress={() => Linking.openURL('http://localhost:5174')}
-                    />
-                </View>
-            )}
+            {/* Operator Tools */}
+            <View style={s.section}>
+                <Text style={s.sectionTitle}>Operator Tools</Text>
+                <MenuItem
+                    icon="construct"
+                    label="Admin Dashboard"
+                    subtitle="Monitor API Quotas & System Status"
+                    onPress={async () => {
+                        const base = await getApiBase();
+                        Linking.openURL(`${base}/admin/`);
+                    }}
+                />
+            </View>
 
             {/* Data Sources Explanation */}
             <View style={s.section}>
