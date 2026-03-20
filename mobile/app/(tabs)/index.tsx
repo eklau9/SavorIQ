@@ -214,29 +214,7 @@ export default function DashboardScreen() {
                       {intelReady ? 'Intelligence Ready' : 'Syncing...'}
                     </Text>
                   </TouchableOpacity>
-                  <View style={{ flex: 1 }} />
-                  {[
-                    { label: '1M', val: 30 },
-                    { label: '3M', val: 90 },
-                    { label: '6M', val: 180 },
-                    { label: '1Y', val: 365 },
-                    { label: 'All', val: null }
-                  ].map((chip) => (
-                    <TouchableOpacity
-                      key={chip.label}
-                      onPress={() => setTimeRange(chip.val)}
-                      style={{ paddingBottom: 2 }}
-                    >
-                      <Text style={{
-                        fontSize: 13,
-                        fontWeight: timeRange === chip.val ? '700' : '500',
-                        color: timeRange === chip.val ? colors.accent.gold : colors.text.muted,
-                        letterSpacing: 0.3,
-                      }}>
-                        {chip.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+
                 </View>
               </View>
             </View>
@@ -269,7 +247,31 @@ export default function DashboardScreen() {
           <View style={s.card}>
             <View style={s.cardHeader}>
               <Ionicons name="sparkles" size={18} color={colors.accent.gold} />
-              <Text style={s.cardTitle}>Manager Briefing</Text>
+              <Text style={[s.cardTitle, { flex: 1 }]}>Manager Briefing</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {[
+                  { label: '1M', val: 30 },
+                  { label: '3M', val: 90 },
+                  { label: '6M', val: 180 },
+                  { label: '1Y', val: 365 },
+                  { label: 'All', val: null }
+                ].map((chip) => (
+                  <TouchableOpacity
+                    key={chip.label}
+                    onPress={() => setTimeRange(chip.val)}
+                    style={{ paddingVertical: 2 }}
+                  >
+                    <Text style={{
+                      fontSize: 13,
+                      fontWeight: timeRange === chip.val ? '700' : '500',
+                      color: timeRange === chip.val ? colors.accent.gold : colors.text.muted,
+                      letterSpacing: 0.3,
+                    }}>
+                      {chip.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
             {!data?.briefing ? (
               <View style={{ paddingVertical: 20, alignItems: 'center' }}>
