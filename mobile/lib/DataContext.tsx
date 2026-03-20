@@ -367,10 +367,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 coldLoadRef.current = false;
                 // Persist to disk after briefing loads
                 if (activeId) saveCacheToDisk(activeId, dashboardCache.current);
-                // Dismiss splash now that briefing is complete
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                    window.dispatchEvent(new Event('savoriq-ready'));
-                }
+                // Note: Don't dispatch savoriq-ready here — let the finally block handle it
+                // after all prefetching completes
             }).catch((e: any) => {
                 if (e.name !== 'AbortError') {
                     console.warn('Briefing fetch failed:', e);
@@ -384,10 +382,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 }
                 // Don't mark briefingLoaded on failure — badge stays 'Syncing...' until real data arrives
                 coldLoadRef.current = false;
-                // Dismiss splash even on briefing failure
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                    window.dispatchEvent(new Event('savoriq-ready'));
-                }
+                // Note: Don't dispatch savoriq-ready here — let the finally block handle it
             });
 
             // Fetch other background metrics with timeouts to prevent hanging
@@ -445,12 +440,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
         } finally {
             clearInterval(progressInterval);
-            // On cold load, loading was kept alive until briefing resolved above
+            // All prefetching complete — dismiss loading screen and web splash
             setLoading(false);
             setProgress(100);
             setLoadingStep('Sync Complete');
             setEstimatedSecondsRemaining(0);
             coldLoadRef.current = false;
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('savoriq-ready'));
+            }
             
             if (abortControllerRef.current === controller) {
                 lastFetchedParams.current = { id: activeId, days: effectiveDays || null };

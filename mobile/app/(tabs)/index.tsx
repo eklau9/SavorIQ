@@ -110,9 +110,9 @@ export default function DashboardScreen() {
     alert('Access key cleared. Please reload the app.');
   };
 
-  // Show shimmer skeleton while waiting for first data load
-  // Shimmer stays visible until data actually arrives — skip only affects bg fetch priority
-  const isInitialLoad = !data && !error && (restaurantLoading || activeId);
+  // Show loading screen during initial data load AND during prefetch of all date ranges.
+  // `loading` stays true until all 5 frames (1M, 3M, 6M, 1Y, All) are prefetched.
+  const isInitialLoad = !error && (restaurantLoading || (activeId && (!data || loading)));
   if (isInitialLoad) {
     return (
       <StartupLoadingScreen 
