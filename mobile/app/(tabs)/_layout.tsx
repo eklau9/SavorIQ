@@ -22,12 +22,7 @@ export default function TabLayout() {
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
 
-  // ─── On mount: if cached key exists, skip gate → READY ────────────
-  useEffect(() => {
-    AsyncStorage.getItem('accessKey').then(key => {
-      if (key) setAppState('READY');
-    });
-  }, []);
+  // Access key gate always shown — no auto-skip
 
   // ─── AUTHENTICATING: Validate the key ──────────────────────────────
   const handleSubmit = async () => {
