@@ -18,7 +18,7 @@ export default function TabLayout() {
   const router = useRouter();
   const { activeName, activeId } = useRestaurant();
 
-  const [appState, setAppState] = useState<AppState>('CHECKING');
+  const [appState, setAppState] = useState<AppState>('GATE');
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
 
@@ -26,14 +26,11 @@ export default function TabLayout() {
   const splashOpacity = useRef(new Animated.Value(0)).current;
   const splashScale = useRef(new Animated.Value(0.9)).current;
 
-  // ─── CHECKING: Read stored key → GATE (no key) or SPLASH (key exists) ──
+  // ─── On mount: if cached key exists, skip gate → splash ────────────
   useEffect(() => {
     AsyncStorage.getItem('accessKey').then(key => {
-      if (key) {
-        setAppState('SPLASH'); // Returning user → branded splash → dashboard
-      } else {
-        setAppState('GATE');   // New user → access key first
-      }
+      if (key) setAppState('SPLASH'); // Returning user → splash → dashboard
+      // Otherwise stay on GATE (already the default)
     });
   }, []);
 
@@ -94,15 +91,6 @@ export default function TabLayout() {
   };
 
   // ─── Render based on state ─────────────────────────────────────────
-
-  // CHECKING: Brief spinner while reading AsyncStorage
-  if (appState === 'CHECKING') {
-    return (
-      <View style={[styles.gateContainer, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.accent.gold} />
-      </View>
-    );
-  }
 
   // GATE / AUTHENTICATING: Access key input
   if (appState === 'GATE' || appState === 'AUTHENTICATING') {
