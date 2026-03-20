@@ -181,34 +181,8 @@ export default function DashboardScreen() {
               </View>
               
               <View style={{ marginTop: 8 }}>
-                {/* Time Selector — compact underlined tabs */}
-                <View style={{ flexDirection: 'row', gap: 16, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.border.subtle, paddingBottom: 6 }}>
-                   {[
-                    { label: '1M', val: 30 },
-                    { label: '3M', val: 90 },
-                    { label: '6M', val: 180 },
-                    { label: '1Y', val: 365 },
-                    { label: 'All', val: null }
-                  ].map((chip) => (
-                    <TouchableOpacity
-                      key={chip.label}
-                      onPress={() => setTimeRange(chip.val)}
-                      style={{ paddingBottom: 4, borderBottomWidth: timeRange === chip.val ? 2 : 0, borderBottomColor: colors.accent.gold, marginBottom: -7 }}
-                    >
-                      <Text style={{
-                        fontSize: 13,
-                        fontWeight: timeRange === chip.val ? '700' : '500',
-                        color: timeRange === chip.val ? colors.accent.gold : colors.text.muted,
-                        letterSpacing: 0.3,
-                      }}>
-                        {chip.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Badge Row — below filters */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {/* Badge Row (left) + Time Selector (right) — single row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'nowrap' }}>
                   {data?.top_performers?.some(i => i.is_suggested) && (
                     <TouchableOpacity 
                       style={s.integrityBadge}
@@ -240,6 +214,29 @@ export default function DashboardScreen() {
                       {intelReady ? 'Intelligence Ready' : 'Syncing...'}
                     </Text>
                   </TouchableOpacity>
+                  <View style={{ flex: 1 }} />
+                  {[
+                    { label: '1M', val: 30 },
+                    { label: '3M', val: 90 },
+                    { label: '6M', val: 180 },
+                    { label: '1Y', val: 365 },
+                    { label: 'All', val: null }
+                  ].map((chip) => (
+                    <TouchableOpacity
+                      key={chip.label}
+                      onPress={() => setTimeRange(chip.val)}
+                      style={{ paddingBottom: 2 }}
+                    >
+                      <Text style={{
+                        fontSize: 13,
+                        fontWeight: timeRange === chip.val ? '700' : '500',
+                        color: timeRange === chip.val ? colors.accent.gold : colors.text.muted,
+                        letterSpacing: 0.3,
+                      }}>
+                        {chip.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             </View>
