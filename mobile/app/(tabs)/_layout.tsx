@@ -26,20 +26,12 @@ export default function TabLayout() {
   const splashOpacity = useRef(new Animated.Value(0)).current;
   const splashScale = useRef(new Animated.Value(0.9)).current;
 
-  // ─── CHECKING: Look for stored access key on mount ─────────────────
-  const hasKeyRef = useRef<boolean | null>(null);
-
-  // ─── SPLASH: Always show first. Check key in background. ───────────
+  // ─── SPLASH: Always show first. Check key + wait in parallel. ───────
   useEffect(() => {
     // Dismiss any HTML splash (web only)
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.dispatchEvent(new Event('savoriq-ready'));
     }
-
-    // Check for stored key while splash is showing
-    AsyncStorage.getItem('accessKey').then(key => {
-      hasKeyRef.current = !!key;
-    });
 
     // Animate splash in
     Animated.parallel([
@@ -56,18 +48,20 @@ export default function TabLayout() {
       }),
     ]).start();
 
-    // After hold, fade out and transition based on key status
-    const timer = setTimeout(() => {
+    // Wait for BOTH: key check AND minimum splash duration
+    const keyCheck = AsyncStorage.getItem('accessKey');
+    const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
+
+    Promise.all([keyCheck, minDelay]).then(([key]) => {
+      // Fade out, then transition based on key
       Animated.timing(splashOpacity, {
         toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }).start(() => {
-        setAppState(hasKeyRef.current ? 'READY' : 'GATE');
+        setAppState(key ? 'READY' : 'GATE');
       });
-    }, 1500);
-
-    return () => clearTimeout(timer);
+    });
   }, [splashOpacity, splashScale]);
 
   // ─── AUTHENTICATING: Validate the key ──────────────────────────────
