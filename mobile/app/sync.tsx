@@ -166,8 +166,9 @@ export default function SyncScreen() {
         } catch (e) { }
     };
 
-    const handleSearch = async () => {
-        if (!name.trim()) return;
+    const handleSearch = async (overrideName?: string) => {
+        const searchName = overrideName || name;
+        if (!searchName.trim()) return;
         setSearching(true);
         setError(null);
 
@@ -181,7 +182,7 @@ export default function SyncScreen() {
                 lng = null;
             }
 
-            const data = await searchBusiness(name.trim(), location.trim(), lat, lng);
+            const data = await searchBusiness(searchName.trim(), location.trim(), lat, lng);
 
             if (!data || !Array.isArray(data)) {
                 const type = typeof data;
@@ -480,6 +481,8 @@ export default function SyncScreen() {
                                                     setName(s_item.name);
                                                     setShowSuggestions(false);
                                                     setSuggestions([]);
+                                                    // Auto-trigger search with the selected name
+                                                    handleSearch(s_item.name);
                                                 }}
                                             >
                                                 <Ionicons
@@ -511,7 +514,7 @@ export default function SyncScreen() {
                             </View>
                             <TouchableOpacity
                                 style={[s.searchBtn, (!name.trim() || searching) && { opacity: 0.6 }]}
-                                onPress={handleSearch}
+                                onPress={() => handleSearch()}
                                 disabled={!name.trim() || searching}
                             >
                                 {searching ? (
@@ -525,6 +528,17 @@ export default function SyncScreen() {
                             </TouchableOpacity>
                         </View>
                         {error && <Text style={s.errorText}>{error}</Text>}
+
+                        {/* Empty results state */}
+                        {results && results.length === 0 && !searching && (
+                            <View style={s.emptyState}>
+                                <Ionicons name="search-outline" size={40} color={colors.text.muted} />
+                                <Text style={s.emptyTitle}>No Restaurants Found</Text>
+                                <Text style={s.emptySubtitle}>
+                                    Try a different business name, or add a city/zip in the Location field.
+                                </Text>
+                            </View>
+                        )}
                     </>
                 }
                 renderSectionHeader={() => null}
@@ -734,5 +748,24 @@ const s = StyleSheet.create({
         color: colors.text.muted,
         fontSize: fonts.sizes.xs,
         marginTop: 1,
+    },
+
+    // Empty results state
+    emptyState: {
+        alignItems: 'center',
+        paddingVertical: spacing.xl,
+        paddingHorizontal: spacing.lg,
+        gap: spacing.sm,
+    },
+    emptyTitle: {
+        color: colors.text.primary,
+        fontSize: fonts.sizes.lg,
+        fontWeight: '700',
+    },
+    emptySubtitle: {
+        color: colors.text.muted,
+        fontSize: fonts.sizes.sm,
+        textAlign: 'center',
+        lineHeight: 20,
     },
 });

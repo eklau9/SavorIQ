@@ -427,8 +427,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Prefetch ALL other frames with progress — keeps loading screen up
+            // 60s timeout guard: if prefetching stalls (e.g. Gemini rate limits),
+            // dismiss loading screen and let user interact — partial cache is fine
             if (abortControllerRef.current === controller) {
-                await prefetchOtherFrames(controller.signal, true);
+                await Promise.race([
+                    prefetchOtherFrames(controller.signal, true),
+                    new Promise<void>(resolve => {
+                        setTimeout(() => {
+                            console.warn('[Prefetch] 60s timeout — dismissing loading screen');
+                            resolve();
+                        }, 60000);
+                    }),
+                ]);
             }
             
         } catch (err: any) {
@@ -511,8 +521,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 if (currentDaysRef.current === frame) {
                     setDashboardData(prev => prev ? { ...prev, briefing } : null);
                 }
-            } catch (e) {
-                // Silently fail pre-fetches
+            } catch (e: any) {
+                // On briefing failure, set a lightweight fallback so this frame is
+                // considered "loaded" — prevents re-sync when user switches to it
+                if (e.name !== 'AbortError' && dashboardCache.current[key]) {
+                    dashboardCache.current[key] = {
+                        ...dashboardCache.current[key],
+                        briefing: {
+                            summary: 'Briefing will be available on your next refresh.',
+                            insights: [],
+                            review_count_note: null,
+                        },
+                    };
+                    if (currentDaysRef.current === frame) {
+                        setDashboardData(prev => prev ? {
+                            ...prev,
+                            briefing: dashboardCache.current[key].briefing,
+                        } : null);
+                    }
+                }
             }
             completed++;
         }
