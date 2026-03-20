@@ -28,11 +28,6 @@ export default function TabLayout() {
 
   // ─── CHECKING: Read stored key → GATE (no key) or SPLASH (key exists) ──
   useEffect(() => {
-    // Dismiss any HTML splash (web only)
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('savoriq-ready'));
-    }
-
     AsyncStorage.getItem('accessKey').then(key => {
       if (key) {
         setAppState('SPLASH'); // Returning user → branded splash → dashboard
