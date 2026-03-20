@@ -431,9 +431,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 setHistoricalTrends(null);
             }
 
-            // Prefetch other frames in the background (don't block splash)
+            // Prefetch ALL other frames with progress — keeps loading screen up
             if (abortControllerRef.current === controller) {
-                prefetchOtherFrames(controller.signal, false);
+                await prefetchOtherFrames(controller.signal, true);
             }
             
         } catch (err: any) {
@@ -454,11 +454,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             
             if (abortControllerRef.current === controller) {
                 lastFetchedParams.current = { id: activeId, days: effectiveDays || null };
-
-                // On warm refresh (not cold load), prefetch in background
-                if (!coldLoadRef.current) {
-                    prefetchOtherFrames(controller.signal, false);
-                }
             }
         }
     }, [activeId]);
