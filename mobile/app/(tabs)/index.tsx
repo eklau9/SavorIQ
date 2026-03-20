@@ -94,6 +94,11 @@ export default function DashboardScreen() {
     skipLoading();
   }, [skipLoading]);
 
+  // Reset skipped state when restaurant changes — show full loading screen for new restaurant
+  useEffect(() => {
+    setSkipped(false);
+  }, [activeId]);
+
   // No need for showIntelBadge state - badge is always visible now
 
   // Switch dashboard data when timeRange changes (reads from in-memory cache, no API calls)
