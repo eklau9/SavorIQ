@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
@@ -10,9 +10,9 @@ import { useRestaurant } from '@/lib/RestaurantContext';
 import { DataProvider } from '@/lib/DataContext';
 
 // ─── State Machine ────────────────────────────────────────────────────
-// Replaces boolean flags with explicit, predictable states.
-// Flow: CHECKING → GATE → AUTHENTICATING → SPLASH → READY
-type AppState = 'CHECKING' | 'GATE' | 'AUTHENTICATING' | 'SPLASH' | 'READY';
+// Flow: GATE → AUTHENTICATING → READY
+//       (cached key) → READY
+type AppState = 'GATE' | 'AUTHENTICATING' | 'READY';
 
 export default function TabLayout() {
   const router = useRouter();
@@ -22,52 +22,12 @@ export default function TabLayout() {
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
 
-  // Splash animation
-  const splashOpacity = useRef(new Animated.Value(0)).current;
-  const splashScale = useRef(new Animated.Value(0.9)).current;
-
-  // ─── On mount: if cached key exists, skip gate → splash ────────────
+  // ─── On mount: if cached key exists, skip gate → READY ────────────
   useEffect(() => {
     AsyncStorage.getItem('accessKey').then(key => {
-      if (key) setAppState('SPLASH'); // Returning user → splash → dashboard
-      // Otherwise stay on GATE (already the default)
+      if (key) setAppState('READY');
     });
   }, []);
-
-  // ─── SPLASH: Animate in, hold 1.5s, then → READY ──────────────────
-  useEffect(() => {
-    if (appState !== 'SPLASH') return;
-
-    // Reset animation values for fresh start
-    splashOpacity.setValue(0);
-    splashScale.setValue(0.9);
-
-    Animated.parallel([
-      Animated.timing(splashOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(splashScale, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    const timer = setTimeout(() => {
-      Animated.timing(splashOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
-        setAppState('READY');
-      });
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [appState, splashOpacity, splashScale]);
 
   // ─── AUTHENTICATING: Validate the key ──────────────────────────────
   const handleSubmit = async () => {
@@ -80,8 +40,8 @@ export default function TabLayout() {
       await setAccessKey(inputKey.trim());
       await fetchRestaurants();
 
-      // Success → branded splash then dashboard
-      setAppState('SPLASH');
+      // Success → straight to dashboard (DataProvider handles loading UI)
+      setAppState('READY');
     } catch (e) {
       console.error('Key validation failed:', e);
       setError(true);
@@ -133,120 +93,97 @@ export default function TabLayout() {
     );
   }
 
-  // SPLASH: Branded loading screen with logo + restaurant name
-  if (appState === 'SPLASH') {
-    return (
-      <View style={styles.splashContainer}>
-        <Animated.View style={[styles.splashContent, { opacity: splashOpacity, transform: [{ scale: splashScale }] }]}>
-          <View style={styles.splashLogoRow}>
-            <Ionicons name="sparkles" size={28} color={colors.accent.gold} />
-          </View>
-          <Text style={styles.splashBrand}>SavorIQ</Text>
-          <Text style={styles.splashSubtitle}>Intelligence for your restaurant</Text>
-          {activeName ? (
-            <Text style={styles.splashLocation}>{activeName}</Text>
-          ) : null}
-          <ActivityIndicator
-            size="small"
-            color={colors.accent.gold}
-            style={{ marginTop: spacing.xl }}
-          />
-        </Animated.View>
-      </View>
-    );
-  }
-
-  // READY: Main app with tabs + data provider (only loads after auth)
+  // READY: DataProvider mounts → its StartupLoadingScreen shows while loading → then dashboard
   return (
     <DataProvider>
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.accent.gold,
-        tabBarInactiveTintColor: colors.text.muted,
-        tabBarStyle: {
-          backgroundColor: colors.bg.secondary,
-          borderTopColor: colors.border.subtle,
-          height: 88,
-          paddingBottom: 28,
-          paddingTop: 8,
-        },
-        headerStyle: {
-          backgroundColor: colors.bg.primary,
-          borderBottomWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-          height: 100,
-        },
-        headerTintColor: colors.text.primary,
-        headerTitleStyle: {
-          fontWeight: '700',
-          fontSize: 18,
-        },
-        headerTitleAlign: 'left' as const,
-        headerRight: () => (
-          <TouchableOpacity
-            style={styles.headerLocation}
-            onPress={() => {
-              router.push('/more');
-            }}
-          >
-            <Ionicons name="location" size={14} color={colors.accent.gold} />
-            <Text style={styles.headerLocationText} numberOfLines={1}>
-              {activeId ? activeName : 'Select Location'}
-            </Text>
-          </TouchableOpacity>
-        ),
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="grid" size={size} color={color} />
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: colors.accent.gold,
+          tabBarInactiveTintColor: colors.text.muted,
+          tabBarStyle: {
+            backgroundColor: colors.bg.secondary,
+            borderTopColor: colors.border.subtle,
+            height: 88,
+            paddingBottom: 28,
+            paddingTop: 8,
+          },
+          headerStyle: {
+            backgroundColor: colors.bg.primary,
+            borderBottomWidth: 0,
+            elevation: 0,
+            shadowOpacity: 0,
+            height: 100,
+          },
+          headerTintColor: colors.text.primary,
+          headerTitleStyle: {
+            fontWeight: '700',
+            fontSize: 18,
+          },
+          headerTitleAlign: 'left' as const,
+          headerRight: () => (
+            <TouchableOpacity
+              style={styles.headerLocation}
+              onPress={() => {
+                router.push('/more');
+              }}
+            >
+              <Ionicons name="location" size={14} color={colors.accent.gold} />
+              <Text style={styles.headerLocationText} numberOfLines={1}>
+                {activeId ? activeName : 'Select Location'}
+              </Text>
+            </TouchableOpacity>
           ),
         }}
-      />
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          title: 'Inbox',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="guests"
-        options={{
-          title: 'Guests',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="reviews"
-        options={{
-          title: 'Reviews',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'More',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="grid" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="inbox"
+          options={{
+            title: 'Inbox',
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="notifications" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="guests"
+          options={{
+            title: 'Guests',
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="people" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="reviews"
+          options={{
+            title: 'Reviews',
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="chatbubbles" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="more"
+          options={{
+            title: 'More',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="ellipsis-horizontal" size={size} color={color} />
+            ),
+          }}
+        />
+      </Tabs>
     </DataProvider>
   );
 }
@@ -312,43 +249,6 @@ const styles = StyleSheet.create({
     color: colors.accent.red,
     fontSize: fonts.sizes.sm,
     marginBottom: spacing.md,
-  },
-
-  // ─── Branded Splash ──────────────────────────────────────────────
-  splashContainer: {
-    flex: 1,
-    backgroundColor: colors.bg.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  splashContent: {
-    alignItems: 'center',
-  },
-  splashLogoRow: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: colors.accent.gold + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  splashBrand: {
-    color: colors.accent.gold,
-    fontSize: 36,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  splashSubtitle: {
-    color: colors.text.muted,
-    fontSize: fonts.sizes.md,
-    marginTop: spacing.xs,
-  },
-  splashLocation: {
-    color: colors.text.secondary,
-    fontSize: fonts.sizes.lg,
-    fontWeight: '600',
-    marginTop: spacing.lg,
   },
 
   // ─── Header location pill ────────────────────────────────────────

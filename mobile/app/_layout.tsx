@@ -6,7 +6,6 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { RestaurantProvider } from '@/lib/RestaurantContext';
-import { DataProvider } from '@/lib/DataContext';
 import { colors } from '@/lib/theme';
 
 export { ErrorBoundary } from 'expo-router';
