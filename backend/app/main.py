@@ -56,9 +56,16 @@ from fastapi.responses import JSONResponse
 # Access Key Middleware
 @app.middleware("http")
 async def access_control_middleware(request: Request, call_next):
-    # Skip check for health, root, OPTIONS, and static files
+    # Skip check for health, root, OPTIONS, and non-API routes (admin, static files)
     path = request.url.path
-    if request.method == "OPTIONS" or path in ["/health", "/"] or not path.startswith("/api"):
+    skip_auth = (
+        request.method == "OPTIONS"
+        or path in ["/health", "/"]
+        or not path.startswith("/api")
+        or path.startswith("/admin")
+        or path.startswith("/debug")
+    )
+    if skip_auth:
         return await call_next(request)
     
     # Skip check if no key is configured on server
