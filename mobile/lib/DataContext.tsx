@@ -196,6 +196,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const prevActiveId = useRef<string | null>(null);
     const isRestaurantSwitch = useRef(false);
 
+    // Reset data when restaurant changes — MUST be defined BEFORE hydration
+    // effect so React runs it first on activeId change, clearing refs before
+    // hydration checks them.
+    useEffect(() => {
+        if (prevActiveId.current !== null && prevActiveId.current !== activeId) {
+            isRestaurantSwitch.current = true;
+            setDashboardData(null);
+            setGuests([]);
+            setReviews([]);
+            setReviewStats(null);
+            setOperations(null);
+            setLoading(true);
+            setProgress(0);
+            setLoadingStep('');
+            setCacheReady(false);
+            dashboardCache.current = {};
+            lastFetchedParams.current = { id: null, days: null };
+            diskCacheHydrated.current = false;
+            bgDataLoaded.current = false;
+            coldLoadRef.current = true;
+        }
+        prevActiveId.current = activeId;
+    }, [activeId]);
+
     // Hydrate in-memory cache from AsyncStorage on mount
     useEffect(() => {
         if (!activeId || diskCacheHydrated.current) return;
@@ -572,26 +596,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
         }
     }, [dashboardData, loading]);
-
-    // Reset data when restaurant changes (not just on null)
-    useEffect(() => {
-        if (prevActiveId.current !== null && prevActiveId.current !== activeId) {
-            isRestaurantSwitch.current = true;
-            setDashboardData(null);
-            setGuests([]);
-            setReviews([]);
-            setReviewStats(null);
-            setOperations(null);
-            setLoading(true);
-            setCacheReady(false);
-            dashboardCache.current = {};
-            lastFetchedParams.current = { id: null, days: null };
-            diskCacheHydrated.current = false;
-            bgDataLoaded.current = false;
-            coldLoadRef.current = true;
-        }
-        prevActiveId.current = activeId;
-    }, [activeId]);
 
     const skipLoading = useCallback(() => {
         setLoading(false);
