@@ -470,8 +470,15 @@ async def _generate_briefing_for_days(
         risks=deep.risks,
         recent_reviews=recent_reviews
     )
-
-    api_cache.set(x_restaurant_id, "manager_briefing", briefing, suffix=suffix, ttl=7200)
+    # Only cache successful briefings with real insights.
+    # Error fallbacks (quota exhausted, rate limited) should NOT be cached
+    # so the next request retries Gemini fresh once quota resets.
+    is_real_briefing = briefing.insights and not any(
+        i.title in ("Daily Quota Exhausted", "Rate Limit — Try Again Shortly", "AI Temporarily Unavailable")
+        for i in briefing.insights
+    )
+    if is_real_briefing:
+        api_cache.set(x_restaurant_id, "manager_briefing", briefing, suffix=suffix, ttl=7200)
     return briefing
 
 

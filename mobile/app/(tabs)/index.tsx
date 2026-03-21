@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -83,10 +83,15 @@ export default function DashboardScreen() {
 
   // No need for showIntelBadge state - badge is always visible now
 
-  // Switch dashboard data when timeRange changes (reads from in-memory cache, no API calls)
+  // Switch dashboard data when timeRange changes ONLY (not on initial mount).
+  // Initial load is handled by DataContext's auto-trigger useEffect.
+  const prevTimeRangeRef = useRef(timeRange);
   useEffect(() => {
-    if (activeId && cacheReady) {
-      refreshAll(timeRange);
+    if (prevTimeRangeRef.current !== timeRange) {
+      prevTimeRangeRef.current = timeRange;
+      if (activeId && cacheReady) {
+        refreshAll(timeRange);
+      }
     }
   }, [timeRange, activeId, cacheReady]);
 
