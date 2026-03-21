@@ -55,6 +55,9 @@ import asyncio
 _briefing_cache: dict[str, ManagerBriefing] = {}
 # Concurrency locks: maps data_hash -> asyncio.Lock
 _briefing_locks: dict[str, asyncio.Lock] = {}
+# Last-known-good briefing per restaurant — survives data hash changes
+# Falls back to this when Gemini is unavailable (quota, errors)
+_last_good_briefing: dict[str, ManagerBriefing] = {}
 
 # TPM guard: max reviews to send before hitting free-tier token limits
 MAX_REVIEWS_FOR_GEMINI = 1300  # ~200K tokens at ~150 tokens/review
@@ -65,6 +68,7 @@ async def generate_manager_briefing(
     top_performers: list[ItemPerformance],
     risks: list[ItemPerformance],
     recent_reviews: list[dict],  # [{id: str, text: str}, ...]
+    restaurant_id: str = "",
 ) -> ManagerBriefing:
     """Uses Gemini to generate a strategic briefing for the restaurant owner.
     
@@ -177,53 +181,48 @@ async def generate_manager_briefing(
 
             except Exception as e:
                 error_msg = str(e)
-                if "429" in error_msg and retry_count < max_retries - 1:
-                    retry_count += 1
-                    wait_time = min(5 * retry_count, 20)  # 5s, 10s, 15s, 20s — covers RPM reset window
-                    logger.warning(f"Gemini 429 Rate Limit hit. Retry {retry_count}/{max_retries} in {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-                    continue
-                
-                logger.warning(f"Manager briefing generation failed: {e}")
-                
-                from app.services.gemini_tracker import get_gemini_usage, calibrate_gemini_usage
-                usage = get_gemini_usage()
-                
                 is_429 = "429" in error_msg
                 is_daily_quota = "PerDay" in error_msg or "per_day" in error_msg.lower()
                 
+                # Daily quota exhausted — don't retry, it won't help until midnight PT
                 if is_429 and is_daily_quota:
-                    # Google EXPLICITLY says daily quota is done — sync tracker to match
+                    logger.warning(f"Gemini daily quota exhausted — aborting retries")
+                    from app.services.gemini_tracker import get_gemini_usage, calibrate_gemini_usage
+                    usage = get_gemini_usage()
                     await calibrate_gemini_usage(usage.get("rpd_limit", 1000))
-                    title = "Daily Quota Exhausted"
-                    description = f"You've used your {usage.get('rpd_limit', 1000)} daily AI requests. Insights will resume tomorrow at midnight PT."
-                elif is_429:
-                    # Any other 429 is almost always an RPM burst limit (15/min)
-                    # Don't calibrate daily tracker — this is a temporary minute-level throttle
-                    title = "Rate Limit — Try Again Shortly"
-                    description = "Too many AI requests at once. This resets in 60 seconds — try switching time ranges or refreshing."
-                else:
-                    title = "AI Temporarily Unavailable"
-                    description = f"Gemini returned an error: {error_msg[:80]}. Try again in a moment."
+                    break  # Exit retry loop, fall through to last-known-good
                 
-                # Return a fallback briefing WITHOUT caching it
-                return ManagerBriefing(
-                    summary="AI Briefing is temporarily paused due to API limits. Manual data below is still live.",
-                    insights=[
-                        ManagerInsight(
-                            title=title,
-                            description=description,
-                            type="risk",
-                            steps=["Wait 60 seconds and refresh", "Try a different time range", "Check the Admin dashboard for live quota status"],
-                            keywords=[],
-                            review_ids=[],
-                        )
-                    ],
-                    review_count_note=None,
-                )
+                # RPM burst — worth retrying
+                if is_429 and retry_count < max_retries - 1:
+                    retry_count += 1
+                    wait_time = min(5 * retry_count, 20)
+                    logger.warning(f"Gemini 429 RPM limit. Retry {retry_count}/{max_retries} in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                
+                # Non-retryable error
+                logger.warning(f"Manager briefing generation failed: {e}")
+                break  # Exit retry loop, fall through to last-known-good
+        else:
+            # while loop completed without break = all retries exhausted
+            pass
+        
+        # All retries failed — fall back to last-known-good briefing for this restaurant
+        if restaurant_id and restaurant_id in _last_good_briefing:
+            logger.info(f"Falling back to last-known-good briefing for {restaurant_id}")
+            return _last_good_briefing[restaurant_id]
+        
+        # Truly no previous briefing exists (first-ever load)
+        return ManagerBriefing(
+            summary="Briefing will be available on your next refresh.",
+            insights=[],
+            review_count_note=None,
+        )
 
-    # Update cache (only for successful results)
+    # Update caches (only for successful results)
     _briefing_cache[data_hash] = result
+    if restaurant_id:
+        _last_good_briefing[restaurant_id] = result
     
     # Optional: limit cache size
     if len(_briefing_cache) > 20:
