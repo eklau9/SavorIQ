@@ -98,7 +98,7 @@ export default function GuestsScreen() {
                         </Text>
                     ) : null}
                     {item.last_visit ? (
-                        <Text style={s.guestMeta}>
+                        <Text style={[s.guestMeta, { color: '#FFFFFF' }]}>
                             {' · '}{new Date(item.last_visit).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
                         </Text>
                     ) : null}

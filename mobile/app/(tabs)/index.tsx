@@ -153,7 +153,7 @@ export default function DashboardScreen() {
                 <Text style={[s.activeLocText, { fontSize: 32, lineHeight: 38, letterSpacing: -0.5, fontWeight: '800', flex: 1 }]}>
                   {activeName}
                 </Text>
-                <Text style={{ color: colors.text.secondary, fontSize: 20, fontWeight: '700', letterSpacing: -0.3, marginLeft: 8 }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700', letterSpacing: -0.3, marginLeft: 8 }}>
                   {new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
                 </Text>
               </View>

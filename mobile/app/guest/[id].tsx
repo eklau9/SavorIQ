@@ -284,7 +284,7 @@ const s = StyleSheet.create({
     },
     reviewMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
     reviewStars: { fontSize: 14, color: colors.accent.gold },
-    reviewDate: { color: colors.text.muted, fontSize: 12 },
+    reviewDate: { color: '#FFFFFF', fontSize: 12 },
     reviewContent: { color: colors.text.secondary, fontSize: 13, lineHeight: 18 },
     emptyText: { color: colors.text.muted, fontSize: fonts.sizes.md, textAlign: 'center', marginTop: 20 },
 

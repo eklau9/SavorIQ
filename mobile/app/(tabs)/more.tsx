@@ -230,7 +230,20 @@ export default function MoreScreen() {
                             style={[s.locationRow, r.id === activeId && s.locationRowActive]}
                             onPress={() => {
                                 if (r.id !== activeId) {
-                                    switchRestaurant(r.id);
+                                    Alert.alert(
+                                        'Switch Location',
+                                        `Switch to ${r.name}?`,
+                                        [
+                                            { text: 'Cancel', style: 'cancel' },
+                                            {
+                                                text: 'Switch',
+                                                onPress: () => {
+                                                    switchRestaurant(r.id);
+                                                    router.replace('/(tabs)');
+                                                },
+                                            },
+                                        ]
+                                    );
                                 }
                             }}
                         >

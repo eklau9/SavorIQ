@@ -199,7 +199,7 @@ export default function ReviewsScreen() {
                     {/* Search + Filters */}
                     <View style={s.filterBar}>
                         <View style={s.searchBox}>
-                            <Ionicons name="search" size={16} color={colors.text.muted} />
+                            <Ionicons name="search" size={18} color={colors.text.muted} />
                             <TextInput
                                 style={s.searchInput}
                                 placeholder="Search reviews..."
@@ -292,13 +292,6 @@ export default function ReviewsScreen() {
                                 <Text style={s.statDivider}>·</Text>
                                 <Text style={[s.statText, { color: colors.accent.gold }]}>
                                     {stats.avg_rating?.toFixed(1)} ★
-                                </Text>
-                                <Text style={s.statDivider}> · </Text>
-                                <Text style={[s.statText, { color: colors.accent.gold }]}>
-                                    {ratingSort
-                                        ? `${ratingSort === 'desc' ? 'Highest rated' : 'Lowest rated'}${dateSort === 'desc' ? ', newest' : ', oldest'}`
-                                        : (dateSort === 'desc' ? 'Newest first' : 'Oldest first')
-                                    }
                                 </Text>
                             </>
                         )}
@@ -401,7 +394,7 @@ const s = StyleSheet.create({
     },
     platformDot: { width: 8, height: 8, borderRadius: 4 },
     authorName: { color: colors.text.primary, fontSize: fonts.sizes.md, fontWeight: '600', flex: 1 },
-    reviewDate: { color: colors.text.primary, fontSize: fonts.sizes.sm },
+    reviewDate: { color: '#FFFFFF', fontSize: fonts.sizes.sm },
     stars: { fontSize: fonts.sizes.md, marginBottom: 6 },
     reviewContent: { color: colors.text.secondary, fontSize: fonts.sizes.sm, lineHeight: 20 },
     highlight: { backgroundColor: colors.accent.gold + '40', color: colors.text.primary, fontWeight: '700' },
