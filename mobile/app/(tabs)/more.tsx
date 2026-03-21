@@ -231,7 +231,6 @@ export default function MoreScreen() {
                             onPress={() => {
                                 if (r.id !== activeId) {
                                     switchRestaurant(r.id);
-                                    router.replace('/');
                                 }
                             }}
                         >

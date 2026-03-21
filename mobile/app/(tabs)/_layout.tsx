@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -70,13 +70,9 @@ export default function TabLayout() {
 
   // ─── Render based on state ─────────────────────────────────────────
 
-  // LOADING: Checking cached key
+  // LOADING: Checking cached key — show branded splash (no skip, no progress)
   if (appState === 'LOADING') {
-    return (
-      <View style={styles.gateContainer}>
-        <ActivityIndicator size="large" color={colors.accent.gold} />
-      </View>
-    );
+    return <StartupLoadingScreen loadingStep="Checking access..." />;
   }
 
   // GATE / AUTHENTICATING: Access key input
@@ -147,9 +143,12 @@ function TabsWithLoadingGate() {
     skipLoading();
   }, [skipLoading]);
 
-  // Global loading gate: show branded loading screen for ALL tabs
-  // Note: only gate on `loading`, not `!data` — Skip sets loading=false, user gets through
-  const isGlobalLoad = !error && (restaurantLoading || (activeId && loading));
+  // Global loading gate: show branded splash for ALL tabs EXCEPT More.
+  // User can stay on More tab after switching restaurants — splash only
+  // appears when they navigate to another tab.
+  const pathname = usePathname();
+  const isOnMore = pathname === '/more';
+  const isGlobalLoad = !error && !isOnMore && (restaurantLoading || (activeId && loading));
   if (isGlobalLoad) {
     return (
       <StartupLoadingScreen

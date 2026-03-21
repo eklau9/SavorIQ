@@ -143,7 +143,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [operations, setOperations] = useState<OperationsAnalytics | null>(null);
     const [priorities, setPriorities] = useState<GuestPrioritized[]>([]);
     const [historicalTrends, setHistoricalTrends] = useState<HistoricalTrends | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
     const [loadingStep, setLoadingStep] = useState('');
     const [estimatedSecondsRemaining, setEstimatedSecondsRemaining] = useState(0);
@@ -254,6 +254,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setCacheReady(true);
         })();
     }, [activeId]);
+
+    // Auto-trigger refreshAll when cache is ready and activeId is set.
+    // This MUST live in DataContext (not in a tab component) because the global
+    // loading gate in _layout.tsx blocks tab mounting while loading=true.
+    useEffect(() => {
+        if (activeId && cacheReady) {
+            refreshAll(timeRange);
+        }
+    }, [activeId, cacheReady]);
 
     const timeRangeRef = useRef<number | null>(timeRange);
     useEffect(() => { timeRangeRef.current = timeRange; }, [timeRange]);
