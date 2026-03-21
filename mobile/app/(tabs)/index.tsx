@@ -87,7 +87,7 @@ export default function DashboardScreen() {
 
   const [showIntegrityModal, setShowIntegrityModal] = useState(false);
   const [skipped, setSkipped] = useState(false);
-  const intelReady = briefingLoaded && !!data;
+  const intelReady = !!data?.briefing;
 
   const handleSkip = useCallback(() => {
     setSkipped(true);
