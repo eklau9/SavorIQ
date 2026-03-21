@@ -1,64 +1,83 @@
-# SavorIQ PROJECT
+# SavorIQ
 
-SavorIQ is an AI-powered guest intelligence platform for high-end hospitality. It aggregates reviews from Google Maps and Yelp, applies deep sentiment analysis via Gemini AI, and provides managers with actionable operational insights.
+AI-powered guest intelligence platform for restaurants. Aggregates reviews from Google Maps and Yelp, applies deep sentiment analysis via Gemini AI, and delivers actionable manager insights through a premium mobile-first interface.
 
 ## Project Structure
 
-- **`backend/`**: FastAPI server handling database (PostgreSQL/Supabase), background sync via Apify, and sentiment processing.
-- **`admin/`**: React admin dashboard ("Command Center") for monitoring API quotas, token health, and system status.
-- **`mobile/`**: React Native / Expo application for restaurant managers to view insights, manage guest intercept priorities, and track team performance.
-- **`frontend/`**: Next.js web application for broader executive analytics and administrative controls.
-- **`k8s/`**: Kubernetes deployment configurations for production environments.
-- **`docs/`**: Additional project documentation, including PRDs and technical specs.
+- **`backend/`**: FastAPI server — PostgreSQL database (Supabase), review sync via Apify, sentiment analysis, Gemini AI briefings.
+- **`mobile/`**: React Native / Expo — 5-tab manager app (Dashboard, Inbox, Guests, Reviews, More).
+- **`admin/`**: React / Vite — Operator command center for API quotas, token health, location monitoring.
+- **`frontend/`**: Next.js web application (legacy).
+- **`k8s/`**: Kubernetes deployment configs.
+- **`docs/`**: Additional documentation.
 
-## Getting Started
+## Quick Start
 
-Refer to the README in each subdirectory for specific setup and development instructions.
+### All Services (Dev)
+```bash
+# Terminal 1: Backend
+cd backend && source venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0
 
+# Terminal 2: Mobile
+cd mobile && npx expo start --web --port 8081
+
+# Terminal 3: Admin
+cd admin && npm run dev
+```
+
+### Individual Setup
 - [Backend Setup](backend/README.md)
-- [Admin Dashboard](admin/README.md)
 - [Mobile App Setup](mobile/README.md)
-- [Web Frontend Setup](frontend/README.md)
+- [Admin Dashboard](admin/README.md)
 
 ## Core Tech Stack
 
-- **Backend**: Python 3.12, FastAPI, SQLAlchemy, PostgreSQL (Supabase), Gemini API.
-- **Mobile**: TypeScript, React Native, Expo Router.
-- **Web**: TypeScript, Next.js, Tailwind CSS.
+| Component | Stack |
+|---|---|
+| **Backend** | Python 3.12, FastAPI, SQLAlchemy, PostgreSQL (Supabase), Gemini API |
+| **Mobile** | TypeScript, React Native, Expo Router |
+| **Admin** | React, Vite |
+| **Hosting** | Railway (Docker) |
+| **AI** | Google Gemini (`gemini-1.5-flash`) |
+| **Scrapers** | Apify (Google Maps + Yelp actors) |
 
 ## Running Tests
 
-Detailed testing instructions are available in each sub-directory, but here is the quick start:
+```bash
+# Backend
+cd backend && source venv/bin/activate && PYTHONPATH=$(pwd) pytest
 
-- **Backend**: `cd backend && source venv/bin/activate && PYTHONPATH=$(pwd) pytest`
-- **Mobile**: `cd mobile && npm test`
+# Mobile
+cd mobile && npm test
+```
 
 ## Apify Token Fallback
 
-SavorIQ uses an automatic **waterfall fallback** system for Apify API tokens. When the primary token's monthly $5.00 free credit is exhausted, the system automatically retries with backup tokens.
+SavorIQ uses an automatic **waterfall fallback** for Apify API tokens. When the primary token's $5.00 free credit is exhausted, the system retries with backup tokens.
 
-- **Configuration**: Add tokens to `backend/.env` using numbered keys:
-  ```
-  APIFY_API_TOKEN=apify_api_PRIMARY
-  APIFY_FALLBACK_TOKEN_1=apify_api_BACKUP1
-  APIFY_FALLBACK_TOKEN_2=apify_api_BACKUP2
-  ```
-- **Behavior**: Every sync always tries the primary first. On HTTP 402/429, it falls to the next token. Tokens auto-reset monthly on their billing anniversary.
-- **No limit**: Add as many backup tokens as needed (sequential numbering).
+```env
+# backend/.env
+APIFY_API_TOKEN=apify_api_PRIMARY
+APIFY_FALLBACK_TOKEN_1=apify_api_BACKUP1
+APIFY_FALLBACK_TOKEN_2=apify_api_BACKUP2
+```
+
+- Every sync always tries the primary first. On HTTP 402/429, it falls to the next token.
+- Tokens auto-reset monthly on their billing anniversary.
+- Add as many backup tokens as needed (sequential numbering).
 
 ## Monitoring
 
-Check live API quotas across all services:
 ```bash
 cd backend && ./venv/bin/python3 scripts/check_quotas.py
 ```
-This reports Apify token balances, Yelp daily limits, Supabase storage, and Google API info.
 
-## Maintenance & Documentation
+Reports Apify token balances, Yelp daily limits, Supabase storage, and Gemini quota status.
 
-To keep the project healthy and maintainable, follow these guidelines:
+## Key Documentation
 
-- **Keep READMEs in-sync**: Whenever you add a new feature, component, or configuration (e.g., new API keys), update the corresponding `README.md` immediately.
-- **Automated Testing**: Every new feature or piece of core logic must include corresponding unit/integration tests (`pytest` for backend, `jest` for mobile). Always run the full suite before pushing changes.
-- **Explain "Why", not just "How"**: Focus on the rationale behind architectural decisions.
-- **Clear Commit Messages**: Use descriptive commits to track changes effectively.
+| Document | Purpose |
+|---|---|
+| [PRD.md](PRD.md) | Product requirements — all features, screens, and capabilities |
+| [TECHNICAL_SPEC.md](TECHNICAL_SPEC.md) | Architecture, API integrations, database schema, intelligence pipeline |
+| [SAAS_ROADMAP.md](SAAS_ROADMAP.md) | SaaS registration, auth, billing roadmap |
