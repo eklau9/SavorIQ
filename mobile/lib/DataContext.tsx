@@ -105,7 +105,7 @@ interface DataContextType {
     loadingStep: string;
     estimatedSecondsRemaining: number;
     error: string | null;
-    briefingLoaded: boolean;
+
     timeRange: number | null;
     setTimeRange: (range: number | null) => void;
     refreshAll: (days?: number | null) => Promise<void>;
@@ -126,7 +126,7 @@ const DataContext = createContext<DataContextType>({
     loadingStep: '',
     estimatedSecondsRemaining: 0,
     error: null,
-    briefingLoaded: false,
+
     timeRange: 30,
     setTimeRange: () => {},
     refreshAll: async (days?: number | null) => { },
@@ -148,7 +148,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [loadingStep, setLoadingStep] = useState('');
     const [estimatedSecondsRemaining, setEstimatedSecondsRemaining] = useState(0);
     const [error, setError] = useState<string | null>(null);
-    const [briefingLoaded, setBriefingLoaded] = useState(false);
+
     const [timeRange, setTimeRange] = useState<number | null>(30);
     const [cacheReady, setCacheReady] = useState(false);
 
@@ -235,7 +235,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     const currentKey = timeRange ? String(timeRange) : 'all';
                     if (diskCache[currentKey]) {
                         setDashboardData(diskCache[currentKey]);
-                        setBriefingLoaded(true);
                     }
                     console.log('[DataContext] Hydrated all 5 frames from disk cache — skipping Gemini');
                     // If bg data was also cached, skip ALL fetches
@@ -275,7 +274,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setDashboardData(cached);
             // If cache has a real briefing, we're fully loaded — skip everything
             if (dashboardCache.current[cacheKey].briefing) {
-                setBriefingLoaded(true);
                 setLoading(false);
                 if (Platform.OS === 'web' && typeof window !== 'undefined') {
                     window.dispatchEvent(new Event('savoriq-ready'));
@@ -292,7 +290,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 if (currentDaysRef.current === effectiveDays) {
                     setDashboardData(updated);
                 }
-                setBriefingLoaded(true);
             }).catch(() => { /* silently fail, will retry on next visit */ });
             return;
         } else {
@@ -301,7 +298,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (!dashboardData) {
                 setLoading(true);
             }
-            setBriefingLoaded(false);
         }
 
         // Cancel any existing request
@@ -373,7 +369,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 if (currentDaysRef.current === effectiveDays) {
                     setDashboardData(updated);
                 }
-                setBriefingLoaded(true);
                 coldLoadRef.current = false;
                 // Persist to disk after briefing loads
                 if (activeId) saveCacheToDisk(activeId, dashboardCache.current);
@@ -390,7 +385,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                         }} : null);
                     }
                 }
-                // Don't mark briefingLoaded on failure — badge stays 'Syncing...' until real data arrives
+                // Don't set fallback briefing with real insights — badge stays 'Syncing...' for error state
                 coldLoadRef.current = false;
                 // Note: Don't dispatch savoriq-ready here — let the finally block handle it
             });
@@ -577,7 +572,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setReviews([]);
             setReviewStats(null);
             setOperations(null);
-            setBriefingLoaded(false);
             setLoading(true);
             setCacheReady(false);
             dashboardCache.current = {};
@@ -612,7 +606,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             estimatedSecondsRemaining,
             error,
             refreshAll,
-            briefingLoaded,
             timeRange,
             setTimeRange,
             skipLoading,
