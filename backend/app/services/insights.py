@@ -191,22 +191,17 @@ async def generate_manager_briefing(
                 
                 is_429 = "429" in error_msg
                 is_daily_quota = "PerDay" in error_msg or "per_day" in error_msg.lower()
-                is_rpd_limited = usage.get("rpd", 0) >= usage.get("rpd_limit", 1000)
-                is_rpm_limited = usage.get("rpm", 0) >= usage.get("rpm_limit", 15)
                 
-                if is_429 and (is_daily_quota or not is_rpm_limited):
-                    # Google says we're done for the day — sync tracker to match
+                if is_429 and is_daily_quota:
+                    # Google EXPLICITLY says daily quota is done — sync tracker to match
                     await calibrate_gemini_usage(usage.get("rpd_limit", 1000))
                     title = "Daily Quota Exhausted"
                     description = f"You've used your {usage.get('rpd_limit', 1000)} daily AI requests. Insights will resume tomorrow at midnight PT."
-                elif is_rpm_limited:
-                    title = "Minute Burst Limit Hit"
-                    description = "Too many requests at once. Please wait 60 seconds for the burst limit to reset."
                 elif is_429:
-                    # 429 but not clearly daily — still likely exhausted
-                    await calibrate_gemini_usage(usage.get("rpd_limit", 1000))
-                    title = "Daily Quota Exhausted"
-                    description = f"Google reports quota exceeded. Insights will resume tomorrow at midnight PT."
+                    # Any other 429 is almost always an RPM burst limit (15/min)
+                    # Don't calibrate daily tracker — this is a temporary minute-level throttle
+                    title = "Rate Limit — Try Again Shortly"
+                    description = "Too many AI requests at once. This resets in 60 seconds — try switching time ranges or refreshing."
                 else:
                     title = "AI Temporarily Unavailable"
                     description = f"Gemini returned an error: {error_msg[:80]}. Try again in a moment."
@@ -219,9 +214,12 @@ async def generate_manager_briefing(
                             title=title,
                             description=description,
                             type="risk",
-                            steps=["Check the Admin dashboard for live quota status", "Insights reset at midnight Pacific Time", "Review manual analytics below"]
+                            steps=["Wait 60 seconds and refresh", "Try a different time range", "Check the Admin dashboard for live quota status"],
+                            keywords=[],
+                            review_ids=[],
                         )
-                    ]
+                    ],
+                    review_count_note=None,
                 )
 
     # Update cache (only for successful results)
