@@ -194,11 +194,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const coldLoadRef = useRef(true); // True until first successful load
     const diskCacheHydrated = useRef(false);
     const prevActiveId = useRef<string | null>(null);
+    const isRestaurantSwitch = useRef(false);
 
     // Hydrate in-memory cache from AsyncStorage on mount
     useEffect(() => {
         if (!activeId || diskCacheHydrated.current) return;
         diskCacheHydrated.current = true;
+        const isSwitching = isRestaurantSwitch.current;
         
         (async () => {
             // Load dashboard cache
@@ -206,7 +208,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             // Load background data cache (guests, reviews, etc.)
             const bgCache = await loadBgCacheFromDisk(activeId);
 
-            if (bgCache) {
+            if (bgCache && !isSwitching) {
+                // Only hydrate bg state on initial app load — on switch, refreshAll handles it
                 setGuests(bgCache.guests || []);
                 setReviews(bgCache.reviews || []);
                 setReviewStats(bgCache.reviewStats);
@@ -217,10 +220,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (diskCache) {
+                // Always populate the in-memory cache so refreshAll gets instant hits
                 dashboardCache.current = diskCache;
                 const ALL_KEYS = ['30', '90', '180', '365', 'all'];
                 const allLoaded = ALL_KEYS.every(k => diskCache[k]?.briefing);
-                if (allLoaded) {
+
+                if (isSwitching) {
+                    // Restaurant switch: DON'T shortcut the loading screen.
+                    // The in-memory cache is populated above, so refreshAll will
+                    // find instant cache hits and dismiss the splash quickly.
+                    console.log('[DataContext] Restaurant switch — cache hydrated silently, refreshAll will handle splash');
+                } else if (allLoaded) {
                     coldLoadRef.current = false;
                     const currentKey = timeRange ? String(timeRange) : 'all';
                     if (diskCache[currentKey]) {
@@ -456,6 +466,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setLoadingStep('Sync Complete');
             setEstimatedSecondsRemaining(0);
             coldLoadRef.current = false;
+            isRestaurantSwitch.current = false;
             if (Platform.OS === 'web' && typeof window !== 'undefined') {
                 window.dispatchEvent(new Event('savoriq-ready'));
             }
@@ -560,6 +571,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // Reset data when restaurant changes (not just on null)
     useEffect(() => {
         if (prevActiveId.current !== null && prevActiveId.current !== activeId) {
+            isRestaurantSwitch.current = true;
             setDashboardData(null);
             setGuests([]);
             setReviews([]);
@@ -572,6 +584,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             lastFetchedParams.current = { id: null, days: null };
             diskCacheHydrated.current = false;
             bgDataLoaded.current = false;
+            coldLoadRef.current = true;
         }
         prevActiveId.current = activeId;
     }, [activeId]);
