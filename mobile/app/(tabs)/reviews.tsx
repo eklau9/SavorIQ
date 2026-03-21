@@ -162,7 +162,7 @@ export default function ReviewsScreen() {
                     <View style={[s.platformDot, { backgroundColor: platformColor(item.platform) }]} />
                     <Text style={s.authorName}>{item.guest_name || item.author_name || 'Guest'}</Text>
                     <Text style={s.reviewDate}>
-                        {new Date(item.reviewed_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })}
+                        {new Date(item.reviewed_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
                     </Text>
                 </View>
                 <Text style={[s.stars, {

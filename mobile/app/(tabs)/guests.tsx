@@ -97,6 +97,11 @@ export default function GuestsScreen() {
                             ★ {item.avg_rating.toFixed(1)}
                         </Text>
                     ) : null}
+                    {item.last_visit ? (
+                        <Text style={s.guestMeta}>
+                            {' · '}{new Date(item.last_visit).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </Text>
+                    ) : null}
                 </View>
             </View>
             {item.tier !== 'new' && (
