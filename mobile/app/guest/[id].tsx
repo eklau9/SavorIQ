@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
     View, Text, ScrollView, StyleSheet,
-    TouchableOpacity, ActivityIndicator,
+    TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +18,7 @@ export default function GuestDetailScreen() {
         visit_count?: string;
     }>();
     const { id } = params;
-    const { guests: globalGuests } = useData();
+    const { guests: globalGuests, reviews: allReviews } = useData();
     const router = useRouter();
 
     // Hooks must be called before any early returns
@@ -37,22 +37,32 @@ export default function GuestDetailScreen() {
 
     const guest = routeGuest || globalGuests.find(g => g.id === id);
 
-    // Always fetch this guest's reviews via the pulse API (fast, reliable, ~200ms)
-    const [pulseLoading, setPulseLoading] = useState(true);
-    useEffect(() => {
-        if (!id) return;
-        setPulseLoading(true);
-        fetchGuestPulse(id)
-            .then(data => {
-                if (data?.recent_reviews?.length) {
-                    setFallbackReviews(data.recent_reviews);
-                }
-            })
-            .catch(() => {})
-            .finally(() => setPulseLoading(false));
-    }, [id]);
+    // 1) Try instant match from allReviews (already loaded during splash)
+    const contextReviews = useMemo(
+        () => allReviews
+            .filter(r =>
+                String(r.guest_id) === String(id) ||
+                (guest?.name && (r.guest_name === guest.name || (r as any).author_name === guest.name))
+            )
+            .sort((a, b) => new Date(b.reviewed_at).getTime() - new Date(a.reviewed_at).getTime()),
+        [allReviews, id, guest?.name]
+    );
 
-    const guestReviews = fallbackReviews;
+    // 2) Fallback: if context match is empty AND allReviews is loaded, fetch via pulse API
+    useEffect(() => {
+        if (contextReviews.length === 0 && allReviews.length > 0 && id) {
+            fetchGuestPulse(id)
+                .then(data => {
+                    if (data?.recent_reviews?.length) {
+                        setFallbackReviews(data.recent_reviews);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [contextReviews.length, allReviews.length, id]);
+
+    // Use context reviews if available, otherwise fallback
+    const guestReviews = contextReviews.length > 0 ? contextReviews : fallbackReviews;
 
     if (!guest) {
         return (
@@ -166,11 +176,9 @@ export default function GuestDetailScreen() {
             <View style={s.reviewsSection}>
                 <Text style={s.sectionHeader}>Reviews</Text>
                 {guestReviews.length === 0 ? (
-                    pulseLoading ? (
-                        <ActivityIndicator size="small" color={colors.text.muted} style={{ marginTop: 20 }} />
-                    ) : (
-                        <Text style={s.emptyText}>No reviews yet.</Text>
-                    )
+                    <Text style={s.emptyText}>
+                        {guest.visit_count ? 'Loading reviews...' : 'No reviews yet.'}
+                    </Text>
                 ) : (
                     guestReviews.map((r) => {
                         const isExpanded = expandedReviews.has(r.id);
