@@ -69,6 +69,7 @@ export default function DashboardScreen() {
   const { activeName, activeId, loading: restaurantLoading } = useRestaurant();
   const { 
     dashboardData: data, 
+    loading,
     refreshAll,
     error,
     timeRange,
@@ -164,10 +165,11 @@ export default function DashboardScreen() {
                       <Text style={s.integrityText}>AI Integrity Mode</Text>
                     </TouchableOpacity>
                   )}
+                  {(loading || intelReady) && (
                   <TouchableOpacity
-                    style={[s.intelBadge, !intelReady && s.intelBadgeLoading]}
+                    style={[s.intelBadge, loading && !intelReady && s.intelBadgeLoading]}
                     onPress={() => {
-                      if (!intelReady) {
+                      if (loading && !intelReady) {
                         Alert.alert(
                           'Loading Intelligence',
                           'Reviews and analytics are still being processed. This usually takes a few seconds.',
@@ -182,10 +184,11 @@ export default function DashboardScreen() {
                       size={12}
                       color={intelReady ? colors.sentiment.positive : colors.text.muted}
                     />
-                    <Text style={[s.intelBadgeText, !intelReady && s.intelBadgeTextLoading]}>
+                    <Text style={[s.intelBadgeText, loading && !intelReady && s.intelBadgeTextLoading]}>
                       {intelReady ? 'Intelligence Ready' : 'Syncing...'}
                     </Text>
                   </TouchableOpacity>
+                  )}
 
                 </View>
               </View>
