@@ -37,10 +37,13 @@ export default function GuestDetailScreen() {
 
     const guest = routeGuest || globalGuests.find(g => g.id === id);
 
-    // Filter reviews from context data
+    // Filter reviews from context data — match by guest_id OR name (covers both join and non-join cases)
     const contextReviews = useMemo(
         () => allReviews
-            .filter(r => r.guest_id === id || r.guest_name === guest?.name)
+            .filter(r =>
+                String(r.guest_id) === String(id) ||
+                (guest?.name && (r.guest_name === guest.name || r.author_name === guest.name))
+            )
             .sort((a, b) => new Date(b.reviewed_at).getTime() - new Date(a.reviewed_at).getTime()),
         [allReviews, id, guest?.name]
     );
