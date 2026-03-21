@@ -424,9 +424,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 withTimeout(fetchOperationsAnalytics(controller.signal)).then(d => { setOperations(d); bgResults.operations = d; }),
             ];
 
-            Promise.allSettled(bgOps).then(() => {
-                if (activeId) saveBgCacheToDisk(activeId, bgResults);
-            });
+            // Wait for all bg data (fast SQL queries, no Gemini) before dismissing splash.
+            // This ensures reviews/guests are available instantly when user navigates.
+            await Promise.allSettled(bgOps);
+            if (activeId) saveBgCacheToDisk(activeId, bgResults);
             bgDataLoaded.current = true;
 
             // Fetch historical trends for 1Y/ALL (pure SQL, no Gemini cost)
