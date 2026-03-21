@@ -388,7 +388,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     console.warn('Briefing fetch failed:', e);
                     if (currentDaysRef.current === effectiveDays) {
                         setDashboardData(prev => prev ? { ...prev, briefing: {
-                            summary: "AI Briefing is temporarily paused due to API limits. Go to More → Review Sync to refresh, or try a different time range.",
+                            summary: "AI Insights will generate on your next sync.",
                             insights: [],
                             review_count_note: null,
                         }} : null);
