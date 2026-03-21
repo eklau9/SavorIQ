@@ -82,6 +82,9 @@ export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({
                         ]}
                     />
                 </View>
+                <Text style={s.progressPercent}>
+                    {progress.toFixed(2)}%
+                </Text>
             </View>
 
             {/* Skip button */}
@@ -141,6 +144,12 @@ const s = StyleSheet.create({
         height: '100%',
         backgroundColor: colors.accent.gold,
         borderRadius: 2,
+    },
+    progressPercent: {
+        color: colors.text.muted,
+        fontSize: fonts.sizes.xs,
+        marginTop: spacing.sm,
+        fontVariant: ['tabular-nums'],
     },
     footer: {
         position: 'absolute',
