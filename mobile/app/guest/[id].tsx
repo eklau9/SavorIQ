@@ -7,7 +7,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useData } from '@/lib/DataContext';
-import { fetchGuestPulse, GuestPulse } from '@/lib/api';
+import { fetchGuestReviews } from '@/lib/api';
 
 export default function GuestDetailScreen() {
     const params = useLocalSearchParams<{
@@ -48,14 +48,14 @@ export default function GuestDetailScreen() {
         [allReviews, id, guest?.name]
     );
 
-    // 2) Always fetch via pulse API in parallel (fast ~200ms SQL query).
+    // 2) Always fetch via lightweight reviews endpoint in parallel (~100ms).
     //    If context match works, reviews show instantly and this result is ignored.
     useEffect(() => {
         if (!id) return;
-        fetchGuestPulse(id)
-            .then(data => {
-                if (data?.recent_reviews?.length) {
-                    setFallbackReviews(data.recent_reviews);
+        fetchGuestReviews(id)
+            .then(reviews => {
+                if (reviews?.length) {
+                    setFallbackReviews(reviews);
                 }
             })
             .catch(() => {});

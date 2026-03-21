@@ -301,6 +301,10 @@ export function fetchGuestPulse(id: string): Promise<GuestPulse> {
     return apiFetch(`/api/guests/${id}/pulse`);
 }
 
+export function fetchGuestReviews(id: string): Promise<Review[]> {
+    return apiFetch(`/api/guests/${id}/reviews`);
+}
+
 // ── Reviews ─────────────────────────────────────────────────────────
 
 export interface Review {
