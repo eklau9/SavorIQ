@@ -122,7 +122,7 @@ async def generate_manager_briefing(
         if data_hash in _briefing_cache:
             return _briefing_cache[data_hash]
 
-        max_retries = 3
+        max_retries = 5
         retry_count = 0
         
         while retry_count < max_retries:
@@ -179,7 +179,7 @@ async def generate_manager_briefing(
                 error_msg = str(e)
                 if "429" in error_msg and retry_count < max_retries - 1:
                     retry_count += 1
-                    wait_time = retry_count * 2
+                    wait_time = min(5 * retry_count, 20)  # 5s, 10s, 15s, 20s — covers RPM reset window
                     logger.warning(f"Gemini 429 Rate Limit hit. Retry {retry_count}/{max_retries} in {wait_time}s...")
                     await asyncio.sleep(wait_time)
                     continue
