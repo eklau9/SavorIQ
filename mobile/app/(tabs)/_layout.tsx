@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setAccessKey, fetchRestaurants } from '@/lib/api';
 
 import { useRestaurant } from '@/lib/RestaurantContext';
-import { DataProvider, useData } from '@/lib/DataContext';
+import { useData } from '@/lib/DataContext';
 import { StartupLoadingScreen } from '@/components/StartupLoadingScreen';
 
 // ─── State Machine ────────────────────────────────────────────────────
@@ -116,12 +116,8 @@ export default function TabLayout() {
     );
   }
 
-  // READY: DataProvider mounts → TabsWithLoadingGate handles loading screen
-  return (
-    <DataProvider>
-      <TabsWithLoadingGate />
-    </DataProvider>
-  );
+  // READY: DataProvider is at root level — TabsWithLoadingGate consumes it directly
+  return <TabsWithLoadingGate />;
 }
 
 // Inner component: consumes useData() inside DataProvider to gate all tabs

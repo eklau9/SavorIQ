@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { RestaurantProvider } from '@/lib/RestaurantContext';
+import { DataProvider } from '@/lib/DataContext';
 import { colors } from '@/lib/theme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -49,6 +50,7 @@ export default function RootLayout() {
 
   return (
     <RestaurantProvider>
+      <DataProvider>
         <ThemeProvider value={savoriqTheme}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -63,6 +65,7 @@ export default function RootLayout() {
             />
           </Stack>
         </ThemeProvider>
+      </DataProvider>
     </RestaurantProvider>
   );
 }
