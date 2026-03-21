@@ -48,20 +48,20 @@ export default function GuestDetailScreen() {
         [allReviews, id, guest?.name]
     );
 
-    // 2) Fallback: if context match is empty AND allReviews is loaded, fetch via pulse API
+    // 2) Always fetch via pulse API in parallel (fast ~200ms SQL query).
+    //    If context match works, reviews show instantly and this result is ignored.
     useEffect(() => {
-        if (contextReviews.length === 0 && allReviews.length > 0 && id) {
-            fetchGuestPulse(id)
-                .then(data => {
-                    if (data?.recent_reviews?.length) {
-                        setFallbackReviews(data.recent_reviews);
-                    }
-                })
-                .catch(() => {});
-        }
-    }, [contextReviews.length, allReviews.length, id]);
+        if (!id) return;
+        fetchGuestPulse(id)
+            .then(data => {
+                if (data?.recent_reviews?.length) {
+                    setFallbackReviews(data.recent_reviews);
+                }
+            })
+            .catch(() => {});
+    }, [id]);
 
-    // Use context reviews if available, otherwise fallback
+    // Use context reviews if available, otherwise fallback from pulse API
     const guestReviews = contextReviews.length > 0 ? contextReviews : fallbackReviews;
 
     if (!guest) {
