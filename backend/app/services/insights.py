@@ -214,7 +214,7 @@ async def generate_manager_briefing(
         
         # Truly no previous briefing exists (first-ever load)
         return ManagerBriefing(
-            summary="Briefing will be available on your next refresh.",
+            summary="AI Insights will generate on your next sync.",
             insights=[],
             review_count_note=None,
         )

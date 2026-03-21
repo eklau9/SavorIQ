@@ -543,7 +543,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     dashboardCache.current[key] = {
                         ...dashboardCache.current[key],
                         briefing: {
-                            summary: 'Briefing will be available on your next refresh.',
+                            summary: 'AI Insights will generate on your next sync.',
                             insights: [],
                             review_count_note: null,
                         },
