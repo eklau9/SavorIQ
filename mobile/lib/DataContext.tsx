@@ -465,15 +465,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 setHistoricalTrends(null);
             }
 
-            // Prefetch ALL other frames with progress — keeps loading screen up
-            // 60s timeout guard: if prefetching stalls (e.g. Gemini rate limits),
-            // dismiss loading screen and let user interact — partial cache is fine
+            // Dismiss loading screen BEFORE prefetching other frames.
+            // User already saw 100% — let them interact while prefetch runs silently.
+            setLoading(false);
+            setProgress(100);
+            setLoadingStep('Sync Complete');
+            setEstimatedSecondsRemaining(0);
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('savoriq-ready'));
+            }
+
+            // Prefetch ALL other frames silently in background (no progress UI)
+            // 60s timeout guard: if prefetching stalls, just stop — partial cache is fine
             if (abortControllerRef.current === controller) {
                 await Promise.race([
-                    prefetchOtherFrames(controller.signal, true),
+                    prefetchOtherFrames(controller.signal, false),
                     new Promise<void>(resolve => {
                         setTimeout(() => {
-                            console.warn('[Prefetch] 60s timeout — dismissing loading screen');
+                            console.warn('[Prefetch] 60s timeout — stopping background prefetch');
                             resolve();
                         }, 60000);
                     }),
