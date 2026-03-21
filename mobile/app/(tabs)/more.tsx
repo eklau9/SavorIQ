@@ -228,7 +228,12 @@ export default function MoreScreen() {
                         <TouchableOpacity
                             key={r.id}
                             style={[s.locationRow, r.id === activeId && s.locationRowActive]}
-                            onPress={() => switchRestaurant(r.id)}
+                            onPress={() => {
+                                if (r.id !== activeId) {
+                                    switchRestaurant(r.id);
+                                    router.replace('/');
+                                }
+                            }}
                         >
                             <Ionicons
                                 name={r.id === activeId ? 'radio-button-on' : 'radio-button-off'}

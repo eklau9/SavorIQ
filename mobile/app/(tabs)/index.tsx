@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,16 @@ import {
   TouchableOpacity,
   Modal,
   Pressable,
-  Animated,
   Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter, Stack } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
 import { useData } from '@/lib/DataContext';
 import { DeepAnalytics } from '@/lib/api';
 import NoRestaurantSelected from '@/components/NoRestaurantSelected';
-import { StartupLoadingScreen } from '@/components/StartupLoadingScreen';
 
 // Helper to render text with colored item highlights
 // sentimentType: 'win' = green, 'risk' = red, default = gold
@@ -71,32 +69,16 @@ export default function DashboardScreen() {
   const { activeName, activeId, loading: restaurantLoading } = useRestaurant();
   const { 
     dashboardData: data, 
-    loading, 
-    progress, 
-    loadingStep, 
-    estimatedSecondsRemaining, 
     refreshAll,
     error,
     timeRange,
     setTimeRange,
-    skipLoading,
     cacheReady,
     historicalTrends,
   } = useData();
 
   const [showIntegrityModal, setShowIntegrityModal] = useState(false);
-  const [skipped, setSkipped] = useState(false);
   const intelReady = !!data?.briefing?.insights && data.briefing.insights.length > 0;
-
-  const handleSkip = useCallback(() => {
-    setSkipped(true);
-    skipLoading();
-  }, [skipLoading]);
-
-  // Reset skipped state when restaurant changes — show full loading screen for new restaurant
-  useEffect(() => {
-    setSkipped(false);
-  }, [activeId]);
 
   // No need for showIntelBadge state - badge is always visible now
 
@@ -113,20 +95,6 @@ export default function DashboardScreen() {
     await AsyncStorage.removeItem('accessKey');
     alert('Access key cleared. Please reload the app.');
   };
-
-  // Show loading screen during initial data load AND during prefetch of all date ranges.
-  // `loading` stays true until all 5 frames (1M, 3M, 6M, 1Y, All) are prefetched.
-  const isInitialLoad = !error && (restaurantLoading || (activeId && (!data || loading)));
-  if (isInitialLoad) {
-    return (
-      <StartupLoadingScreen 
-        progress={progress} 
-        loadingStep={loadingStep} 
-        estimatedSecondsRemaining={estimatedSecondsRemaining}
-        onSkip={!skipped ? handleSkip : undefined}
-      />
-    );
-  }
 
   if (error) {
     const isAuthError = error.toLowerCase().includes('unauthorized') || error.toLowerCase().includes('401');

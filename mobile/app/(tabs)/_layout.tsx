@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setAccessKey, fetchRestaurants } from '@/lib/api';
 
 import { useRestaurant } from '@/lib/RestaurantContext';
-import { DataProvider } from '@/lib/DataContext';
+import { DataProvider, useData } from '@/lib/DataContext';
+import { StartupLoadingScreen } from '@/components/StartupLoadingScreen';
 
 // ─── State Machine ────────────────────────────────────────────────────
 // Flow: LOADING → READY  (if cached key is valid)
@@ -119,98 +120,136 @@ export default function TabLayout() {
     );
   }
 
-  // READY: DataProvider mounts → its StartupLoadingScreen shows while loading → then dashboard
+  // READY: DataProvider mounts → TabsWithLoadingGate handles loading screen
   return (
     <DataProvider>
-      <Tabs
-        screenOptions={{
-          tabBarActiveTintColor: colors.accent.gold,
-          tabBarInactiveTintColor: colors.text.muted,
-          tabBarStyle: {
-            backgroundColor: colors.bg.secondary,
-            borderTopColor: colors.border.subtle,
-            height: 88,
-            paddingBottom: 28,
-            paddingTop: 8,
-          },
-          headerStyle: {
-            backgroundColor: colors.bg.primary,
-            borderBottomWidth: 0,
-            elevation: 0,
-            shadowOpacity: 0,
-            height: 100,
-          },
-          headerTintColor: colors.text.primary,
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 18,
-          },
-          headerTitleAlign: 'left' as const,
-          headerRight: () => (
-            <TouchableOpacity
-              style={styles.headerLocation}
-              onPress={() => {
-                router.push('/more');
-              }}
-            >
-              <Ionicons name="location" size={14} color={colors.accent.gold} />
-              <Text style={styles.headerLocationText} numberOfLines={1}>
-                {activeId ? activeName : 'Select Location'}
-              </Text>
-            </TouchableOpacity>
+      <TabsWithLoadingGate />
+    </DataProvider>
+  );
+}
+
+// Inner component: consumes useData() inside DataProvider to gate all tabs
+function TabsWithLoadingGate() {
+  const router = useRouter();
+  const { activeId, activeName, loading: restaurantLoading } = useRestaurant();
+  const {
+    loading, progress, loadingStep, estimatedSecondsRemaining,
+    skipLoading, error, dashboardData: data,
+  } = useData();
+
+  const [skipped, setSkipped] = useState(false);
+
+  // Reset skipped state on restaurant switch
+  useEffect(() => { setSkipped(false); }, [activeId]);
+
+  const handleSkip = useCallback(() => {
+    setSkipped(true);
+    skipLoading();
+  }, [skipLoading]);
+
+  // Global loading gate: show branded loading screen for ALL tabs
+  // Note: only gate on `loading`, not `!data` — Skip sets loading=false, user gets through
+  const isGlobalLoad = !error && (restaurantLoading || (activeId && loading));
+  if (isGlobalLoad) {
+    return (
+      <StartupLoadingScreen
+        progress={progress}
+        loadingStep={loadingStep}
+        estimatedSecondsRemaining={estimatedSecondsRemaining}
+        onSkip={!skipped ? handleSkip : undefined}
+      />
+    );
+  }
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: colors.accent.gold,
+        tabBarInactiveTintColor: colors.text.muted,
+        tabBarStyle: {
+          backgroundColor: colors.bg.secondary,
+          borderTopColor: colors.border.subtle,
+          height: 88,
+          paddingBottom: 28,
+          paddingTop: 8,
+        },
+        headerStyle: {
+          backgroundColor: colors.bg.primary,
+          borderBottomWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          height: 100,
+        },
+        headerTintColor: colors.text.primary,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: 18,
+        },
+        headerTitleAlign: 'left' as const,
+        headerRight: () => (
+          <TouchableOpacity
+            style={styles.headerLocation}
+            onPress={() => {
+              router.push('/more');
+            }}
+          >
+            <Ionicons name="location" size={14} color={colors.accent.gold} />
+            <Text style={styles.headerLocationText} numberOfLines={1}>
+              {activeId ? activeName : 'Select Location'}
+            </Text>
+          </TouchableOpacity>
+        ),
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
           ),
         }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Dashboard',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="grid" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="inbox"
-          options={{
-            title: 'Inbox',
-            headerShown: false,
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="notifications" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="guests"
-          options={{
-            title: 'Guests',
-            headerShown: false,
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="people" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="reviews"
-          options={{
-            title: 'Reviews',
-            headerShown: false,
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="chatbubbles" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="more"
-          options={{
-            title: 'More',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="ellipsis-horizontal" size={size} color={color} />
-            ),
-          }}
-        />
-      </Tabs>
-    </DataProvider>
+      />
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: 'Inbox',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="guests"
+        options={{
+          title: 'Guests',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="reviews"
+        options={{
+          title: 'Reviews',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'More',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
 
