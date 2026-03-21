@@ -48,9 +48,10 @@ export default function GuestDetailScreen() {
         [allReviews, id, guest?.name]
     );
 
-    // If context reviews are empty but guest has reviews, fetch from pulse API as fallback
+    // Only fetch pulse API as fallback if allReviews is fully loaded AND this guest has no matches.
+    // allReviews.length > 0 ensures we don't fire during React state propagation delays.
     useEffect(() => {
-        if (contextReviews.length === 0 && id) {
+        if (allReviews.length > 0 && contextReviews.length === 0 && id) {
             fetchGuestPulse(id)
                 .then(data => {
                     if (data?.recent_reviews?.length) {
@@ -59,7 +60,7 @@ export default function GuestDetailScreen() {
                 })
                 .catch(() => {});
         }
-    }, [contextReviews.length, id]);
+    }, [allReviews.length, contextReviews.length, id]);
 
     // Use context reviews if available, otherwise fallback
     const guestReviews = contextReviews.length > 0 ? contextReviews : fallbackReviews;
@@ -176,9 +177,11 @@ export default function GuestDetailScreen() {
             <View style={s.reviewsSection}>
                 <Text style={s.sectionHeader}>Reviews</Text>
                 {guestReviews.length === 0 ? (
+                    allReviews.length === 0 ? null : (
                     <Text style={s.emptyText}>
                         {guest.visit_count ? 'Loading reviews...' : 'No reviews yet.'}
                     </Text>
+                    )
                 ) : (
                     guestReviews.map((r) => {
                         const isExpanded = expandedReviews.has(r.id);
