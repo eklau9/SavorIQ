@@ -247,7 +247,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 // Always populate the in-memory cache so refreshAll gets instant hits
                 dashboardCache.current = diskCache;
                 const ALL_KEYS = ['30', '90', '180', '365', 'all'];
-                const allLoaded = ALL_KEYS.every(k => diskCache[k]?.briefing);
+                // Only treat a frame as "loaded" if it has a REAL briefing with actual insights.
+                // Fallback briefings (from previous Gemini failures) have insights: [] and should
+                // NOT be considered loaded — they need to be retried.
+                const allLoaded = ALL_KEYS.every(k => {
+                    const b = diskCache[k]?.briefing;
+                    return b && Array.isArray(b.insights) && b.insights.length > 0;
+                });
 
                 if (isSwitching) {
                     // Restaurant switch: DON'T shortcut the loading screen.
@@ -305,8 +311,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const cached = dashboardCache.current[cacheKey];
         if (cached) {
             setDashboardData(cached);
-            // If cache has a real briefing, we're fully loaded — skip everything
-            if (dashboardCache.current[cacheKey].briefing) {
+            // If cache has a REAL briefing (with actual insights), we're fully loaded — skip everything
+            const cachedBriefing = dashboardCache.current[cacheKey].briefing;
+            if (cachedBriefing && Array.isArray(cachedBriefing.insights) && cachedBriefing.insights.length > 0) {
                 setLoading(false);
                 if (Platform.OS === 'web' && typeof window !== 'undefined') {
                     window.dispatchEvent(new Event('savoriq-ready'));
@@ -548,9 +555,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         
         for (const frame of otherFrames) {
             const key = frame ? String(frame) : 'all';
-            if (dashboardCache.current[key]?.briefing) {
+            const existingBriefing = dashboardCache.current[key]?.briefing;
+            if (existingBriefing && Array.isArray(existingBriefing.insights) && existingBriefing.insights.length > 0) {
                 completed++;
-                continue; // Already has briefing
+                continue; // Already has REAL briefing
             }
             if (!dashboardCache.current[key]) {
                 completed++;
