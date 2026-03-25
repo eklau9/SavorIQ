@@ -16,6 +16,8 @@ import {
     fetchBriefing,
     fetchHistoricalTrends,
     HistoricalTrends,
+    fetchMenuItems,
+    SavedMenuItem,
 } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRestaurant } from './RestaurantContext';
@@ -100,6 +102,8 @@ interface DataContextType {
     operations: OperationsAnalytics | null;
     priorities: GuestPrioritized[];
     historicalTrends: HistoricalTrends | null;
+    menuItems: SavedMenuItem[];
+    setMenuItems: React.Dispatch<React.SetStateAction<SavedMenuItem[]>>;
     loading: boolean;
     progress: number;
     loadingStep: string;
@@ -121,6 +125,8 @@ const DataContext = createContext<DataContextType>({
     operations: null,
     priorities: [],
     historicalTrends: null,
+    menuItems: [],
+    setMenuItems: () => {},
     loading: false,
     progress: 0,
     loadingStep: '',
@@ -143,6 +149,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [operations, setOperations] = useState<OperationsAnalytics | null>(null);
     const [priorities, setPriorities] = useState<GuestPrioritized[]>([]);
     const [historicalTrends, setHistoricalTrends] = useState<HistoricalTrends | null>(null);
+    const [menuItems, setMenuItems] = useState<SavedMenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
     const [loadingStep, setLoadingStep] = useState('');
@@ -188,6 +195,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             withTimeout(fetchReviewStats()).then(setReviewStats),
             withTimeout(fetchGuestPriorities()).then(setPriorities),
             withTimeout(fetchOperationsAnalytics()).then(setOperations),
+            withTimeout(fetchMenuItems()).then(setMenuItems),
         ]);
     }, [activeId]);
     const currentDaysRef = useRef<number | null | undefined>(undefined);
@@ -631,6 +639,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             operations,
             priorities,
             historicalTrends,
+            menuItems,
+            setMenuItems,
             loading,
             progress,
             loadingStep,

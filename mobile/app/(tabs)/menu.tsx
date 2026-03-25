@@ -16,10 +16,8 @@ import { Stack } from 'expo-router';
 
 export default function MenuScreen() {
     const { activeId } = useRestaurant();
-    const { dashboardData } = useData();
+    const { dashboardData, menuItems, setMenuItems } = useData();
 
-    const [menuItems, setMenuItems] = useState<SavedMenuItem[]>([]);
-    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'all' | 'food' | 'drink'>('all');
 
@@ -36,24 +34,20 @@ export default function MenuScreen() {
     const [showScanResults, setShowScanResults] = useState(false);
     const [savingScanned, setSavingScanned] = useState(false);
 
-    // Performance data from dashboard analytics
-    const topPerformers = dashboardData?.top_performers || [];
-    const risks = dashboardData?.risks || [];
-
-    const loadItems = useCallback(async () => {
+    // Refresh menu items after mutations (add/delete/scan)
+    const refreshMenuItems = useCallback(async () => {
         if (!activeId) return;
         try {
-            setLoading(true);
             const items = await fetchMenuItems();
             setMenuItems(items);
         } catch (e) {
-            console.warn('Failed to load menu items:', e);
-        } finally {
-            setLoading(false);
+            console.warn('Failed to refresh menu items:', e);
         }
-    }, [activeId]);
+    }, [activeId, setMenuItems]);
 
-    useEffect(() => { loadItems(); }, [loadItems]);
+    // Performance data from dashboard analytics
+    const topPerformers = dashboardData?.top_performers || [];
+    const risks = dashboardData?.risks || [];
 
     // Build performance map: item name (lowercase) -> { mentions, positive_pct }
     const perfMap = new Map<string, { mentions: number; sentiment: 'positive' | 'negative' | 'neutral' }>();
@@ -84,7 +78,7 @@ export default function MenuScreen() {
             await createMenuItem(newItemName.trim(), newItemCategory);
             setNewItemName('');
             setShowAddModal(false);
-            await loadItems();
+            await refreshMenuItems();
         } catch (e: any) {
             Alert.alert('Error', e.message || 'Failed to add item');
         } finally {
@@ -146,7 +140,7 @@ export default function MenuScreen() {
             setShowScanResults(false);
             setExtractedItems([]);
             setSelectedExtracted(new Set());
-            await loadItems();
+            await refreshMenuItems();
         } catch (e: any) {
             Alert.alert('Error', e.message || 'Failed to save items');
         } finally {
@@ -178,11 +172,7 @@ export default function MenuScreen() {
                 <Text style={s.title}>Menu</Text>
             </View>
 
-            {loading ? (
-                <View style={s.loadingWrap}>
-                    <ActivityIndicator color={colors.accent.gold} size="large" />
-                </View>
-            ) : menuItems.length === 0 ? (
+            {menuItems.length === 0 ? (
                 /* ── Empty State ── */
                 <View style={s.emptyContainer}>
                     <View style={s.emptyCard}>
