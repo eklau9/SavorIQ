@@ -7,9 +7,8 @@ import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
 import { useData } from '@/lib/DataContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setApiBase, getApiBase, resetAndSync, fetchSyncProgress, cancelSync } from '@/lib/api';
+import { getApiBase, resetAndSync, fetchSyncProgress, cancelSync } from '@/lib/api';
 import { useState, useEffect, useRef } from 'react';
-import Constants from 'expo-constants';
 import { SyncProgressOverlay } from '@/components/SyncProgressOverlay';
 import { SyncReportOverlay } from '@/components/SyncReportOverlay';
 import { SyncConfirmOverlay } from '@/components/SyncConfirmOverlay';
@@ -20,7 +19,6 @@ export default function MoreScreen() {
     const { restaurants, activeId, activeName, switchRestaurant, loadRestaurants } = useRestaurant();
     const { refreshAll } = useData();
 
-    const [currentApi, setCurrentApi] = useState<string>('Loading...');
     const [syncing, setSyncing] = useState(false);
     
     // Progress state
@@ -43,11 +41,6 @@ export default function MoreScreen() {
     const pollIntervalRef = useRef<any>(null);
 
     useEffect(() => {
-        (async () => {
-            const api = await getApiBase();
-            setCurrentApi(api);
-        })();
-        
         return () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
         };
@@ -179,18 +172,15 @@ export default function MoreScreen() {
         }
     };
 
-    const handleSwitchApi = async (url: string | null, label: string) => {
-        await setApiBase(url);
-        const newApi = await getApiBase();
-        setCurrentApi(newApi);
 
-        // Re-fetch restaurants immediately to update the list
-        await loadRestaurants();
-
-        Alert.alert('API Switched', `Now using ${label}: ${newApi}.`, [
-            { text: 'OK' }
-        ]);
-    };
+    const [showAllLocations, setShowAllLocations] = useState(false);
+    const MAX_VISIBLE_LOCATIONS = 3;
+    const hasMany = restaurants.length > MAX_VISIBLE_LOCATIONS;
+    const visibleRestaurants = hasMany && !showAllLocations
+        ? restaurants.filter(r => r.id === activeId).concat(
+            restaurants.filter(r => r.id !== activeId).slice(0, MAX_VISIBLE_LOCATIONS - 1)
+          )
+        : restaurants;
 
     return (
         <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -224,65 +214,84 @@ export default function MoreScreen() {
                         </TouchableOpacity>
                     </View>
                 ) : (
-                    restaurants.map((r) => (
-                        <TouchableOpacity
-                            key={r.id}
-                            style={[s.locationRow, r.id === activeId && s.locationRowActive]}
-                            onPress={() => {
-                                if (r.id !== activeId) {
-                                    Alert.alert(
-                                        'Switch Location',
-                                        `Switch to ${r.name}?`,
-                                        [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            {
-                                                text: 'Switch',
-                                                onPress: () => {
-                                                    switchRestaurant(r.id);
-                                                    router.replace('/(tabs)');
+                    <>
+                        {visibleRestaurants.map((r) => (
+                            <TouchableOpacity
+                                key={r.id}
+                                style={[s.locationRow, r.id === activeId && s.locationRowActive]}
+                                onPress={() => {
+                                    if (r.id !== activeId) {
+                                        Alert.alert(
+                                            'Switch Location',
+                                            `Switch to ${r.name}?`,
+                                            [
+                                                { text: 'Cancel', style: 'cancel' },
+                                                {
+                                                    text: 'Switch',
+                                                    onPress: () => {
+                                                        switchRestaurant(r.id);
+                                                        router.replace('/(tabs)');
+                                                    },
                                                 },
-                                            },
-                                        ]
-                                    );
-                                }
-                            }}
-                        >
-                            <Ionicons
-                                name={r.id === activeId ? 'radio-button-on' : 'radio-button-off'}
-                                size={20}
-                                color={r.id === activeId ? colors.accent.gold : colors.text.muted}
-                            />
-                            <View style={{ flex: 1 }}>
-                                <Text style={[s.locationName, r.id === activeId && { color: colors.accent.gold }]}>
-                                    {r.name}
-                                </Text>
-                                <Text style={s.locationUrl} numberOfLines={1}>
-                                    {r.address || r.platform_url || 'No address provided'}
-                                </Text>
-                            </View>
-                            {r.id === activeId && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <TouchableOpacity
-                                        style={[s.syncBtnInline, syncing && { opacity: 0.7 }]}
-                                        onPress={handleSyncNow}
-                                        disabled={syncing}
-                                    >
-                                        {syncing ? (
-                                            <ActivityIndicator size="small" color={colors.accent.gold} />
-                                        ) : (
-                                            <>
-                                                <Ionicons name="sync" size={14} color={colors.accent.gold} />
-                                                <Text style={s.syncBtnText}>Sync Now</Text>
-                                            </>
-                                        )}
-                                    </TouchableOpacity>
-                                    <View style={s.activeBadge}>
-                                        <Text style={s.activeText}>Active</Text>
-                                    </View>
+                                            ]
+                                        );
+                                    }
+                                }}
+                            >
+                                <Ionicons
+                                    name={r.id === activeId ? 'radio-button-on' : 'radio-button-off'}
+                                    size={20}
+                                    color={r.id === activeId ? colors.accent.gold : colors.text.muted}
+                                />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[s.locationName, r.id === activeId && { color: colors.accent.gold }]}>
+                                        {r.name}
+                                    </Text>
+                                    <Text style={s.locationUrl} numberOfLines={1}>
+                                        {r.address || r.platform_url || 'No address provided'}
+                                    </Text>
                                 </View>
-                            )}
-                        </TouchableOpacity>
-                    ))
+                                {r.id === activeId && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <TouchableOpacity
+                                            style={[s.syncBtnInline, syncing && { opacity: 0.7 }]}
+                                            onPress={handleSyncNow}
+                                            disabled={syncing}
+                                        >
+                                            {syncing ? (
+                                                <ActivityIndicator size="small" color={colors.accent.gold} />
+                                            ) : (
+                                                <>
+                                                    <Ionicons name="sync" size={14} color={colors.accent.gold} />
+                                                    <Text style={s.syncBtnText}>Sync Now</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                        <View style={s.activeBadge}>
+                                            <Text style={s.activeText}>Active</Text>
+                                        </View>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                        {hasMany && (
+                            <TouchableOpacity
+                                style={s.showMoreBtn}
+                                onPress={() => setShowAllLocations(!showAllLocations)}
+                            >
+                                <Ionicons
+                                    name={showAllLocations ? 'chevron-up' : 'chevron-down'}
+                                    size={16}
+                                    color={colors.accent.gold}
+                                />
+                                <Text style={s.showMoreText}>
+                                    {showAllLocations
+                                        ? 'Show Less'
+                                        : `Show All (${restaurants.length})`}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </>
                 )}
             </View>
 
@@ -290,19 +299,11 @@ export default function MoreScreen() {
             <View style={s.section}>
                 <Text style={s.sectionTitle}>Tools</Text>
                 <MenuItem
-                    icon="restaurant"
-                    label="Upload Menu"
-                    subtitle="Snap a photo for exact item tracking"
-                    onPress={() => router.push('/menu-upload')}
-                />
-                <MenuItem
-                    icon="sync"
-                    label="Review Sync"
-                    subtitle="Fetch new reviews from Google & Yelp"
+                    icon="search"
+                    label="Find Business"
+                    subtitle="Search & sync a new restaurant"
                     onPress={() => router.push('/sync')}
                 />
-                <MenuItem icon="analytics" label="Sentiment Analysis" subtitle="Detailed sentiment breakdowns" />
-                <MenuItem icon="bar-chart" label="Operations Analytics" subtitle="Revenue & performance metrics" />
             </View>
 
             {/* Operator Tools */}
@@ -319,62 +320,14 @@ export default function MoreScreen() {
                 />
             </View>
 
-            {/* Data Sources Explanation */}
+            {/* Sign Out */}
             <View style={s.section}>
-                <Text style={s.sectionTitle}>Data Sources</Text>
-                <View style={s.dataSourcesCard}>
-                    <View style={s.sourceItem}>
-                        <Ionicons name="logo-google" size={16} color="#4285F4" />
-                        <Text style={s.sourceText}>Google Maps Reviews (Scraped via Apify)</Text>
-                    </View>
-                    <View style={s.sourceItem}>
-                        <Ionicons name="star-outline" size={16} color="#FF1A1A" />
-                        <Text style={s.sourceText}>Yelp Fusion & Scraper (Apify)</Text>
-                    </View>
-                    <Text style={s.sourceDisclaimer}>
-                        Reviews are synced periodically to ensure sentiment scores reflect the latest customer feedback.
-                    </Text>
-                </View>
-            </View>
-
-
-            {/* App Info */}
-            <View style={s.section}>
-                <Text style={s.sectionTitle}>Connectivity Debug</Text>
-                <View style={s.infoRow}>
-                    <Text style={s.infoLabel}>Host URI</Text>
-                    <Text style={s.infoValue}>{Constants.expoConfig?.hostUri || 'None'}</Text>
-                </View>
-                <View style={s.infoRow}>
-                    <Text style={s.infoLabel}>Active API URL</Text>
-                    <Text style={s.infoValue}>{currentApi}</Text>
-                </View>
-                <View style={s.infoRow}>
-                    <Text style={s.infoLabel}>App Version</Text>
-                    <Text style={s.infoValue}>1.0.0</Text>
-                </View>
-
-                {/* API Switcher */}
-                <View style={s.apiCard}>
-                    <Text style={s.apiCurrentLabel}>Switch Environment:</Text>
-                    <View style={s.apiBtnRow}>
-                        <TouchableOpacity
-                            style={s.apiBtn}
-                            onPress={() => handleSwitchApi(null, 'Production')}
-                        >
-                            <Text style={s.apiBtnText}>Cloud (Public)</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={s.apiBtn}
-                            onPress={() => handleSwitchApi('http://localhost:8000', 'Local')}
-                        >
-                            <Text style={s.apiBtnText}>Local (Dev)</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={s.apiDesc}>
-                        Switch to "Local" to see changes I'm making to your local database/code.
-                    </Text>
-                </View>
+                <MenuItem
+                    icon="log-out"
+                    label="Sign Out"
+                    subtitle="Clear access key and sign out"
+                    onPress={handleSignOut}
+                />
             </View>
             
             <SyncProgressOverlay
@@ -517,24 +470,17 @@ const s = StyleSheet.create({
         backgroundColor: colors.accent.gold + '20', borderRadius: radius.sm,
     },
     reloadTinyText: { color: colors.accent.gold, fontWeight: '700', fontSize: fonts.sizes.xs },
-    apiCard: {
-        backgroundColor: colors.bg.card, borderRadius: radius.md,
-        padding: spacing.md, borderWidth: 1, borderColor: colors.border.subtle,
-    },
-    apiCurrentLabel: { color: colors.text.secondary, fontSize: fonts.sizes.sm, marginBottom: spacing.md },
-    apiBtnRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
-    apiBtn: {
-        flex: 1, backgroundColor: colors.bg.secondary, padding: 8,
-        borderRadius: radius.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.border.default,
-    },
-    apiBtnText: { color: colors.text.primary, fontSize: fonts.sizes.xs, fontWeight: '600' },
-    apiDesc: { color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: 4, lineHeight: 16 },
 
-    dataSourcesCard: {
-        backgroundColor: colors.bg.card, borderRadius: radius.md,
-        padding: spacing.md, borderWidth: 1, borderColor: colors.border.subtle,
+    showMoreBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: spacing.sm,
     },
-    sourceItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
-    sourceText: { color: colors.text.secondary, fontSize: fonts.sizes.sm },
-    sourceDisclaimer: { color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: spacing.sm, fontStyle: 'italic' },
+    showMoreText: {
+        color: colors.accent.gold,
+        fontSize: fonts.sizes.xs,
+        fontWeight: '700',
+    },
 });

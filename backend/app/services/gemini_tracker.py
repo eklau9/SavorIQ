@@ -109,12 +109,13 @@ async def perform_gemini_probe() -> dict:
         usage = get_gemini_usage()
         
         if "429" in error_msg:
-            # Only calibrate to 1500 if Google EXPLICITLY says daily quota
+            # Distinguish between RPM burst and actual daily exhaustion,
+            # but do NOT auto-calibrate the counter — that locks us out
+            # for the rest of the day even on temporary rate limits.
             if "perday" in error_msg or "per_day" in error_msg:
-                await calibrate_gemini_usage(1500)
-                return {"configured": True, "status": "error", "message": "Daily Quota Exhausted (1500/1500)."}
+                return {"configured": True, "status": "error", "message": "Daily Quota may be exhausted. Counter NOT auto-set — retry later."}
             
-            # Otherwise it's a minute-level burst limit (RPM) — much more common
+            # Minute-level burst limit (RPM) — much more common
             return {"configured": True, "status": "error", "message": "Minute Burst Limit Hit (RPM). Try again in 60 seconds."}
             
         return {"configured": True, "status": "error", "message": str(e)}

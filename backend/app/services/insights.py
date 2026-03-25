@@ -187,9 +187,6 @@ async def generate_manager_briefing(
                 # Daily quota exhausted — don't retry, it won't help until midnight PT
                 if is_429 and is_daily_quota:
                     logger.warning(f"Gemini daily quota exhausted — aborting retries")
-                    from app.services.gemini_tracker import get_gemini_usage, calibrate_gemini_usage
-                    usage = get_gemini_usage()
-                    await calibrate_gemini_usage(usage.get("rpd_limit", 1000))
                     break  # Exit retry loop, fall through to last-known-good
                 
                 # RPM burst — worth retrying

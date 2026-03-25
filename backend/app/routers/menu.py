@@ -95,8 +95,10 @@ async def extract_from_photo(
     Returns extracted items for user review/confirmation before saving.
     """
     from app.services.discovery import extract_menu_from_image
+    from app.services.gemini_tracker import record_gemini_request
 
     raw_items = await extract_menu_from_image(payload.image_base64)
+    record_gemini_request()
 
     # Normalize the results
     items = []
@@ -112,6 +114,52 @@ async def extract_from_photo(
         ))
 
     return items
+
+
+@router.post("/merge", response_model=List[MenuItemRead])
+async def merge_menu_items(
+    payload: BulkAddRequest,
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add items to the menu without deleting existing ones.
+    
+    Deduplicates by name (case-insensitive). Existing items with the same
+    name are kept; only new items are inserted.
+    """
+    # Get existing item names for dedup
+    result = await db.execute(
+        select(MenuItem.name)
+        .where(MenuItem.restaurant_id == x_restaurant_id, MenuItem.is_active == True)
+    )
+    existing_names = {name.lower() for name in result.scalars().all()}
+
+    added = []
+    for item_data in payload.items:
+        if item_data.name.lower() in existing_names:
+            continue  # Skip duplicates
+        category = item_data.category.lower()
+        if category not in ("food", "drink"):
+            category = "food"
+        item = MenuItem(
+            restaurant_id=x_restaurant_id,
+            name=item_data.name,
+            category=category,
+            keywords=item_data.keywords,
+        )
+        db.add(item)
+        await db.flush()
+        await db.refresh(item)
+        added.append(item)
+        existing_names.add(item_data.name.lower())
+
+    # Return full list (existing + newly added)
+    all_result = await db.execute(
+        select(MenuItem)
+        .where(MenuItem.restaurant_id == x_restaurant_id, MenuItem.is_active == True)
+        .order_by(MenuItem.name)
+    )
+    return all_result.scalars().all()
 
 
 @router.post("/bulk-add", response_model=List[MenuItemRead])

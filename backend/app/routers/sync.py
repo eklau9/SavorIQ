@@ -191,24 +191,24 @@ async def reset_and_sync(
                     biz_name = best["name"]
 
                 # ── Scrape reviews via Apify ──
-                sync_manager.update_progress(restaurant_id, 10, f"Scraping {platform}...")
+                sync_manager.update_progress(restaurant_id, 10, f"Scraping reviews...", platform=platform)
                 if platform == "google":
                     raw_reviews = await apify_google_reviews(
                         biz_url, 100000,
-                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
                     )
                 else:
                     raw_reviews = await apify_yelp_reviews(
                         biz_url, 100000,
-                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
                     )
 
                 # ── Ingest ──
-                sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...")
+                sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...", platform=platform)
                 def _ingest_progress(done, total):
                     pct = 35 + int(5 * (done / total)) if total else 35
                     sync_manager.update_progress(restaurant_id, pct, f"Ingesting review {done}/{total}...",
-                                                 processed_count=done, total_count=total)
+                                                 processed_count=done, total_count=total, platform=platform)
                 report = await ingest_reviews(session, restaurant_id, ReviewPlatform(platform), raw_reviews, full_sync=True,
                                              progress_callback=_ingest_progress)
 
@@ -219,13 +219,13 @@ async def reset_and_sync(
                         .order_by(Review.ingested_at.desc()).limit(report.ingested)
                     )
                     new_reviews = res.scalars().all()
-                    batch_size = 25
+                    batch_size = 130
                     reviews_to_analyze = [{"id": r.id, "text": r.content} for r in new_reviews]
                     total_reviews = len(reviews_to_analyze)
                     import time as _time
                     _batch_start = _time.monotonic()
                     sync_manager.update_progress(restaurant_id, 40, f"Analyzing sentiment... (0/{total_reviews})",
-                                                 processed_count=0, total_count=total_reviews)
+                                                 processed_count=0, total_count=total_reviews, platform=platform)
                     for i in range(0, total_reviews, batch_size):
                         batch = reviews_to_analyze[i : i + batch_size]
                         await analyze_and_store_batch(session, batch)
@@ -237,7 +237,7 @@ async def reset_and_sync(
                         sync_manager.update_progress(
                             restaurant_id, pct,
                             f"Analyzing sentiment... ({done}/{total_reviews})",
-                            processed_count=done, total_count=total_reviews, est_remaining=eta
+                            processed_count=done, total_count=total_reviews, est_remaining=eta, platform=platform
                         )
                         if done < total_reviews:
                             await asyncio.sleep(4)
@@ -256,6 +256,7 @@ async def reset_and_sync(
                 await session.commit()
                 api_cache.invalidate(restaurant_id)
 
+                sync_manager.finish_platform(restaurant_id, platform, new_ingested=report.ingested)
                 return {"platform": platform, "status": "success", "new_ingested": report.ingested}
             except Exception as e:
                 logger.error(f"Background sync failed for {platform}: {e}", exc_info=True)
@@ -515,8 +516,9 @@ async def sync_apify_reviews_endpoint(
             await db.commit()
             target_restaurant_id = new_res.id
 
-    # Initialize progress tracking
-    sync_manager.start_sync(target_restaurant_id, f"Initializing {platform} sync...")
+    # Initialize progress tracking (only if not already active — prevents second platform from resetting first)
+    if not sync_manager.get_state(target_restaurant_id) or sync_manager.get_state(target_restaurant_id).percent >= 100:
+        sync_manager.start_sync(target_restaurant_id, f"Initializing sync...")
 
     # ── Background Worker ──
     async def _run_sync_task(
@@ -567,7 +569,7 @@ async def sync_apify_reviews_endpoint(
                     )
                     local_count = local_count_result.scalar() or 0
 
-                    sync_manager.update_progress(restaurant_id, 5, f"Checking {platform} live counts...")
+                    sync_manager.update_progress(restaurant_id, 5, f"Checking live counts...", platform=platform)
                     live_count = local_count
                     
                     # Try to get live count for decision making
@@ -592,7 +594,7 @@ async def sync_apify_reviews_endpoint(
                     
                     sys.stdout.write(f"SYNC: local={local_count} live={live_count} mode={sync_mode} max={max_reviews}\n")
                     sys.stdout.flush()
-                    sync_manager.update_progress(restaurant_id, 10, f"Scraping {platform} ({sync_mode})...")
+                    sync_manager.update_progress(restaurant_id, 10, f"Scraping reviews ({sync_mode})...", platform=platform)
 
                     # ── Fetch reviews ──
                     try:
@@ -600,16 +602,15 @@ async def sync_apify_reviews_endpoint(
                             raw_reviews = await apify_google_reviews(
                                 business_url, 
                                 max_reviews, 
-                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
                             )
-                            review_platform = ReviewPlatform(platform)
                         else:
                             raw_reviews = await apify_yelp_reviews(
                                 business_url, 
                                 max_reviews,
-                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s)
+                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
                             )
-                            review_platform = ReviewPlatform(platform)
+                        review_platform = ReviewPlatform(platform)
                     except Exception as e:
                         logger.error(f"Apify error: {e}")
                         sys.stdout.write(f"SYNC ERROR: Apify failed: {e}\n")
@@ -619,12 +620,12 @@ async def sync_apify_reviews_endpoint(
 
                     sys.stdout.write(f"SYNC: got {len(raw_reviews)} reviews, ingesting...\n")
                     sys.stdout.flush()
-                    sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...")
+                    sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...", platform=platform)
                     
                     def _ingest_progress(done, total):
                         pct = 35 + int(5 * (done / total)) if total else 35
                         sync_manager.update_progress(restaurant_id, pct, f"Ingesting review {done}/{total}...",
-                                                     processed_count=done, total_count=total)
+                                                     processed_count=done, total_count=total, platform=platform)
                     
                     # ── Ingest into SavorIQ ──
                     report = await ingest_reviews(bg_db, restaurant_id, review_platform, raw_reviews, full_sync=is_full_sync, stop_on_match=not is_full_sync,
@@ -648,7 +649,7 @@ async def sync_apify_reviews_endpoint(
                         total_reviews = len(reviews_to_analyze)
                         _batch_start = _time.monotonic()
                         sync_manager.update_progress(restaurant_id, 40, f"Analyzing sentiment... (0/{total_reviews})",
-                                                     processed_count=0, total_count=total_reviews)
+                                                     processed_count=0, total_count=total_reviews, platform=platform)
                         for i in range(0, total_reviews, batch_size):
                             batch = reviews_to_analyze[i : i + batch_size]
                             await analyze_and_store_batch(bg_db, batch)
@@ -660,7 +661,7 @@ async def sync_apify_reviews_endpoint(
                             sync_manager.update_progress(
                                 restaurant_id, pct,
                                 f"Analyzing sentiment... ({done}/{total_reviews})",
-                                processed_count=done, total_count=total_reviews, est_remaining=eta
+                                processed_count=done, total_count=total_reviews, est_remaining=eta, platform=platform
                             )
                             if done < total_reviews:
                                 await asyncio.sleep(4)
@@ -680,7 +681,7 @@ async def sync_apify_reviews_endpoint(
                     # ── Automatic Menu Discovery ──
                     m_count = (await bg_db.execute(select(func.count(MenuItem.id)).where(MenuItem.restaurant_id == restaurant_id))).scalar() or 0
                     if m_count == 0 and report.ingested > 0:
-                        sync_manager.update_progress(restaurant_id, 95, "Discovering menu items...")
+                        sync_manager.update_progress(restaurant_id, 95, "Discovering menu items...", platform=platform)
                         try:
                             # Fetch review texts to feed into AI discovery
                             review_rows = (await bg_db.execute(
@@ -708,8 +709,7 @@ async def sync_apify_reviews_endpoint(
 
                     # ── Finalize ──
                     api_cache.invalidate(restaurant_id)
-                    sync_manager.finish_sync(restaurant_id, status=f"✅ Sync complete: {report.ingested} new reviews.",
-                                             new_ingested=report.ingested, platform=platform)
+                    sync_manager.finish_platform(restaurant_id, platform, new_ingested=report.ingested)
                     sys.stdout.write(f"SYNC: COMPLETE for {restaurant_id} - {report.ingested} new reviews\n")
                     sys.stdout.flush()
                     logger.info(f"Background Sync for {restaurant_id} ({platform}) completed successfully.")

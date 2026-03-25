@@ -554,3 +554,23 @@ export async function fetchMenuItems(): Promise<SavedMenuItem[]> {
     return apiFetch<SavedMenuItem[]>('/api/menu');
 }
 
+export async function mergeMenuItems(items: ExtractedMenuItem[]): Promise<SavedMenuItem[]> {
+    return apiFetch<SavedMenuItem[]>('/api/menu/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+    });
+}
+
+export async function deleteMenuItem(itemId: string): Promise<void> {
+    await apiFetch(`/api/menu/${itemId}`, { method: 'DELETE' });
+}
+
+export async function createMenuItem(name: string, category: string): Promise<SavedMenuItem> {
+    return apiFetch<SavedMenuItem>('/api/menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, category, keywords: name.toLowerCase() }),
+    });
+}
+

@@ -206,16 +206,6 @@ function TabsWithLoadingGate() {
         }}
       />
       <Tabs.Screen
-        name="inbox"
-        options={{
-          title: 'Inbox',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="guests"
         options={{
           title: 'Guests',
@@ -236,12 +226,29 @@ function TabsWithLoadingGate() {
         }}
       />
       <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="restaurant" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="more"
         options={{
           title: 'More',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="ellipsis-horizontal" size={size} color={color} />
           ),
+        }}
+      />
+      {/* Hide inbox from tabs — file kept for backward compat but not shown */}
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

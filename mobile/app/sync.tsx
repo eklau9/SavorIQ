@@ -275,18 +275,25 @@ export default function SyncScreen() {
         }, 1000);
 
         try {
-            // Run platform syncs SEQUENTIALLY to prevent duplicate restaurant creation.
-            // The first call creates the restaurant and returns its ID as tracking_id.
-            // The second call reuses that ID.
+            // Fire platform syncs concurrently. The /apify-reviews endpoint is fire-and-forget
+            // (returns immediately with tracking_id), so both background tasks run in parallel.
+            // We fire the first call to get the tracking_id, then immediately fire the second.
             let primaryTrackingId: string | null = null;
             const syncResults: any[] = [];
 
-            if (item.google) {
-                const res = await syncApifyReviews('google', item.google.url || item.google.id, item.google.name, item.google.address, true, abortControllerRef.current.signal);
+            // Step 1: Fire first platform to get tracking_id (returns instantly)
+            const firstPlatform = item.google ? 'google' : 'yelp';
+            const firstData = item.google || item.yelp;
+            if (firstData) {
+                const res = await syncApifyReviews(firstPlatform, firstData.url || firstData.id, firstData.name, firstData.address, true, abortControllerRef.current.signal);
                 syncResults.push(res);
                 if (res?.tracking_id) primaryTrackingId = res.tracking_id;
             }
-            if (item.yelp) {
+
+            // Step 2: Fire second platform immediately (also returns instantly)
+            // Both background tasks now run concurrently on the backend
+            const secondPlatform = item.google && item.yelp ? 'yelp' : null;
+            if (secondPlatform && item.yelp) {
                 const res = await syncApifyReviews('yelp', item.yelp.url || item.yelp.id, item.yelp.name, item.yelp.address, true, abortControllerRef.current.signal, primaryTrackingId ?? undefined);
                 syncResults.push(res);
                 if (!primaryTrackingId && res?.tracking_id) primaryTrackingId = res.tracking_id;
