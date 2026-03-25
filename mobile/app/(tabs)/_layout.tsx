@@ -23,7 +23,8 @@ export default function TabLayout() {
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState(false);
 
-  // Check for cached access key on mount — auto-skip gate if valid
+  // Check for cached access key on mount — local-only, no network calls.
+  // RestaurantProvider + DataContext handle all API loading once we reach READY.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -31,16 +32,15 @@ export default function TabLayout() {
         const cached = await AsyncStorage.getItem('accessKey');
         if (cancelled) return;
         if (cached) {
-          // Validate the cached key by attempting a fetch
+          // Set the key locally — don't validate with a network call here.
+          // The data loading splash (TabsWithLoadingGate) handles everything once READY.
           await setAccessKey(cached);
-          await fetchRestaurants();
           if (!cancelled) setAppState('READY');
         } else {
           if (!cancelled) setAppState('GATE');
         }
       } catch (e) {
-        // Cached key is invalid — clear it and show gate
-        await AsyncStorage.removeItem('accessKey');
+        // AsyncStorage read failed — show gate
         if (!cancelled) setAppState('GATE');
       }
     })();
@@ -70,9 +70,9 @@ export default function TabLayout() {
 
   // ─── Render based on state ─────────────────────────────────────────
 
-  // LOADING: Checking cached key — show branded splash (no skip, no progress)
+  // LOADING: Checking AsyncStorage for cached key — near-instant, show minimal screen
   if (appState === 'LOADING') {
-    return <StartupLoadingScreen loadingStep="Checking access..." />;
+    return <View style={{ flex: 1, backgroundColor: colors.bg.primary }} />;
   }
 
   // GATE / AUTHENTICATING: Access key input

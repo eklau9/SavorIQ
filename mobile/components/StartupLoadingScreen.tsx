@@ -11,7 +11,7 @@ interface StartupLoadingScreenProps {
 }
 
 export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({
-    progress = 0,
+    progress,
     loadingStep = '',
     onSkip,
 }) => {
@@ -22,6 +22,7 @@ export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({
 
     // Animate progress bar
     useEffect(() => {
+        if (progress === undefined) return;
         Animated.timing(progressAnim, {
             toValue: progress / 100,
             duration: 400,
@@ -68,23 +69,27 @@ export const StartupLoadingScreen: React.FC<StartupLoadingScreenProps> = ({
                     {loadingStep || 'Loading intelligence...'}
                 </Text>
 
-                {/* Progress bar */}
-                <View style={s.progressTrack}>
-                    <Animated.View
-                        style={[
-                            s.progressFill,
-                            {
-                                width: progressAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: ['0%', '100%'],
-                                }),
-                            },
-                        ]}
-                    />
-                </View>
-                <Text style={s.progressPercent}>
-                    {progress.toFixed(2)}%
-                </Text>
+                {/* Progress bar — only show when progress tracking is active */}
+                {progress !== undefined && (
+                    <>
+                        <View style={s.progressTrack}>
+                            <Animated.View
+                                style={[
+                                    s.progressFill,
+                                    {
+                                        width: progressAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: ['0%', '100%'],
+                                        }),
+                                    },
+                                ]}
+                            />
+                        </View>
+                        <Text style={s.progressPercent}>
+                            {progress.toFixed(2)}%
+                        </Text>
+                    </>
+                )}
             </View>
 
             {/* Skip button */}
