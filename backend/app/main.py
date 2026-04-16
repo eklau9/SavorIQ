@@ -24,6 +24,10 @@ async def lifespan(app: FastAPI):
     """Initialize database tables and sync quotas on startup."""
     await init_db()
     
+    # Identify database type
+    db_type = "Supabase (Postgres)" if "postgresql" in settings.DATABASE_URL else "Local (SQLite)"
+    print(f"INFO: 🗄️ Database Connected: {db_type}")
+    
     # Perform initial Yelp quota sync
     try:
         await perform_live_sync()

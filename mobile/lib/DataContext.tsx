@@ -112,7 +112,7 @@ interface DataContextType {
 
     timeRange: number | null;
     setTimeRange: (range: number | null) => void;
-    refreshAll: (days?: number | null) => Promise<void>;
+    refreshAll: (days?: number | null, force?: boolean) => Promise<void>;
     skipLoading: () => void;
     cacheReady: boolean;
 }
@@ -135,7 +135,7 @@ const DataContext = createContext<DataContextType>({
 
     timeRange: 30,
     setTimeRange: () => {},
-    refreshAll: async (days?: number | null) => { },
+    refreshAll: async (days?: number | null, force?: boolean) => { },
     skipLoading: () => {},
     cacheReady: false,
 });
@@ -305,19 +305,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const timeRangeRef = useRef<number | null>(timeRange);
     useEffect(() => { timeRangeRef.current = timeRange; }, [timeRange]);
 
-    const refreshAll = useCallback(async (days?: number | null) => {
+    const refreshAll = useCallback(async (days?: number | null, force: boolean = false) => {
         if (!activeId) return;
 
         // Default to current timeRange when called without arguments
-        // (e.g., from Inbox focus, pull-to-refresh, action handlers)
-        // undefined = "use current filter", null = "ALL time", number = specific days
         const effectiveDays: number | null = days === undefined ? timeRangeRef.current : days;
         const cacheKey = effectiveDays ? String(effectiveDays) : 'all';
         currentDaysRef.current = effectiveDays;
 
+        if (force) {
+            delete dashboardCache.current[cacheKey];
+            await AsyncStorage.removeItem(CACHE_KEY_PREFIX + activeId);
+        }
+
         // 1. Instant Cache HIT - Show data immediately
         const cached = dashboardCache.current[cacheKey];
-        if (cached) {
+        if (cached && !force) {
             setDashboardData(cached);
             // If cache has a REAL briefing (with actual insights), we're fully loaded — skip everything
             const cachedBriefing = dashboardCache.current[cacheKey].briefing;
@@ -400,16 +403,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setLoadingStep('Sync Complete');
             setEstimatedSecondsRemaining(0);
 
-            // If no briefing to wait for (cache hit scenario), mark loading done
-            // Otherwise briefing .then/.catch will handle it
+            // Eagerly dismiss loading screen after a short grace period for the 100% animation 
+            setTimeout(() => {
+                setLoading(false);
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('savoriq-ready'));
+                }
+            }, 500);
 
             // Fetch briefing in background — dashboard shows inline spinner until it resolves
-            const briefingPromise = Promise.race([
-                fetchBriefing(effectiveDays, controller.signal),
-                new Promise<never>((_, reject) =>
-                    setTimeout(() => reject(new Error('Briefing timed out')), 30000)
-                )
-            ]).then((briefing) => {
+            fetchBriefing(effectiveDays, controller.signal).then((briefing) => {
                 const updated = { ...freshData, briefing };
                 dashboardCache.current[cacheKey] = updated;
                 
@@ -420,25 +423,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 coldLoadRef.current = false;
                 // Persist to disk after briefing loads
                 if (activeId) saveCacheToDisk(activeId, dashboardCache.current);
-                // Note: Don't dispatch savoriq-ready here — let the finally block handle it
-                // after all prefetching completes
             }).catch((e: any) => {
                 if (e.name !== 'AbortError') {
                     console.warn('Briefing fetch failed:', e);
                     if (currentDaysRef.current === effectiveDays) {
                         setDashboardData(prev => prev ? { ...prev, briefing: {
-                            summary: "AI Insights will generate on your next sync.",
+                            summary: "",
                             insights: [],
                             review_count_note: null,
                         }} : null);
                     }
                 }
-                // Don't set fallback briefing with real insights — badge stays 'Syncing...' for error state
                 coldLoadRef.current = false;
-                // Note: Don't dispatch savoriq-ready here — let the finally block handle it
             });
 
-            // Fetch other background metrics with timeouts to prevent hanging
+            // Fetch other background metrics concurrently — dashboard will be interactive while this finishes
             const withTimeout = (promise: Promise<any>, ms = 15000) => {
                 return Promise.race([
                     promise,
@@ -463,8 +462,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 withTimeout(fetchOperationsAnalytics(controller.signal)).then(d => { setOperations(d); bgResults.operations = d; }),
             ];
 
-            // Wait for all bg data (fast SQL queries, no Gemini) before dismissing splash.
-            // This ensures reviews/guests are available instantly when user navigates.
+            // Wait for all bg data (fast SQL queries, no Gemini) in parallel.
+            // Since we already called setLoading(false) above, this won't block the UI.
             await Promise.allSettled(bgOps);
             if (activeId) saveBgCacheToDisk(activeId, bgResults);
             bgDataLoaded.current = true;
@@ -480,18 +479,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 setHistoricalTrends(null);
             }
 
-            // Dismiss loading screen BEFORE prefetching other frames.
-            // User already saw 100% — let them interact while prefetch runs silently.
-            setLoading(false);
-            setProgress(100);
-            setLoadingStep('Sync Complete');
-            setEstimatedSecondsRemaining(0);
-            if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                window.dispatchEvent(new Event('savoriq-ready'));
-            }
-
             // Prefetch ALL other frames silently in background (no progress UI)
-            // 60s timeout guard: if prefetching stalls, just stop — partial cache is fine
             if (abortControllerRef.current === controller) {
                 await Promise.race([
                     prefetchOtherFrames(controller.signal, false),
@@ -558,6 +546,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await Promise.allSettled(analyticsPromises);
         
         // Step 2: Fetch briefings sequentially (Gemini RPM limit: 15/min, use 4s spacing)
+        // With DB-persistent cache, most of these will be instant DB hits (0 Gemini calls)
         let completed = 1; // Current frame's briefing already loaded
         const total = ALL_FRAMES.length;
         
@@ -593,7 +582,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     dashboardCache.current[key] = {
                         ...dashboardCache.current[key],
                         briefing: {
-                            summary: 'AI Insights will generate on your next sync.',
+                            summary: '',
                             insights: [],
                             review_count_note: null,
                         },

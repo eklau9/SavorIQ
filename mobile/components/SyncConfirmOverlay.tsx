@@ -9,6 +9,8 @@ interface SyncConfirmOverlayProps {
     message: string;
     onConfirm: () => void;
     onCancel: () => void;
+    confirmLabel?: string;
+    iconName?: string;
 }
 
 export const SyncConfirmOverlay: React.FC<SyncConfirmOverlayProps> = ({
@@ -16,7 +18,9 @@ export const SyncConfirmOverlay: React.FC<SyncConfirmOverlayProps> = ({
     title,
     message,
     onConfirm,
-    onCancel
+    onCancel,
+    confirmLabel = 'Sync Now',
+    iconName = 'sync',
 }) => {
     return (
         <Modal transparent visible={visible} animationType="fade">
@@ -25,7 +29,7 @@ export const SyncConfirmOverlay: React.FC<SyncConfirmOverlayProps> = ({
                     <View style={styles.card}>
                         <View style={styles.header}>
                             <View style={styles.iconContainer}>
-                                <Ionicons name="sync" size={32} color="#007AFF" />
+                                <Ionicons name={iconName as any} size={32} color="#007AFF" />
                             </View>
                             <Text style={styles.title}>{title}</Text>
                         </View>
@@ -37,7 +41,7 @@ export const SyncConfirmOverlay: React.FC<SyncConfirmOverlayProps> = ({
                                 <Text style={styles.cancelButtonText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.confirmButton} onPress={onConfirm}>
-                                <Text style={styles.confirmButtonText}>Sync Now</Text>
+                                <Text style={styles.confirmButtonText}>{confirmLabel}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

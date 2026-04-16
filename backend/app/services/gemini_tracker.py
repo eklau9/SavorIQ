@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-# Free Tier Limits
+# Free Tier Limits (gemini-2.0-flash)
+# NOTE: Limits are model-specific! gemini-2.5-flash = 250 RPD, gemini-2.0-flash = 1500 RPD
 RPM_LIMIT = 15
 RPD_LIMIT = 1500
 TRACKER_FILE = "gemini_quota.json"

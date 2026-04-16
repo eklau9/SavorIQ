@@ -19,10 +19,14 @@ logger = logging.getLogger(__name__)
 
 APIFY_BASE = "https://api.apify.com/v2"
 
+# In-memory cache for tokens that returned 403 — skip them for 24 hours
+_dead_tokens: dict[str, float] = {}  # token -> timestamp when marked dead
+_DEAD_TOKEN_TTL = 86400  # 24 hours
+
 
 def _get_apify_tokens() -> list[str]:
     """Build ordered list of Apify tokens: primary first, then fallbacks 1-N from env."""
-    import os
+    import os, time
     tokens = []
     if settings.APIFY_API_TOKEN:
         tokens.append(settings.APIFY_API_TOKEN)
@@ -45,8 +49,15 @@ def _get_apify_tokens() -> list[str]:
             if not os.environ.get(f"APIFY_FALLBACK_TOKEN_{i+1}"):
                 break
             i += 1
-            
-    return tokens
+
+    # Filter out recently-dead tokens
+    now = time.time()
+    alive = [t for t in tokens if now - _dead_tokens.get(t, 0) > _DEAD_TOKEN_TTL]
+    if not alive and tokens:
+        # All dead — clear cache and retry all (they may have recovered)
+        _dead_tokens.clear()
+        return tokens
+    return alive
 
 
 async def _run_apify_actor(
@@ -62,6 +73,7 @@ async def _run_apify_actor(
     Falls through to the next token on 402 (Payment Required) or
     429 (Too Many Requests) quota errors.
     """
+    import time as _time
     tokens = _get_apify_tokens()
     if not tokens:
         raise ValueError("No Apify tokens configured. Set APIFY_API_TOKEN or APIFY_FALLBACK_TOKENS.")
@@ -89,8 +101,9 @@ async def _run_apify_actor(
                 logger.warning(f"Apify {label}: network error — {exc}")
                 continue
 
-            # Quota exhausted or access denied → try next token
+            # Quota exhausted or access denied → mark dead and try next token
             if run_resp.status_code in (402, 403, 429):
+                _dead_tokens[token] = _time.time()
                 last_error = RuntimeError(
                     f"Apify {label}: unavailable (HTTP {run_resp.status_code})"
                 )
@@ -114,7 +127,7 @@ async def _run_apify_actor(
                     elapsed = poll_count * 5
                     progress_callback(pct, f"Scraping reviews... ({elapsed}s elapsed)")
 
-                await asyncio.sleep(5)
+                await asyncio.sleep(2.0 if poll_count <= 5 else 4.0)
 
                 poll_resp = await client.get(f"{APIFY_BASE}/actor-runs/{run_id}", headers=headers)
                 poll_resp.raise_for_status()

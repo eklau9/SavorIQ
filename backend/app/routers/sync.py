@@ -16,19 +16,13 @@ from app.schemas import ReviewPlatform, UnifiedBusiness, PlatformBusiness, SyncS
 import uuid
 import asyncio
 from math import radians, cos, sin, asin, sqrt
-from app.services.apify_sync import apify_google_reviews, apify_yelp_reviews
-from app.services.ingestion import ingest_reviews
 from sqlalchemy import func
-from app.services.sentiment import analyze_and_store_batch
-from app.services.cache import api_cache
 from app.services.sync import (
     google_search,
     yelp_search,
     google_autocomplete,
     yelp_autocomplete,
 )
-from app.services.discovery import discover_menu_items
-from app.models import MenuItem
 
 from app.services.sync_progress import sync_manager
 
@@ -145,41 +139,34 @@ async def reset_and_sync(
     result = await db.execute(stmt)
     logs = result.scalars().all()
 
-    # If no logs exist yet, run_single_sync will use deep discovery (search by restaurant name)
-
     # 2. Pick only the most recent log PER PLATFORM
     latest_per_platform: dict[str, SyncLog] = {}
     for log in logs:
         if log.platform not in latest_per_platform:
             latest_per_platform[log.platform] = log
 
-    # ── Trigger resync concurrently ──
     from app.database import async_session
-    
+    from app.services.sync_engine import execute_platform_sync
+
     async def run_single_sync(platform, log):
-        # We need to use the sync log data if available
+        """Discover business URL if needed, then delegate to shared sync engine."""
         biz_url = log.business_id if log else None
         biz_name = log.business_name if log else None
         
         async with async_session() as session:
             try:
                 if not biz_url:
-                    # Try to discover it if we don't have a log (Deep Discovery)
+                    # Deep Discovery: find the business by restaurant name
                     res_stmt = await session.execute(select(Restaurant).where(Restaurant.id == restaurant_id))
                     active_res = res_stmt.scalar_one_or_none()
                     if not active_res:
                         return {"platform": platform, "status": "error", "message": "Restaurant not found", "new_ingested": 0}
                     
                     biz_name = active_res.name
-                    # Strip non-ASCII chars for Yelp (e.g. "Shu Shia 树夏" → "Shu Shia")
-                    search_name = biz_name.encode('ascii', 'ignore').decode('ascii').strip()
-                    if not search_name:
-                        search_name = biz_name
-                    
-                    logger.info(f"Attempting to discover {platform} for '{search_name}' (from '{biz_name}')...")
+                    search_name = biz_name.encode('ascii', 'ignore').decode('ascii').strip() or biz_name
                     
                     if platform == "google":
-                        matches = await google_search(biz_name)  # Google handles CJK fine
+                        matches = await google_search(biz_name)
                     else:
                         matches = await yelp_search(search_name)
                     
@@ -190,93 +177,25 @@ async def reset_and_sync(
                     biz_url = best.get("place_url") if platform == "google" else best.get("url")
                     biz_name = best["name"]
 
-                # ── Scrape reviews via Apify ──
-                sync_manager.update_progress(restaurant_id, 10, f"Scraping reviews...", platform=platform)
-                if platform == "google":
-                    raw_reviews = await apify_google_reviews(
-                        biz_url, 100000,
-                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
-                    )
-                else:
-                    raw_reviews = await apify_yelp_reviews(
-                        biz_url, 100000,
-                        progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
-                    )
-
-                # ── Ingest ──
-                sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...", platform=platform)
-                def _ingest_progress(done, total):
-                    pct = 35 + int(5 * (done / total)) if total else 35
-                    sync_manager.update_progress(restaurant_id, pct, f"Ingesting review {done}/{total}...",
-                                                 processed_count=done, total_count=total, platform=platform)
-                report = await ingest_reviews(session, restaurant_id, ReviewPlatform(platform), raw_reviews, full_sync=True,
-                                             progress_callback=_ingest_progress)
-
-                # ── Sentiment analysis ──
-                if report.ingested > 0:
-                    res = await session.execute(
-                        select(Review).where(Review.restaurant_id == restaurant_id, Review.platform == platform)
-                        .order_by(Review.ingested_at.desc()).limit(report.ingested)
-                    )
-                    new_reviews = res.scalars().all()
-                    batch_size = 130
-                    reviews_to_analyze = [{"id": r.id, "text": r.content} for r in new_reviews]
-                    total_reviews = len(reviews_to_analyze)
-                    import time as _time
-                    _batch_start = _time.monotonic()
-                    sync_manager.update_progress(restaurant_id, 40, f"Analyzing sentiment... (0/{total_reviews})",
-                                                 processed_count=0, total_count=total_reviews, platform=platform)
-                    for i in range(0, total_reviews, batch_size):
-                        batch = reviews_to_analyze[i : i + batch_size]
-                        await analyze_and_store_batch(session, batch)
-                        done = min(i + batch_size, total_reviews)
-                        pct = 40 + int(50 * (done / total_reviews))
-                        elapsed = _time.monotonic() - _batch_start
-                        rate = done / elapsed if elapsed > 0 else 0
-                        eta = int((total_reviews - done) / rate) if rate > 0 else None
-                        sync_manager.update_progress(
-                            restaurant_id, pct,
-                            f"Analyzing sentiment... ({done}/{total_reviews})",
-                            processed_count=done, total_count=total_reviews, est_remaining=eta, platform=platform
-                        )
-                        if done < total_reviews:
-                            await asyncio.sleep(4)
-
-                # ── Update SyncLog ──
-                sync_log = (await session.execute(
-                    select(SyncLog).where(SyncLog.platform == platform, SyncLog.business_id == biz_url)
-                )).scalar_one_or_none()
-                if not sync_log:
-                    sync_log = SyncLog(restaurant_id=restaurant_id, platform=platform, business_id=biz_url, business_name=biz_name)
-                    session.add(sync_log)
-                sync_log.last_synced_at = datetime.utcnow()
-                sync_log.reviews_fetched = len(raw_reviews)
-                sync_log.new_reviews = report.ingested
-
-                await session.commit()
-                api_cache.invalidate(restaurant_id)
-
-                sync_manager.finish_platform(restaurant_id, platform, new_ingested=report.ingested)
-                return {"platform": platform, "status": "success", "new_ingested": report.ingested}
+                # Delegate to shared sync engine (full sync for reset-and-sync)
+                return await execute_platform_sync(
+                    db=session,
+                    restaurant_id=restaurant_id,
+                    platform=platform,
+                    business_url=biz_url,
+                    business_name=biz_name,
+                    max_reviews=100000,
+                    is_full_sync=True,
+                )
             except Exception as e:
                 logger.error(f"Background sync failed for {platform}: {e}", exc_info=True)
-                return {
-                    "platform": platform, 
-                    "status": "error", 
-                    "message": str(e),
-                    "new_ingested": 0
-                }
+                return {"platform": platform, "status": "error", "message": str(e), "new_ingested": 0}
 
-    # 2. Add 'google' or 'yelp' if missing from logs
+    # Run both platforms concurrently
     required = ["google", "yelp"]
-    tasks = []
-    for p in required:
-        log = latest_per_platform.get(p)
-        tasks.append(run_single_sync(p, log))
-
+    tasks = [run_single_sync(p, latest_per_platform.get(p)) for p in required]
     sync_results = await asyncio.gather(*tasks)
     
-    # Log results for debugging
     for r in sync_results:
         logger.info(f"SYNC RESULT for {restaurant_id}: {r}")
     
@@ -298,18 +217,24 @@ async def search_business(
     yelp_results = []
     google_results = []
 
-    # 1. Fetch from platforms
-    if settings.YELP_API_KEY:
+    # 1. Fetch from both platforms in parallel
+    async def _safe_yelp():
+        if not settings.YELP_API_KEY: return []
         try:
-            yelp_results = await yelp_search(name, location, lat, lng)
+            return await yelp_search(name, location, lat, lng)
         except Exception as e:
             logger.error(f"Yelp search failed: {e}")
+            return []
 
-    if settings.GOOGLE_PLACES_API_KEY:
+    async def _safe_google():
+        if not settings.GOOGLE_PLACES_API_KEY: return []
         try:
-            google_results = await google_search(name, location, lat, lng)
+            return await google_search(name, location, lat, lng)
         except Exception as e:
             logger.error(f"Google search failed: {e}")
+            return []
+
+    yelp_results, google_results = await asyncio.gather(_safe_yelp(), _safe_google())
 
     # 1b. Location-aware Yelp fallback: if no location/GPS was provided and Google
     # returned results, re-search Yelp using the first Google result's coordinates.
@@ -389,22 +314,6 @@ async def search_business(
                 match = y
                 used_yelp_ids.add(y["id"])
                 break
-        
-        # Deep Match: If no Yelp match by distance, try a targeted Yelp search by name + coordinates
-        if not match:
-            try:
-                # We do a tiny-radius search for this exact name near this spot
-                deep_yelp = await yelp_search(g["name"], lat=g["latitude"], lng=g["longitude"])
-                if deep_yelp:
-                    # Check if any deep results are actually the same (tight distance)
-                    for dy in deep_yelp:
-                        d = get_haversine_dist(g["latitude"], g["longitude"], dy["latitude"], dy["longitude"])
-                        if d < 100: # Tight 100m for deep match
-                            match = dy
-                            await attach_sync_status(match, "yelp")
-                            break
-            except Exception as e:
-                logger.error(f"Deep Yelp merge failed for {g['name']}: {e}")
 
         total_rev = g["review_count"] + (match["review_count"] if match else 0)
         # Weighted avg rating
@@ -433,26 +342,7 @@ async def search_business(
             continue
 
         if y["id"] not in used_yelp_ids:
-            # Deep Match: Try to find this on Google if it's unique to Yelp
-            google_match = None
-            try:
-                dg_res = await google_search(y["name"], lat=y["latitude"], lng=y["longitude"])
-                if dg_res:
-                    for dg in dg_res:
-                        d = get_haversine_dist(dg["latitude"], dg["longitude"], y["latitude"], y["longitude"])
-                        if d < 100:
-                            google_match = dg
-                            await attach_sync_status(google_match, "google")
-                            break
-            except Exception as e:
-                logger.error(f"Deep Google merge failed for {y['name']}: {e}")
-
-            if google_match:
-                # If we found a Google match, it might have been missed in the first loop
-                # (but it should have been caught if it matched the name filter there).
-                # To avoid duplicates, we'll only add here if it wasn't already unified.
-                # Since we check used_yelp_ids, it should be safe.
-                pass 
+            google_match = None  # Only merge with Google results already fetched
 
             total_rev = y["review_count"] + (google_match["review_count"] if google_match else 0)
             if total_rev > 0:
@@ -495,6 +385,7 @@ async def sync_apify_reviews_endpoint(
     in a background asyncio task.
     """
     target_restaurant_id = restaurant_id
+    is_new_restaurant = False
     
     # ── Resolve target restaurant ID ──
     if not target_restaurant_id:
@@ -515,6 +406,7 @@ async def sync_apify_reviews_endpoint(
             db.add(new_res)
             await db.commit()
             target_restaurant_id = new_res.id
+            is_new_restaurant = True
 
     # Initialize progress tracking (only if not already active — prevents second platform from resetting first)
     if not sync_manager.get_state(target_restaurant_id) or sync_manager.get_state(target_restaurant_id).percent >= 100:
@@ -527,204 +419,164 @@ async def sync_apify_reviews_endpoint(
         business_name: str,
         restaurant_id: str,
         business_address: str | None,
-        force: bool
+        force: bool,
+        is_new_restaurant: bool = False,
     ):
         import sys
-        sys.stdout.write(f"\nCRITICAL: _run_sync_task started for {restaurant_id} ({platform})\n")
+        sys.stdout.write(f"\nSYNC: started for {restaurant_id} ({platform})\n")
         sys.stdout.flush()
         try:
             from app.database import async_session
-            from app.services.apify_sync import apify_google_reviews, apify_yelp_reviews
-            from app.services.ingestion import ingest_reviews
-            from app.models import Review, SyncLog, Restaurant, MenuItem
-            from sqlalchemy import select, func
-            from datetime import datetime, timedelta
-            from app.services.cache import api_cache
-            from app.services.discovery import discover_menu_items
-            import uuid
-
-            sys.stdout.write(f"SYNC: imports done, opening session\n")
-            sys.stdout.flush()
+            from app.services.sync_engine import execute_platform_sync
 
             async with async_session() as bg_db:
-                sys.stdout.write(f"SYNC: session acquired\n")
-                sys.stdout.flush()
                 try:
                     # ── Strict Business ID Guard ──
                     existing_binding = (await bg_db.execute(
-                        select(SyncLog.business_id).where(SyncLog.restaurant_id == restaurant_id, SyncLog.platform == platform).limit(1)
+                        select(SyncLog.business_id).where(
+                            SyncLog.restaurant_id == restaurant_id,
+                            SyncLog.platform == platform,
+                        ).limit(1)
                     )).scalar_one_or_none()
-                    
+
                     if existing_binding and existing_binding != business_url:
-                        sync_manager.finish_sync(restaurant_id, status="❌ Sync rejected: Cross-contamination prevented.")
+                        sync_manager.finish_sync(
+                            restaurant_id,
+                            status="❌ Sync rejected: Cross-contamination prevented.",
+                        )
                         logger.error(f"Guard rejected sync: {business_url} vs bound {existing_binding}")
                         return
 
-                    sys.stdout.write(f"SYNC: guard passed, checking local count\n")
-                    sys.stdout.flush()
-
-                    # ── Adaptive Sync Branching ──
-                    local_count_result = await bg_db.execute(
-                        select(func.count(Review.id)).where(Review.restaurant_id == restaurant_id, Review.platform == platform, Review.is_deleted_on_platform == False)
-                    )
-                    local_count = local_count_result.scalar() or 0
-
-                    sync_manager.update_progress(restaurant_id, 5, f"Checking live counts...", platform=platform)
-                    live_count = local_count
-                    
-                    # Try to get live count for decision making
-                    try:
-                        if platform == "google":
-                            sr = await google_search(business_name, business_address or "")
-                            if sr:
-                                match = next((x for x in sr if x.get("place_url") == business_url or x.get("id") == business_url), sr[0])
-                                live_count = match.get("review_count", local_count)
-                        else:
-                            sr = await yelp_search(business_name, business_address or "")
-                            if sr:
-                                match = next((x for x in sr if x.get("url") == business_url or x.get("id") == business_url), sr[0])
-                                live_count = match.get("review_count", local_count)
-                    except Exception as e:
-                        logger.warning(f"Live count check failed: {e}")
-                        live_count = -1
-
-                    is_full_sync = (local_count == 0 or force or live_count == -1)
-                    max_reviews = 100000 if is_full_sync else 50
-                    sync_mode = "full" if is_full_sync else "delta"
-                    
-                    sys.stdout.write(f"SYNC: local={local_count} live={live_count} mode={sync_mode} max={max_reviews}\n")
-                    sys.stdout.flush()
-                    sync_manager.update_progress(restaurant_id, 10, f"Scraping reviews ({sync_mode})...", platform=platform)
-
-                    # ── Fetch reviews ──
-                    try:
-                        if platform == "google":
-                            raw_reviews = await apify_google_reviews(
-                                business_url, 
-                                max_reviews, 
-                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
-                            )
-                        else:
-                            raw_reviews = await apify_yelp_reviews(
-                                business_url, 
-                                max_reviews,
-                                progress_callback=lambda p, s: sync_manager.update_progress(restaurant_id, p, s, platform=platform)
-                            )
-                        review_platform = ReviewPlatform(platform)
-                    except Exception as e:
-                        logger.error(f"Apify error: {e}")
-                        sys.stdout.write(f"SYNC ERROR: Apify failed: {e}\n")
-                        sys.stdout.flush()
-                        sync_manager.finish_sync(restaurant_id, status=f"❌ Scraper error: {str(e)[:50]}")
-                        return
-
-                    sys.stdout.write(f"SYNC: got {len(raw_reviews)} reviews, ingesting...\n")
-                    sys.stdout.flush()
-                    sync_manager.update_progress(restaurant_id, 40, f"Ingesting {len(raw_reviews)} reviews...", platform=platform)
-                    
-                    def _ingest_progress(done, total):
-                        pct = 35 + int(5 * (done / total)) if total else 35
-                        sync_manager.update_progress(restaurant_id, pct, f"Ingesting review {done}/{total}...",
-                                                     processed_count=done, total_count=total, platform=platform)
-                    
-                    # ── Ingest into SavorIQ ──
-                    report = await ingest_reviews(bg_db, restaurant_id, review_platform, raw_reviews, full_sync=is_full_sync, stop_on_match=not is_full_sync,
-                                                 progress_callback=_ingest_progress)
-
-                    sys.stdout.write(f"SYNC: ingested={report.ingested} duplicates={report.duplicates_skipped}\n")
-                    sys.stdout.flush()
-
-                    # ── Sentiment analysis ──
-                    if report.ingested > 0:
-                        res = await bg_db.execute(
-                            select(Review).where(Review.restaurant_id == restaurant_id, Review.platform == platform)
-                            .order_by(Review.ingested_at.desc()).limit(report.ingested)
+                    # ── Smart Delta: figure out how many reviews to fetch ──
+                    local_count = (await bg_db.execute(
+                        select(func.count(Review.id)).where(
+                            Review.restaurant_id == restaurant_id,
+                            Review.platform == platform,
+                            Review.is_deleted_on_platform == False,
                         )
-                        new_reviews = res.scalars().all()
-                        
-                        from app.services.sentiment import analyze_and_store_batch
-                        import time as _time
-                        batch_size = 130
-                        reviews_to_analyze = [{"id": r.id, "text": r.content} for r in new_reviews]
-                        total_reviews = len(reviews_to_analyze)
-                        _batch_start = _time.monotonic()
-                        sync_manager.update_progress(restaurant_id, 40, f"Analyzing sentiment... (0/{total_reviews})",
-                                                     processed_count=0, total_count=total_reviews, platform=platform)
-                        for i in range(0, total_reviews, batch_size):
-                            batch = reviews_to_analyze[i : i + batch_size]
-                            await analyze_and_store_batch(bg_db, batch)
-                            done = min(i + batch_size, total_reviews)
-                            pct = 40 + int(50 * (done / total_reviews))
-                            elapsed = _time.monotonic() - _batch_start
-                            rate = done / elapsed if elapsed > 0 else 0
-                            eta = int((total_reviews - done) / rate) if rate > 0 else None
-                            sync_manager.update_progress(
-                                restaurant_id, pct,
-                                f"Analyzing sentiment... ({done}/{total_reviews})",
-                                processed_count=done, total_count=total_reviews, est_remaining=eta, platform=platform
-                            )
-                            if done < total_reviews:
-                                await asyncio.sleep(4)
+                    )).scalar() or 0
 
-                    # ── Update SyncLog ──
-                    log = (await bg_db.execute(select(SyncLog).where(SyncLog.platform == platform, SyncLog.business_id == business_url))).scalar_one_or_none()
-                    if not log:
-                        log = SyncLog(restaurant_id=restaurant_id, platform=platform, business_id=business_url, business_name=business_name)
-                        bg_db.add(log)
-                    
-                    log.last_synced_at = datetime.utcnow()
-                    log.reviews_fetched = len(raw_reviews)
-                    log.new_reviews = report.ingested
-                    if live_count > 0: # Only update if we got a valid live count
-                        log.platform_total_count = live_count
-                    
-                    # ── Automatic Menu Discovery ──
-                    m_count = (await bg_db.execute(select(func.count(MenuItem.id)).where(MenuItem.restaurant_id == restaurant_id))).scalar() or 0
-                    if m_count == 0 and report.ingested > 0:
-                        sync_manager.update_progress(restaurant_id, 95, "Discovering menu items...", platform=platform)
+                    sync_manager.update_progress(
+                        restaurant_id, 5, "Checking live counts...", platform=platform
+                    )
+                    live_count = local_count
+
+                    # Use cached platform count from SyncLog if available
+                    existing_log = (await bg_db.execute(
+                        select(SyncLog).where(
+                            SyncLog.platform == platform,
+                            SyncLog.business_id == business_url,
+                        )
+                    )).scalar_one_or_none()
+
+                    if existing_log and existing_log.platform_total_count:
+                        live_count = existing_log.platform_total_count
+                    else:
                         try:
-                            # Fetch review texts to feed into AI discovery
-                            review_rows = (await bg_db.execute(
-                                select(Review.content).where(Review.restaurant_id == restaurant_id)
-                                .order_by(Review.reviewed_at.desc()).limit(50)
-                            )).scalars().all()
-                            
-                            discovered = await discover_menu_items(list(review_rows))
-                            
-                            # Persist discovered items into menu_items table
-                            for item in discovered:
-                                mi = MenuItem(
-                                    restaurant_id=restaurant_id,
-                                    name=item.get("name", "Unknown"),
-                                    category=item.get("category", "food"),
-                                    keywords=item.get("keywords", ""),
-                                )
-                                bg_db.add(mi)
-                            if discovered:
-                                logger.info(f"Menu discovery: saved {len(discovered)} items for {restaurant_id}")
+                            if platform == "google":
+                                sr = await google_search(business_name, business_address or "")
+                                if sr:
+                                    match = next(
+                                        (x for x in sr if x.get("place_url") == business_url or x.get("id") == business_url),
+                                        sr[0],
+                                    )
+                                    live_count = match.get("review_count", local_count)
+                            else:
+                                sr = await yelp_search(business_name, business_address or "")
+                                if sr:
+                                    match = next(
+                                        (x for x in sr if x.get("url") == business_url or x.get("id") == business_url),
+                                        sr[0],
+                                    )
+                                    live_count = match.get("review_count", local_count)
                         except Exception as e:
-                            logger.warning(f"Menu discovery failed: {e}")
+                            logger.warning(f"Live count check failed: {e}")
 
-                    await bg_db.commit()
+                    # Decide sync mode
+                    is_full_sync = local_count == 0 or force
+                    if is_full_sync:
+                        max_reviews = 100000
+                    else:
+                        # Only fetch enough to cover new reviews + safety buffer
+                        diff = max(live_count - local_count, 0)
+                        max_reviews = max(int(diff * 1.5) + 20, 50)
 
-                    # ── Finalize ──
-                    api_cache.invalidate(restaurant_id)
-                    sync_manager.finish_platform(restaurant_id, platform, new_ingested=report.ingested)
-                    sys.stdout.write(f"SYNC: COMPLETE for {restaurant_id} - {report.ingested} new reviews\n")
+                    sys.stdout.write(
+                        f"SYNC: local={local_count} live={live_count} "
+                        f"mode={'full' if is_full_sync else 'delta'} max={max_reviews}\n"
+                    )
                     sys.stdout.flush()
-                    logger.info(f"Background Sync for {restaurant_id} ({platform}) completed successfully.")
-                    
+
+                    # ── Delegate to shared sync engine ──
+                    result = await execute_platform_sync(
+                        db=bg_db,
+                        restaurant_id=restaurant_id,
+                        platform=platform,
+                        business_url=business_url,
+                        business_name=business_name,
+                        max_reviews=max_reviews,
+                        is_full_sync=is_full_sync,
+                    )
+
+                    # Update live count in SyncLog if we got a valid one
+                    if live_count > 0:
+                        log_entry = (await bg_db.execute(
+                            select(SyncLog).where(
+                                SyncLog.platform == platform,
+                                SyncLog.business_id == business_url,
+                            )
+                        )).scalar_one_or_none()
+                        if log_entry:
+                            log_entry.platform_total_count = live_count
+                            await bg_db.commit()
+
+                    sys.stdout.write(f"SYNC: COMPLETE — {result}\n")
+                    sys.stdout.flush()
+
                 except Exception as e:
                     logger.error(f"Critical sync failure: {e}", exc_info=True)
-                    sys.stdout.write(f"SYNC CRASH (inner): {e}\n")
+                    sys.stdout.write(f"SYNC CRASH: {e}\n")
                     sys.stdout.flush()
-                    sync_manager.finish_sync(restaurant_id, status=f"❌ Sync crashed: {str(e)[:50]}")
-        except Exception as e:
-            sys.stdout.write(f"SYNC CRASH (outer): {type(e).__name__}: {e}\n")
-            sys.stdout.flush()
-            sync_manager.finish_sync(restaurant_id, status=f"❌ Fatal: {str(e)[:50]}")
+                    sync_manager.finish_sync(
+                        restaurant_id, status=f"❌ Sync crashed: {str(e)[:50]}"
+                    )
 
-    background_tasks.add_task(_run_sync_task, platform, business_url, business_name, target_restaurant_id, business_address, force)
+                # ── Cleanup on cancel: remove new restaurants with zero reviews ──
+                if sync_manager.is_cancelled(restaurant_id) and is_new_restaurant:
+                    review_count = (await bg_db.execute(
+                        select(func.count(Review.id)).where(
+                            Review.restaurant_id == restaurant_id,
+                            Review.is_deleted_on_platform == False,
+                        )
+                    )).scalar() or 0
+
+                    if review_count == 0:
+                        from sqlalchemy import delete
+                        from app.models import Guest, SentimentScore, MenuItem
+                        # Cascade delete in dependency order
+                        review_ids_subq = select(Review.id).where(Review.restaurant_id == restaurant_id).scalar_subquery()
+                        await bg_db.execute(delete(SentimentScore).where(SentimentScore.review_id.in_(review_ids_subq)))
+                        await bg_db.execute(delete(Review).where(Review.restaurant_id == restaurant_id))
+                        await bg_db.execute(delete(SyncLog).where(SyncLog.restaurant_id == restaurant_id))
+                        await bg_db.execute(delete(MenuItem).where(MenuItem.restaurant_id == restaurant_id))
+                        await bg_db.execute(delete(Guest).where(Guest.restaurant_id == restaurant_id))
+                        await bg_db.execute(delete(Restaurant).where(Restaurant.id == restaurant_id))
+                        await bg_db.commit()
+                        logger.info(f"Cancelled sync cleaned up new restaurant {restaurant_id} (zero reviews)")
+                        sync_manager.finish_sync(restaurant_id, status="Cancelled — no data saved.")
+                        sync_manager.clear_state(restaurant_id)
+
+        except Exception as e:
+            sys.stdout.write(f"SYNC FATAL: {type(e).__name__}: {e}\n")
+            sys.stdout.flush()
+            sync_manager.finish_sync(
+                restaurant_id, status=f"❌ Fatal: {str(e)[:50]}"
+            )
+
+    background_tasks.add_task(
+        _run_sync_task, platform, business_url, business_name,
+        target_restaurant_id, business_address, force, is_new_restaurant,
+    )
 
     return {
         "status": "processing",

@@ -149,9 +149,12 @@ async def ingest_reviews(
     review_cache = {r.platform_review_id: r for r in existing_reviews_result.scalars().all()}
 
     total = len(reviews_data)
+
+    # ── Pass 1: Normalize all reviews and identify needed guests ──
+    normalized_reviews = []
+    needed_guest_names = set()
+
     for i, raw_data in enumerate(reviews_data):
-        if progress_callback and i % 10 == 0:
-            progress_callback(i, total)
         try:
             if platform == ReviewPlatform.yelp:
                 parsed = YelpReviewIngest.model_validate(raw_data)
@@ -159,21 +162,48 @@ async def ingest_reviews(
                 parsed = GoogleReviewIngest.model_validate(raw_data)
 
             normalized = normalize_review(parsed, platform)
+            normalized_reviews.append((i, normalized))
+            
+            name = normalized["guest_name"]
+            name_key = name.strip().lower()
+            # Check if guest already in cache
+            found = any(cn.strip().lower() == name_key for cn in guest_cache)
+            if not found:
+                needed_guest_names.add(name)
+        except Exception as e:
+            logger.warning(f"Error parsing review #{i}: {e}")
+            report.errors += 1
+            report.error_details.append(f"Review #{i}: {str(e)}")
 
+    # ── Bulk-create all missing guests in one flush ──
+    for name in needed_guest_names:
+        guest = Guest(
+            restaurant_id=restaurant_id,
+            name=name,
+            email=None,
+            tier="new",
+        )
+        db.add(guest)
+        guest_cache[name] = guest
+
+    if needed_guest_names:
+        await db.flush()  # Single round-trip to create all guests
+
+    # ── Pass 2: Create reviews using cached guests ──
+    for idx, (i, normalized) in enumerate(normalized_reviews):
+        if progress_callback and idx % 20 == 0:
+            progress_callback(idx, total)
+        try:
             existing_review = review_cache.get(normalized["platform_review_id"])
 
             if existing_review:
                 # ── MISATTRIBUTION RECOVERY ──
-                # If a review ID exists but is attached to the WRONG restaurant, claim it.
-                # This fixes data corruption from previous bugs without needing manual DB cleanup.
                 was_misattributed = existing_review.restaurant_id != restaurant_id
                 
                 if was_misattributed:
                     logger.info(f"RECOVERY: Moving misattributed review {existing_review.platform_review_id} from {existing_review.restaurant_id} to {restaurant_id}")
                     existing_review.restaurant_id = restaurant_id
-                    # We'll continue the loop to re-resolve the guest for this restaurant below
                 else:
-                    # Standard Upsert check
                     has_changed = (
                         existing_review.rating != normalized["rating"] or 
                         existing_review.content != normalized["content"]
@@ -181,7 +211,6 @@ async def ingest_reviews(
                     if has_changed:
                         existing_review.rating = normalized["rating"]
                         existing_review.content = normalized["content"]
-                        # Mark as NOT deleted if it resurfaced
                         existing_review.is_deleted_on_platform = False
                         report.ingested += 1
                     else:
@@ -194,7 +223,7 @@ async def ingest_reviews(
                     if not was_misattributed:
                         continue
 
-            # Get guest from cache or create
+            # Find guest in cache (case-insensitive)
             name = normalized["guest_name"]
             name_key = name.strip().lower()
             guest = None
@@ -204,21 +233,15 @@ async def ingest_reviews(
                     break
 
             if not guest:
-                guest = Guest(
-                    restaurant_id=restaurant_id, 
-                    name=name, 
-                    email=normalized.get("guest_email"), 
-                    tier="new"
-                )
+                # Shouldn't happen after Pass 1, but safety fallback
+                guest = Guest(restaurant_id=restaurant_id, name=name, tier="new")
                 db.add(guest)
                 await db.flush()
                 guest_cache[name] = guest
 
-            # Re-associate existing misattributed review with the correct guest in this restaurant
+            # Re-associate misattributed review
             if existing_review and existing_review.restaurant_id == restaurant_id:
                 existing_review.guest_id = guest.id
-                # No need to count as 'ingested' if it was just a relocation? 
-                # Actually, counting it as ingested helps indicate work was done.
                 if was_misattributed:
                     report.ingested += 1
                 continue
@@ -271,20 +294,24 @@ async def ingest_reviews(
 
     await db.flush()
 
-    # ── Tier Recalculation for affected guests ──
-    # Compute tiers based on review counts for all guests that were touched
+    # ── Tier Recalculation for affected guests (single aggregate query) ──
     touched_guest_ids = list({g.id for g in guest_cache.values()})
     if touched_guest_ids:
         now = datetime.utcnow()
-        for guest in guest_cache.values():
-            review_count_result = await db.execute(
-                select(func.count(Review.id)).where(
-                    Review.guest_id == guest.id,
-                    Review.restaurant_id == restaurant_id,
-                    Review.is_deleted_on_platform == False,
-                )
+        # Single query: get review counts for ALL touched guests at once
+        counts_result = await db.execute(
+            select(Review.guest_id, func.count(Review.id).label("cnt"))
+            .where(
+                Review.guest_id.in_(touched_guest_ids),
+                Review.restaurant_id == restaurant_id,
+                Review.is_deleted_on_platform == False,
             )
-            review_count = review_count_result.scalar() or 0
+            .group_by(Review.guest_id)
+        )
+        review_counts = {row.guest_id: row.cnt for row in counts_result.all()}
+
+        for guest in guest_cache.values():
+            review_count = review_counts.get(guest.id, 0)
 
             if review_count >= 3:
                 guest.tier = "vip"

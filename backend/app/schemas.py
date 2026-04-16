@@ -346,6 +346,7 @@ class ManagerBriefing(BaseModel):
     summary: str
     insights: list[ManagerInsight]
     review_count_note: str | None = None  # e.g. "Based on 1,300 of 2,100 reviews"
+    generated_at: str | None = None  # ISO timestamp for frontend cooldown calculation
 
 
 class UnmatchedMention(BaseModel):

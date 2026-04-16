@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, fonts } from '@/lib/theme';
 import { useRestaurant } from '@/lib/RestaurantContext';
 import { useData } from '@/lib/DataContext';
-import { DeepAnalytics } from '@/lib/api';
+import { DeepAnalytics, refreshBriefing } from '@/lib/api';
 import NoRestaurantSelected from '@/components/NoRestaurantSelected';
 
 // Helper to render text with colored item highlights
@@ -79,7 +79,89 @@ export default function DashboardScreen() {
   } = useData();
 
   const [showIntegrityModal, setShowIntegrityModal] = useState(false);
+  const [refreshingInsights, setRefreshingInsights] = useState(false);
+  const [cooldownMinutes, setCooldownMinutes] = useState<number | null>(null);
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const intelReady = !!data?.briefing?.insights && data.briefing.insights.length > 0;
+  const briefingFailed = !!data?.briefing && (!data.briefing.insights || data.briefing.insights.length === 0);
+
+  // Clean up cooldown timer on unmount
+  useEffect(() => {
+    return () => { if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current); };
+  }, []);
+
+  // Calculate cooldown from briefing's generated_at on load/data change
+  const COOLDOWN_HOURS = 2;
+  useEffect(() => {
+    const generatedAt = data?.briefing?.generated_at;
+    if (!generatedAt || !intelReady) {
+      setCooldownMinutes(null);
+      return;
+    }
+    const generatedTime = new Date(generatedAt).getTime();
+    const cooldownEnd = generatedTime + COOLDOWN_HOURS * 60 * 60 * 1000;
+    const remaining = Math.ceil((cooldownEnd - Date.now()) / 60_000);
+    if (remaining > 0) {
+      setCooldownMinutes(remaining);
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+      cooldownTimerRef.current = setInterval(() => {
+        setCooldownMinutes(prev => {
+          if (prev === null || prev <= 1) {
+            if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 60_000);
+    } else {
+      setCooldownMinutes(null);
+    }
+  }, [data?.briefing?.generated_at, intelReady]);
+
+  const isRefreshDisabled = refreshingInsights || (cooldownMinutes !== null && cooldownMinutes > 0);
+
+  const handleRefreshInsights = async () => {
+    if (isRefreshDisabled) return;
+    setRefreshingInsights(true);
+    try {
+      // Safety timeout: 3 minutes max (3 Gemini calls × ~40s each + buffer)
+      const briefing = await Promise.race([
+        refreshBriefing(timeRange),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Generation timed out. Please try again.')), 180_000)
+        ),
+      ]);
+      if (data) {
+        // Force-refresh current view to pick up new briefing
+        refreshAll(timeRange, true);
+      }
+      Alert.alert('Insights Generated', 'AI briefings have been generated for all time ranges (1M, 3M, 6M, 1Y, All).');
+    } catch (e: any) {
+      const msg = e.message || '';
+      // Parse cooldown minutes from backend 429 response
+      const minuteMatch = msg.match(/(\d+)\s*minute/);
+      if (minuteMatch) {
+        const mins = parseInt(minuteMatch[1], 10);
+        setCooldownMinutes(mins);
+        // Count down locally — no more server hits
+        if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = setInterval(() => {
+          setCooldownMinutes(prev => {
+            if (prev === null || prev <= 1) {
+              if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 60_000);
+        Alert.alert('Cooldown Active', `Refresh available in ${mins} minutes.`);
+      } else {
+        Alert.alert('Refresh Failed', msg || 'Could not regenerate insights. Try again later.');
+      }
+    } finally {
+      setRefreshingInsights(false);
+    }
+  };
 
   // No need for showIntelBadge state - badge is always visible now
 
@@ -171,9 +253,15 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
-                    style={[s.intelBadge, !intelReady && s.intelBadgeLoading]}
+                    style={[s.intelBadge, !intelReady && (briefingFailed ? s.intelBadgeFailed : s.intelBadgeLoading)]}
                     onPress={() => {
-                      if (!intelReady) {
+                      if (briefingFailed) {
+                        Alert.alert(
+                          'Insights Unavailable',
+                          'AI insights are being prepared. Scroll down to the Manager Briefing card and tap "Generate Insights" to try now.',
+                          [{ text: 'OK' }]
+                        );
+                      } else if (!intelReady) {
                         Alert.alert(
                           'Loading Intelligence',
                           'Reviews and analytics are still being processed. This usually takes a few seconds.',
@@ -184,12 +272,12 @@ export default function DashboardScreen() {
                     activeOpacity={intelReady ? 1 : 0.7}
                   >
                     <Ionicons
-                      name={intelReady ? 'checkmark-circle' : 'ellipsis-horizontal-circle'}
+                      name={intelReady ? 'checkmark-circle' : briefingFailed ? 'alert-circle' : 'ellipsis-horizontal-circle'}
                       size={12}
-                      color={intelReady ? colors.sentiment.positive : colors.text.muted}
+                      color={intelReady ? colors.sentiment.positive : briefingFailed ? colors.accent.gold : colors.text.muted}
                     />
-                    <Text style={[s.intelBadgeText, !intelReady && s.intelBadgeTextLoading]}>
-                      {intelReady ? 'Intelligence Ready' : 'Syncing...'}
+                    <Text style={[s.intelBadgeText, !intelReady && (briefingFailed ? s.intelBadgeTextFailed : s.intelBadgeTextLoading)]}>
+                      {intelReady ? 'Intelligence Ready' : briefingFailed ? 'Insights Unavailable' : 'Syncing...'}
                     </Text>
                   </TouchableOpacity>
 
@@ -226,6 +314,20 @@ export default function DashboardScreen() {
             <View style={s.cardHeader}>
               <Ionicons name="sparkles" size={18} color={colors.accent.gold} />
               <Text style={[s.cardTitle, { flex: 1 }]}>Manager Briefing</Text>
+              {intelReady && (
+                <TouchableOpacity
+                  onPress={handleRefreshInsights}
+                  disabled={isRefreshDisabled}
+                  style={[s.refreshBtn, isRefreshDisabled && { opacity: 0.35 }]}
+                  activeOpacity={0.6}
+                >
+                  {refreshingInsights ? (
+                    <ActivityIndicator size={14} color={colors.accent.gold} />
+                  ) : (
+                    <Ionicons name="refresh" size={15} color={isRefreshDisabled ? colors.text.muted : '#FFFFFF'} />
+                  )}
+                </TouchableOpacity>
+              )}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {[
                   { label: '1M', val: 30 },
@@ -255,6 +357,42 @@ export default function DashboardScreen() {
               <View style={{ paddingVertical: 20, alignItems: 'center' }}>
                 <ActivityIndicator color={colors.accent.gold} />
                 <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.xs, marginTop: 8 }}>Generating AI Briefing...</Text>
+              </View>
+            ) : data.briefing.insights.length === 0 ? (
+              <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                <Ionicons name="sparkles-outline" size={32} color={colors.text.muted} style={{ marginBottom: 12 }} />
+                <Text style={{ color: colors.text.secondary, fontSize: fonts.sizes.md, fontWeight: '600', marginBottom: 6, textAlign: 'center' }}>
+                  Welcome to SavorIQ Intelligence!
+                </Text>
+                <Text style={{ color: colors.text.muted, fontSize: fonts.sizes.sm, textAlign: 'center', paddingHorizontal: 20, lineHeight: 20, marginBottom: 16 }}>
+                  Ready to uncover actionable insights from your latest guest reviews? Tap below to generate your AI briefing.
+                </Text>
+                <TouchableOpacity
+                  onPress={handleRefreshInsights}
+                  disabled={isRefreshDisabled}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    backgroundColor: isRefreshDisabled ? colors.bg.input : colors.accent.gold + '20',
+                    paddingVertical: 10,
+                    paddingHorizontal: 20,
+                    borderRadius: radius.full,
+                    borderWidth: 1,
+                    borderColor: isRefreshDisabled ? colors.border.subtle : colors.accent.gold + '40',
+                    opacity: isRefreshDisabled ? 0.6 : 1,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {refreshingInsights ? (
+                    <ActivityIndicator size={14} color={colors.accent.gold} />
+                  ) : (
+                    <Ionicons name="refresh" size={15} color={isRefreshDisabled ? colors.text.muted : colors.accent.gold} />
+                  )}
+                  <Text style={{ color: isRefreshDisabled ? colors.text.muted : colors.accent.gold, fontSize: fonts.sizes.sm, fontWeight: '700' }}>
+                    {refreshingInsights ? 'Generating...' : cooldownMinutes ? `Refresh in ${cooldownMinutes}m` : 'Generate Insights'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <>
@@ -585,6 +723,12 @@ const s = StyleSheet.create({
     padding: spacing.md, marginBottom: spacing.md,
     borderWidth: 1, borderColor: colors.border.subtle,
   },
+  refreshBtn: {
+    padding: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.input,
+    marginRight: 4,
+  },
   cardHeader: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     marginBottom: spacing.md, paddingBottom: spacing.sm,
@@ -780,5 +924,12 @@ const s = StyleSheet.create({
   },
   intelBadgeTextLoading: {
     color: colors.text.muted,
+  },
+  intelBadgeFailed: {
+    backgroundColor: colors.accent.gold + '15',
+    borderColor: colors.accent.gold + '30',
+  },
+  intelBadgeTextFailed: {
+    color: colors.accent.gold,
   },
 });

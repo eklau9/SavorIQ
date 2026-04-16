@@ -57,8 +57,28 @@ export const SyncProgressOverlay: React.FC<SyncProgressOverlayProps> = ({
                             )}
                             <Text style={styles.title}>Synchronizing Data</Text>
                         </View>
-                        
-                        <Text style={styles.status}>{percent === 100 ? (status || 'Sync Complete!') : status}</Text>
+                        {/* Platform status rows */}
+                        <View style={styles.platformRows}>
+                            {(percent === 100
+                                ? [status || 'Sync Complete!']
+                                : (status || '').split(' • ')
+                            ).map((line, idx) => {
+                                const isGoogle = line.startsWith('Google:');
+                                const isYelp = line.startsWith('Yelp:');
+                                const isDone = line.includes('✓');
+                                return (
+                                    <View key={idx} style={styles.platformRow}>
+                                        <Ionicons 
+                                            name={isGoogle ? 'logo-google' : isYelp ? 'star' : 'sync'} 
+                                            size={14} 
+                                            color={isDone ? '#34C759' : '#A1A1A6'}
+                                            style={{ marginRight: 6, marginTop: 1 }} 
+                                        />
+                                        <Text style={[styles.status, isDone && { color: '#34C759' }]}>{line}</Text>
+                                    </View>
+                                );
+                            })}
+                        </View>
                         
                         <View style={styles.progressContainer}>
                             <View style={styles.progressBarBackground}>
@@ -144,7 +164,14 @@ const styles = StyleSheet.create({
     status: {
         fontSize: 14,
         color: '#A1A1A6',
-        marginBottom: 24,
+    },
+    platformRows: {
+        marginBottom: 20,
+        gap: 6,
+    },
+    platformRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
     },
     progressContainer: {
         marginBottom: 24,

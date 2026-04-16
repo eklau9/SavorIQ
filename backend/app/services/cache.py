@@ -69,10 +69,32 @@ class APICache:
         self._store[key] = _CacheEntry(value, ttl or self._default_ttl)
         logger.debug(f"Cache SET: {key} (TTL={ttl or self._default_ttl}s)")
 
-    def invalidate(self, restaurant_id: str) -> int:
-        """Remove ALL cached entries for a given restaurant. Returns count of evicted keys."""
-        prefix = f"{restaurant_id}:"
-        keys_to_remove = [k for k in self._store if k.startswith(prefix)]
+    def invalidate(self, restaurant_id: str, endpoint: str | None = None, suffix: str | None = None) -> int:
+        """Remove cached entries for a given restaurant.
+
+        - invalidate(rid) — removes ALL keys for the restaurant
+        - invalidate(rid, endpoint) — removes all keys for rid:endpoint:*
+        - invalidate(rid, endpoint, suffix) — removes the exact key
+        Returns count of evicted keys.
+        """
+        if endpoint and suffix is not None:
+            # Exact key removal
+            key = self._make_key(restaurant_id, endpoint, suffix)
+            if key in self._store:
+                del self._store[key]
+                logger.info(f"Cache INVALIDATED key: {key}")
+                return 1
+            return 0
+
+        if endpoint:
+            # Remove all keys for this restaurant+endpoint
+            prefix = f"{restaurant_id}:{endpoint}"
+            keys_to_remove = [k for k in self._store if k.startswith(prefix)]
+        else:
+            # Remove ALL keys for this restaurant
+            prefix = f"{restaurant_id}:"
+            keys_to_remove = [k for k in self._store if k.startswith(prefix)]
+
         for k in keys_to_remove:
             del self._store[k]
         if keys_to_remove:

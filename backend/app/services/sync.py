@@ -225,12 +225,6 @@ async def yelp_autocomplete(
             "description": "",
             "source": "yelp",
         })
-    # Also include term suggestions (keyword completions)
-    for term in data.get("terms", []):
-        suggestions.append({
-            "name": term.get("text", ""),
-            "description": "keyword",
-            "source": "yelp",
-        })
+    # Skip generic Yelp term/keyword suggestions — only show real businesses
     return suggestions
 

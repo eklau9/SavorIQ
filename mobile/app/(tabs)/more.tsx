@@ -35,6 +35,11 @@ export default function MoreScreen() {
 
     // Confirmation state
     const [showConfirm, setShowConfirm] = useState(false);
+
+    // Location switch confirmation state
+    const [showSwitchConfirm, setShowSwitchConfirm] = useState(false);
+    const [pendingSwitchId, setPendingSwitchId] = useState<string | null>(null);
+    const [pendingSwitchName, setPendingSwitchName] = useState('');
     
     // Cancellation handler
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -177,9 +182,7 @@ export default function MoreScreen() {
     const MAX_VISIBLE_LOCATIONS = 3;
     const hasMany = restaurants.length > MAX_VISIBLE_LOCATIONS;
     const visibleRestaurants = hasMany && !showAllLocations
-        ? restaurants.filter(r => r.id === activeId).concat(
-            restaurants.filter(r => r.id !== activeId).slice(0, MAX_VISIBLE_LOCATIONS - 1)
-          )
+        ? restaurants.slice(0, MAX_VISIBLE_LOCATIONS)
         : restaurants;
 
     return (
@@ -221,20 +224,9 @@ export default function MoreScreen() {
                                 style={[s.locationRow, r.id === activeId && s.locationRowActive]}
                                 onPress={() => {
                                     if (r.id !== activeId) {
-                                        Alert.alert(
-                                            'Switch Location',
-                                            `Switch to ${r.name}?`,
-                                            [
-                                                { text: 'Cancel', style: 'cancel' },
-                                                {
-                                                    text: 'Switch',
-                                                    onPress: () => {
-                                                        switchRestaurant(r.id);
-                                                        router.replace('/(tabs)');
-                                                    },
-                                                },
-                                            ]
-                                        );
+                                        setPendingSwitchId(r.id);
+                                        setPendingSwitchName(r.name);
+                                        setShowSwitchConfirm(true);
                                     }
                                 }}
                             >
@@ -352,6 +344,27 @@ export default function MoreScreen() {
                 message="This will fetch and update the latest reviews keep your counts accurate. Continue?"
                 onConfirm={performActualSync}
                 onCancel={() => setShowConfirm(false)}
+            />
+
+            <SyncConfirmOverlay
+                visible={showSwitchConfirm}
+                title="Switch Location"
+                message={`Switch active location to ${pendingSwitchName}?`}
+                confirmLabel="Switch"
+                iconName="swap-horizontal"
+                onConfirm={() => {
+                    if (pendingSwitchId) {
+                        switchRestaurant(pendingSwitchId);
+                        setShowSwitchConfirm(false);
+                        setPendingSwitchId(null);
+                        setPendingSwitchName('');
+                    }
+                }}
+                onCancel={() => {
+                    setShowSwitchConfirm(false);
+                    setPendingSwitchId(null);
+                    setPendingSwitchName('');
+                }}
             />
         </ScrollView>
     );

@@ -190,6 +190,7 @@ export interface ManagerBriefing {
     summary: string;
     insights: ManagerInsight[];
     review_count_note: string | null;
+    generated_at?: string | null;
 }
 
 export interface UnmatchedMention {
@@ -221,6 +222,13 @@ export async function fetchBriefing(days?: number | null, signal?: AbortSignal):
     if (days) params.set('days', String(days));
     const url = `/api/analytics/briefing${params.toString() ? '?' + params.toString() : ''}`;
     return apiFetch(url, {}, signal);
+}
+
+export async function refreshBriefing(days?: number | null, signal?: AbortSignal): Promise<ManagerBriefing> {
+    const params = new URLSearchParams();
+    if (days) params.set('days', String(days));
+    const url = `/api/analytics/briefing/refresh${params.toString() ? '?' + params.toString() : ''}`;
+    return apiFetch(url, { method: 'POST' }, signal, 0); // 0 = infinite timeout (Gemini can be slow)
 }
 
 export interface HistoricalTrends {

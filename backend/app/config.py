@@ -20,7 +20,8 @@ class Settings(BaseSettings):
 
     # Gemini AI for Deep Sentiment
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-2.5-flash-lite"  # 10x faster than 2.5-flash, same quality for JSON
+    GEMINI_FALLBACK_MODEL: str = "gemini-2.5-flash"  # Fallback if lite quota exhausted
 
     # Google Places API (New)
     GOOGLE_PLACES_API_KEY: str = ""

@@ -10,7 +10,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Guest, MenuItem, Order, Review, SentimentScore, SyncLog
+from app.models import BriefingCache, Guest, MenuItem, Order, Review, SentimentScore, SyncLog
 from app.schemas import (
     BucketSentiment,
     BucketHighlight,
@@ -439,27 +439,91 @@ async def _generate_briefing_for_days(
     days: int,
     x_restaurant_id: str,
     db: AsyncSession,
+    auto_generate: bool = False,
 ) -> ManagerBriefing:
-    """Internal: generate briefing for a specific day range."""
+    """Internal: generate briefing for a specific day range.
+    
+    Cache priority: in-memory → DB → Gemini API.
+    DB cache survives server restarts. Invalidated when review count changes.
+    """
+    import json as _json
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
     suffix = f"days_{days}"
+    # 1. In-memory cache (fastest)
     cached = api_cache.get(x_restaurant_id, "manager_briefing", suffix=suffix)
     if cached is not None:
         return cached
 
-    # Fetch fresh deep analytics
-    deep = await get_deep_analytics(days, x_restaurant_id, db)
-    
-    # Fetch review IDs + content (no limit — TPM guard is in insights.py)
     from datetime import datetime, timedelta
     cutoff = datetime.utcnow() - timedelta(days=days)
-    
+
+    # Count reviews for this range (cheap SQL, used for cache invalidation)
+    review_count = (
+        await db.execute(
+            select(func.count(Review.id))
+            .where(
+                Review.restaurant_id == x_restaurant_id,
+                Review.is_deleted_on_platform == False,
+                Review.reviewed_at >= cutoff,
+            )
+        )
+    ).scalar() or 0
+
+    # 2. DB persistent cache — survives server restarts
+    BRIEFING_TTL_HOURS = 72
+    ttl_cutoff = datetime.utcnow() - timedelta(hours=BRIEFING_TTL_HOURS)
+    db_cached = (
+        await db.execute(
+            select(BriefingCache)
+            .where(
+                BriefingCache.restaurant_id == x_restaurant_id,
+                BriefingCache.days == days,
+                BriefingCache.review_count == review_count,
+                BriefingCache.created_at >= ttl_cutoff,
+            )
+            .order_by(BriefingCache.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if db_cached:
+        _log.info(f"DB Cache HIT for briefing: restaurant={x_restaurant_id}, days={days}")
+        payload = _json.loads(db_cached.briefing_json)
+        from app.schemas import ManagerInsight
+        briefing = ManagerBriefing(
+            summary=payload.get("summary", ""),
+            insights=[
+                ManagerInsight(**i) for i in payload.get("insights", [])
+            ],
+            review_count_note=payload.get("review_count_note"),
+            generated_at=db_cached.created_at.isoformat() + "Z",
+        )
+        # Warm in-memory cache from DB hit
+        api_cache.set(x_restaurant_id, "manager_briefing", briefing, suffix=suffix, ttl=7200)
+        return briefing
+
+    # If we are not auto-generating (e.g., initial dashboard load), return empty state immediately
+    if not auto_generate:
+        from datetime import datetime as _dt
+        return ManagerBriefing(
+            summary="",
+            insights=[],
+            review_count_note=None,
+            generated_at=_dt.utcnow().isoformat() + "Z",
+        )
+
+    # 3. Generate via Gemini (expensive)
+    _log.info(f"DB Cache MISS — calling Gemini: restaurant={x_restaurant_id}, days={days}")
+    deep = await get_deep_analytics(days, x_restaurant_id, db)
+
     recent_reviews_stmt = (
         select(Review.id, Review.content)
         .where(Review.restaurant_id == x_restaurant_id, Review.is_deleted_on_platform == False)
         .where(Review.reviewed_at >= cutoff)
         .order_by(Review.reviewed_at.desc())
     )
-        
     rows = (await db.execute(recent_reviews_stmt)).all()
     recent_reviews = [{"id": str(row.id), "text": row.content} for row in rows]
 
@@ -471,10 +535,144 @@ async def _generate_briefing_for_days(
         recent_reviews=recent_reviews,
         restaurant_id=x_restaurant_id,
     )
-    # Only cache briefings with real insights (not empty fallbacks)
+
+    # 4. Fallback: If Gemini failed (no insights) and we have reviews, return a clean
+    #    manager-friendly empty state — never surface stale/test content.
+    if not briefing.insights and review_count > 0:
+        _log.warning(f"Gemini unavailable for {x_restaurant_id}. Returning clean empty state.")
+        from datetime import datetime as _dt
+        briefing = ManagerBriefing(
+            summary="",
+            insights=[],
+            review_count_note=None,
+            generated_at=_dt.utcnow().isoformat() + "Z",
+        )
+        # Short TTL so the next request retries Gemini rather than caching emptiness
+        api_cache.set(x_restaurant_id, "manager_briefing", briefing, suffix=suffix, ttl=300)
+        return briefing
+
+    # Only cache briefings with real insights (not empty fallbacks) in the permanent DB cache
     if briefing.insights:
+        from datetime import datetime, timedelta
+        briefing.generated_at = datetime.utcnow().isoformat() + "Z"
         api_cache.set(x_restaurant_id, "manager_briefing", briefing, suffix=suffix, ttl=7200)
+        # Guard against duplicate INSERTs from concurrent requests
+        # (e.g. 1Y + All both resolve to days=180 and race to persist)
+        from datetime import datetime, timedelta
+        recent_cutoff = datetime.utcnow() - timedelta(minutes=5)
+        already_persisted = (
+            await db.execute(
+                select(BriefingCache)
+                .where(
+                    BriefingCache.restaurant_id == x_restaurant_id,
+                    BriefingCache.days == days,
+                    BriefingCache.review_count == review_count,
+                    BriefingCache.created_at >= recent_cutoff,
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if not already_persisted:
+            briefing_data = {
+                "summary": briefing.summary,
+                "insights": [i.model_dump() for i in briefing.insights],
+                "review_count_note": briefing.review_count_note,
+            }
+            db_entry = BriefingCache(
+                restaurant_id=x_restaurant_id,
+                days=days,
+                review_count=review_count,
+                briefing_json=_json.dumps(briefing_data),
+            )
+            db.add(db_entry)
+            await db.commit()
+            _log.info(f"Briefing persisted to DB: restaurant={x_restaurant_id}, days={days}")
+        else:
+            _log.debug(f"Briefing already persisted by concurrent request: restaurant={x_restaurant_id}, days={days}")
+
     return briefing
+
+
+@router.post("/briefing/refresh")
+async def refresh_manager_briefing(
+    days: Optional[int] = Query(None),
+    x_restaurant_id: str = Header(..., alias="X-Restaurant-ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Force-regenerate AI briefings for ALL time ranges in one go.
+
+    Generates 30-day, 90-day, and 180-day briefings sequentially (4s spacing
+    to respect Gemini RPM limits). 1Y and ALL reuse the 180-day briefing.
+    Has a 2-hour cooldown per restaurant, persisted in DB.
+    Returns the briefing for the requested `days` param.
+    """
+    import logging as _logging
+    from datetime import datetime, timedelta
+
+    _log = _logging.getLogger(__name__)
+
+    COOLDOWN_HOURS = 2
+    ALL_RANGES = [30, 90, 180]  # 1Y and ALL reuse 180
+
+    # ── Cooldown check: if ANY range was recently generated, block ──
+    cooldown_cutoff = datetime.utcnow() - timedelta(hours=COOLDOWN_HOURS)
+    latest_entry = (
+        await db.execute(
+            select(BriefingCache)
+            .where(
+                BriefingCache.restaurant_id == x_restaurant_id,
+                BriefingCache.created_at >= cooldown_cutoff,
+            )
+            .order_by(BriefingCache.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if latest_entry:
+        next_available = latest_entry.created_at + timedelta(hours=COOLDOWN_HOURS)
+        remaining_minutes = max(1, int((next_available - datetime.utcnow()).total_seconds() / 60))
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": f"Refresh available in {remaining_minutes} minutes",
+                "cooldown_remaining_minutes": remaining_minutes,
+            },
+        )
+
+    # ── Clear ALL caches for this restaurant ──
+    for d in ALL_RANGES:
+        suffix = f"days_{d}"
+        api_cache.invalidate(x_restaurant_id, "manager_briefing", suffix=suffix)
+    api_cache.invalidate(x_restaurant_id, "manager_briefing", suffix="")
+
+    await db.execute(
+        sqlalchemy.delete(BriefingCache).where(
+            BriefingCache.restaurant_id == x_restaurant_id,
+        )
+    )
+    await db.commit()
+
+    _log.info(f"Refresh triggered: generating ALL ranges for restaurant={x_restaurant_id}")
+
+    # ── Generate all ranges sequentially with RPM spacing ──
+    import asyncio
+    results = {}
+    for i, d in enumerate(ALL_RANGES):
+        if i > 0:
+            await asyncio.sleep(4)  # Respect Gemini RPM limit
+        try:
+            briefing = await _generate_briefing_for_days(d, x_restaurant_id, db, auto_generate=True)
+            results[d] = briefing
+            _log.info(f"Generated briefing for {d}-day range")
+        except Exception as e:
+            _log.warning(f"Failed to generate {d}-day briefing: {e}")
+
+    # Return the briefing for the requested time range
+    effective_days = days if days is not None and days <= 180 else 180
+    return results.get(effective_days, results.get(180, ManagerBriefing(
+        summary="", insights=[], review_count_note=None,
+    )))
 
 
 @router.get("/historical-trends")

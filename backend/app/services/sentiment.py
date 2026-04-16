@@ -196,7 +196,7 @@ class GeminiAnalyzer(SentimentAnalyzer):
         self.model_name = model_name
         self.heuristic = HeuristicAnalyzer()
 
-    async def analyze_batch(self, reviews: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
+    async def analyze_batch(self, reviews: List[Dict[str, str]], _depth: int = 0) -> Dict[str, List[Dict[str, Any]]]:
         if not reviews:
             return {}
 
@@ -208,11 +208,21 @@ class GeminiAnalyzer(SentimentAnalyzer):
 
         try:
             import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
+            import asyncio
+            genai.configure(api_key=self.api_key, transport="rest")
             model = genai.GenerativeModel(self.model_name)
 
             batch_input = json.dumps(gemini_reviews)
-            response = await model.generate_content_async(BATCH_PROMPT + batch_input)
+            prompt = BATCH_PROMPT + batch_input
+
+            # REST transport requires sync client wrapped in thread pool (same as insights.py)
+            def _sync_generate():
+                return model.generate_content(prompt)
+
+            response = await asyncio.wait_for(
+                asyncio.to_thread(_sync_generate),
+                timeout=60.0
+            )
             text = response.text.strip()
 
             if "```" in text:
@@ -220,7 +230,19 @@ class GeminiAnalyzer(SentimentAnalyzer):
                 if json_match:
                     text = json_match.group(1).strip()
 
-            data = json.loads(text)
+            # Try parsing, with repair on failure
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                # Attempt JSON repair: strip trailing commas, fix common issues
+                repaired = re.sub(r',\s*([}\]])', r'\1', text)  # trailing commas
+                repaired = re.sub(r'}\s*{', '},{', repaired)     # missing commas between objects
+                try:
+                    data = json.loads(repaired)
+                    logger.info(f"Gemini JSON repaired successfully for batch of {len(reviews)}")
+                except json.JSONDecodeError:
+                    raise  # Let outer except handle it
+
             mapping = {}
             for res in data.get("results", []):
                 temp_id = res["id"]
@@ -231,18 +253,25 @@ class GeminiAnalyzer(SentimentAnalyzer):
             return mapping
 
         except Exception as e:
+            # If batch is splittable and we haven't recursed too deep, split and retry
+            if len(reviews) > 1 and _depth < 2:
+                mid = len(reviews) // 2
+                logger.warning(f"Batch Gemini failed ({e}), splitting {len(reviews)} → {mid}+{len(reviews)-mid} and retrying")
+                left = await self.analyze_batch(reviews[:mid], _depth + 1)
+                right = await self.analyze_batch(reviews[mid:], _depth + 1)
+                left.update(right)
+                return left
             logger.warning(f"Batch Gemini analyzer failed: {e}")
             return await self.heuristic.analyze_batch(reviews)
 
     async def analyze_single(self, text: str) -> List[Dict[str, Any]]:
         try:
             import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
+            import asyncio
+            genai.configure(api_key=self.api_key, transport="rest")
             model = genai.GenerativeModel(self.model_name)
 
-            response = await model.generate_content_async(BATCH_PROMPT + json.dumps([{"id": "single", "text": text}]))
-            # (Simplifying for now by reusing batch logic or keeping individual prompt)
-            # For brevity, let's just use the batch logic with 1 item
+            # Reuse batch logic with 1 item
             results = await self.analyze_batch([{"id": "single", "text": text}])
             return results.get("single", await self.heuristic.analyze_single(text))
 
@@ -286,3 +315,15 @@ async def analyze_and_store_batch(db: AsyncSession, reviews: List[Dict[str, str]
 
     await db.flush()
     return count
+
+
+async def analyze_batch_no_db(reviews: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
+    """Run sentiment analysis only (no DB writes).
+
+    Used for concurrent execution — callers collect results from multiple
+    parallel batches, then write to the DB sequentially.
+    """
+    if not reviews:
+        return {}
+    analyzer = get_analyzer()
+    return await analyzer.analyze_batch(reviews)

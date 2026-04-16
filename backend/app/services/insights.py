@@ -59,8 +59,8 @@ _briefing_locks: dict[str, asyncio.Lock] = {}
 # Falls back to this when Gemini is unavailable (quota, errors)
 _last_good_briefing: dict[str, ManagerBriefing] = {}
 
-# TPM guard: max reviews to send before hitting free-tier token limits
-MAX_REVIEWS_FOR_GEMINI = 1300  # ~200K tokens at ~150 tokens/review
+# TPM guard: max reviews to send before hitting free-tier token limits or gRPC payload hangups
+MAX_REVIEWS_FOR_GEMINI = 150  # Roughly ~25K tokens, ensuring fast and stable socket replies
 
 
 async def generate_manager_briefing(
@@ -126,8 +126,10 @@ async def generate_manager_briefing(
         if data_hash in _briefing_cache:
             return _briefing_cache[data_hash]
 
-        max_retries = 5
+        max_retries = 2  # Keep low: free tier only allows limited RPD
         retry_count = 0
+        current_model_name = settings.GEMINI_MODEL
+        tried_fallback = False
         
         while retry_count < max_retries:
             try:
@@ -139,11 +141,21 @@ async def generate_manager_briefing(
                 from app.services.gemini_tracker import record_gemini_request
                 record_gemini_request()
                 
-                genai.configure(api_key=settings.GEMINI_API_KEY)
-                model = genai.GenerativeModel(settings.GEMINI_MODEL)
+                genai.configure(api_key=settings.GEMINI_API_KEY, transport="rest")
+                model = genai.GenerativeModel(current_model_name)
 
                 prompt = BRIEFING_PROMPT + json.dumps(data_context, indent=2)
-                response = await model.generate_content_async(prompt)
+                
+                # Python 3.9.6 has a known bug with google-generativeai's async gRPC client that hangs infinitely.
+                # We bypass this completely by running the stable synchronous client in an async thread pool.
+                def _sync_generate():
+                    return model.generate_content(prompt)
+                
+                logger.info(f"Calling {current_model_name} for briefing...")
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(_sync_generate),
+                    timeout=120.0
+                )
                 text = response.text.strip()
 
                 # Extract JSON
@@ -176,18 +188,29 @@ async def generate_manager_briefing(
                     insights=insights,
                     review_count_note=review_count_note,
                 )
-                # Success! Break out of retry loop
-                break
+                # Success! Cache immediately and return
+                _briefing_cache[data_hash] = result
+                if restaurant_id:
+                    _last_good_briefing[restaurant_id] = result
+                if len(_briefing_cache) > 20:
+                    _briefing_cache.pop(next(iter(_briefing_cache)))
+                return result
 
             except Exception as e:
                 error_msg = str(e)
                 is_429 = "429" in error_msg
                 is_daily_quota = "PerDay" in error_msg or "per_day" in error_msg.lower()
                 
-                # Daily quota exhausted — don't retry, it won't help until midnight PT
+                # Daily quota exhausted — try fallback model before giving up
                 if is_429 and is_daily_quota:
-                    logger.warning(f"Gemini daily quota exhausted — aborting retries")
-                    break  # Exit retry loop, fall through to last-known-good
+                    if not tried_fallback and settings.GEMINI_FALLBACK_MODEL and current_model_name != settings.GEMINI_FALLBACK_MODEL:
+                        logger.warning(f"{current_model_name} daily quota exhausted — falling back to {settings.GEMINI_FALLBACK_MODEL}")
+                        current_model_name = settings.GEMINI_FALLBACK_MODEL
+                        tried_fallback = True
+                        retry_count = 0  # Reset retries for the new model
+                        continue
+                    logger.warning(f"All Gemini models exhausted — aborting")
+                    break
                 
                 # RPM burst — worth retrying
                 if is_429 and retry_count < max_retries - 1:
@@ -198,7 +221,7 @@ async def generate_manager_briefing(
                     continue
                 
                 # Non-retryable error
-                logger.warning(f"Manager briefing generation failed: {e}")
+                logger.warning(f"Manager briefing generation failed: {type(e).__name__}: {repr(e)}")
                 break  # Exit retry loop, fall through to last-known-good
         else:
             # while loop completed without break = all retries exhausted
@@ -211,18 +234,7 @@ async def generate_manager_briefing(
         
         # Truly no previous briefing exists (first-ever load)
         return ManagerBriefing(
-            summary="AI Insights will generate on your next sync.",
+            summary="",
             insights=[],
             review_count_note=None,
         )
-
-    # Update caches (only for successful results)
-    _briefing_cache[data_hash] = result
-    if restaurant_id:
-        _last_good_briefing[restaurant_id] = result
-    
-    # Optional: limit cache size
-    if len(_briefing_cache) > 20:
-        _briefing_cache.pop(next(iter(_briefing_cache)))
-
-    return result

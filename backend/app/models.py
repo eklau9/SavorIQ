@@ -141,6 +141,9 @@ class SyncLog(Base):
     # "Ground Truth" fields — captured from platform search API (cheap)
     platform_total_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     platform_rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # Tracks when the last Full (Deep Clean) sync was performed
+    last_full_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class MenuItem(Base):
@@ -158,4 +161,20 @@ class MenuItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     restaurant: Mapped["Restaurant"] = relationship()
+
+
+class BriefingCache(Base):
+    """Persists Gemini-generated briefings across server restarts.
+    
+    Invalidation: regenerate when review_count changes for the same
+    restaurant + day range.  TTL is enforced at query time (24h default).
+    """
+    __tablename__ = "briefing_cache"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    restaurant_id: Mapped[str] = mapped_column(String(36), ForeignKey("restaurants.id"), nullable=False)
+    days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # null = ALL
+    review_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    briefing_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
