@@ -60,7 +60,10 @@ class Settings(BaseSettings):
         "http://192.168.68.56:8081",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
-        "https://savoriq-web-production.up.railway.app"
+        # Production — Vercel + Render
+        "https://savoriq-web-production.up.railway.app",
+        "https://savoriq.vercel.app",
+        "https://savoriq-admin.vercel.app",
     ]
 
     model_config = {
