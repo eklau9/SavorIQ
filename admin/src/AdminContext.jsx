@@ -3,7 +3,9 @@ import Toast from './components/Toast'
 
 const AdminContext = createContext()
 
-const API_BASE = '/api/admin'
+const API_BASE = import.meta.env.PROD
+  ? 'https://savoriq-api.onrender.com/api/admin'
+  : '/api/admin'
 const AUTO_REFRESH_MS = 60_000
 
 export function AdminProvider({ children }) {
