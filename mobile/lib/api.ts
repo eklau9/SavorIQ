@@ -20,8 +20,8 @@ const getInitialApiBase = () => {
         return 'http://127.0.0.1:8000';
     }
 
-    // 4. Fallback to Railway Production
-    return 'https://savoriq-production.up.railway.app';
+    // 4. Fallback to Render Production
+    return 'https://savoriq-api.onrender.com';
 };
 
 const DEFAULT_API_BASE = getInitialApiBase();

@@ -63,6 +63,7 @@ class Settings(BaseSettings):
         # Production — Vercel + Render
         "https://savoriq-web-production.up.railway.app",
         "https://savoriq.vercel.app",
+        "https://savor-iq.vercel.app",
         "https://savoriq-admin.vercel.app",
     ]
 
